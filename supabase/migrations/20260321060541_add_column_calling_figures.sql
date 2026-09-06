@@ -1,0 +1,1 @@
+alter table dances add column calling_figures jsonb;
