@@ -29,11 +29,29 @@ export default defineConfig({
     format: 'es',
   },
   test: {
-    // 'node', not 'jsdom' — no DOM-touching tests yet.
-    environment: 'node',
     // e2e/ holds Playwright specs, run via `pnpm test:e2e`, not Vitest —
     // both tools default to matching *.spec.ts, so without this Vitest
     // tries (and fails) to run Playwright's own test files too.
     exclude: [...configDefaults.exclude, 'e2e/**'],
+    // Split by extension: .test.ts (no JSX) runs under plain Node — faster,
+    // and avoids ever giving pure-logic tests a DOM they don't need. Only
+    // .test.tsx (renders components) gets jsdom + the RTL setup file, so a
+    // broken/missing DOM global can't accidentally affect the non-component
+    // tests.
+    projects: [
+      {
+        extends: true,
+        test: { name: 'unit', environment: 'node', include: ['src/**/*.test.ts'] },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'dom',
+          environment: 'jsdom',
+          include: ['src/**/*.test.tsx'],
+          setupFiles: ['./src/test-setup.ts'],
+        },
+      },
+    ],
   },
 })
