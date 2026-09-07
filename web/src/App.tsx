@@ -1,10 +1,10 @@
-import { createBrowserRouter, RouterProvider } from 'react-router'
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router'
 import { ForgotPasswordPage } from '@/routes/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from '@/routes/auth/ResetPasswordPage'
 import { SignInPage } from '@/routes/auth/SignInPage'
 import { SignUpPage } from '@/routes/auth/SignUpPage'
 import { AppShell } from '@/routes/AppShell'
-import { HomePage } from '@/routes/HomePage'
+import { DancesPage } from '@/routes/DancesPage'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 
 const router = createBrowserRouter([
@@ -18,8 +18,9 @@ const router = createBrowserRouter([
       {
         element: <AppShell />,
         children: [
-          { path: '/', element: <HomePage /> }
-        ]
+          { index: true, element: <Navigate to="/dances" replace /> },
+          { path: 'dances', element: <DancesPage /> },
+        ],
       },
     ],
   },

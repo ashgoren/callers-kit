@@ -4,7 +4,7 @@ import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
 import type { Dance } from '@/lib/powersync/schema'
 import { useQuery } from '@powersync/react'
 
-export function HomePage() {
+export function DancesPage() {
   // Reactive: automatically re-runs and re-renders whenever the local
   // SQLite `dances` table changes — no manual refetching or polling.
   const { data: dances, isLoading } = useQuery<Dance>('SELECT id, title FROM dances')
