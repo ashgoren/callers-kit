@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { supabase } from '@/lib/supabase'
-import { AuthShell } from '@/routes/AuthShell'
+import { AuthShell } from './AuthShell'
 import { resetPasswordSchema } from './ResetPasswordPage.schema'
 
 interface ResetPasswordState {

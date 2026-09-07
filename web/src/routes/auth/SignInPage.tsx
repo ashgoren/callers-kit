@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/contexts/AuthContext'
-import { AuthShell } from '@/routes/AuthShell'
+import { AuthShell } from './AuthShell'
 import { signInSchema } from './SignInPage.schema'
 
 interface SignInState {

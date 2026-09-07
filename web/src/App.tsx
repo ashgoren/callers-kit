@@ -1,10 +1,10 @@
 import { createBrowserRouter, RouterProvider } from 'react-router'
-import { ForgotPasswordPage } from '@/routes/ForgotPasswordPage'
+import { ForgotPasswordPage } from '@/routes/auth/ForgotPasswordPage'
+import { ResetPasswordPage } from '@/routes/auth/ResetPasswordPage'
+import { SignInPage } from '@/routes/auth/SignInPage'
+import { SignUpPage } from '@/routes/auth/SignUpPage'
 import { HomePage } from '@/routes/HomePage'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
-import { ResetPasswordPage } from '@/routes/ResetPasswordPage'
-import { SignInPage } from '@/routes/SignInPage'
-import { SignUpPage } from '@/routes/SignUpPage'
 
 const router = createBrowserRouter([
   { path: '/signin', element: <SignInPage /> },
