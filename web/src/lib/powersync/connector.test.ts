@@ -12,7 +12,7 @@ import { SupabaseConnector } from './connector'
 // so without this, the factory below would reference fromMock before it's
 // initialized. vi.hoisted() hoists this block too, so the mocks exist by
 // the time vi.mock()'s factory runs.
-const { fromMock, upsertMock, updateMock, deleteMock, eqMock } = vi.hoisted(() => {
+const { fromMock, upsertMock, updateMock, deleteMock, eqMock, getSessionMock } = vi.hoisted(() => {
   const eqMock = vi.fn(() => ({ error: null as { message: string } | null }))
   const upsertMock = vi.fn(() => ({ error: null as { message: string } | null }))
   const updateMock = vi.fn(() => ({ eq: eqMock }))
@@ -22,11 +22,17 @@ const { fromMock, upsertMock, updateMock, deleteMock, eqMock } = vi.hoisted(() =
     update: updateMock,
     delete: deleteMock,
   }))
-  return { fromMock, upsertMock, updateMock, deleteMock, eqMock }
+  // Real getSession() resolves { data: { session } }, session null when
+  // signed out — matched here so fetchCredentials() can be tested against
+  // both shapes without touching the real Supabase client.
+  const getSessionMock = vi.fn(() =>
+    Promise.resolve({ data: { session: null as { access_token: string } | null } }),
+  )
+  return { fromMock, upsertMock, updateMock, deleteMock, eqMock, getSessionMock }
 })
 
 vi.mock('@/lib/supabase', () => ({
-  supabase: { from: fromMock },
+  supabase: { from: fromMock, auth: { getSession: getSessionMock } },
 }))
 
 // CrudEntry is an interface with a couple of comparison/serialization
@@ -144,5 +150,40 @@ describe('SupabaseConnector.uploadData', () => {
       message: 'permission denied',
     })
     expect(complete).not.toHaveBeenCalled()
+  })
+})
+
+describe('SupabaseConnector.fetchCredentials', () => {
+  let connector: SupabaseConnector
+
+  beforeEach(() => {
+    connector = new SupabaseConnector()
+    getSessionMock.mockClear()
+  })
+
+  it('returns the endpoint and access token from the current session', async () => {
+    getSessionMock.mockResolvedValueOnce({
+      data: { session: { access_token: 'abc123' } },
+    })
+
+    const credentials = await connector.fetchCredentials()
+
+    expect(credentials.token).toBe('abc123')
+    // Self-referential rather than a hardcoded URL: this checks
+    // fetchCredentials() actually reads and returns the configured value,
+    // not that the value happens to match some string written into the test.
+    expect(credentials.endpoint).toBe(import.meta.env.VITE_POWERSYNC_URL)
+  })
+
+  it('throws when there is no active session', async () => {
+    getSessionMock.mockResolvedValueOnce({ data: { session: null } })
+
+    // db.connect() should only ever be called once signed in (see
+    // PowerSyncProvider), so reaching here with no session means that
+    // invariant broke — this must surface loudly, not silently sync as an
+    // unauthenticated request.
+    await expect(connector.fetchCredentials()).rejects.toThrow(
+      'fetchCredentials() called with no active Supabase session',
+    )
   })
 })
