@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from 'react-router'
 import { useAuth } from '@/contexts/AuthContext'
+import { PowerSyncProvider } from '@/lib/powersync/PowerSyncProvider'
 
 export function ProtectedRoute() {
   const { user, authLoading } = useAuth()
@@ -14,5 +15,9 @@ export function ProtectedRoute() {
 
   if (!user) return <Navigate to="/signin" replace />
 
-  return <Outlet />
+  return (
+    <PowerSyncProvider>
+      <Outlet />
+    </PowerSyncProvider>
+  )
 }

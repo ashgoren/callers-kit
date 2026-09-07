@@ -1,0 +1,111 @@
+# PowerSync Cloud config (fetched from cloud)
+# yaml-language-server: $schema=https://unpkg.com/@powersync/cli-schemas@latest/json-schema/service-config.json
+
+# PowerSync Cloud config – source-of-truth template with all schema options as valid YAML.
+# Docs: https://docs.powersync.com/sync/overview
+
+# [required] Service type identifier.
+_type: cloud
+
+# [required] Instance name for display in the PowerSync Cloud dashboard.
+name: Production
+
+# [required] Deployment region, e.g. us. Cannot be changed after initial deployment.
+region: us
+
+## -------------------------------------------------------------------------
+## Replication (required): database connections for sync
+## Note: only a single connection is currently supported.
+## Connection: `uri` and `password` are required for a complete connection. Alternatively omit `uri`
+## and provide individual fields (hostname, port, database, username, password, etc.); they are used
+## to construct the connection URI. For MongoDB, `uri` is required.
+## -------------------------------------------------------------------------
+replication:
+  connections:
+    - type: postgresql
+      hostname: db.cnwzdamjxpiqjyzjtmpb.supabase.co
+      port: 5432
+      database: postgres
+      username: powersync_role
+      password:
+        secret: !env POWERSYNC_DATABASE_PASSWORD
+      sslmode: verify-full
+
+#    #     -------------------------------------------------------------------------
+#    #     MongoDB – uncomment this entire block to use (comment out PostgreSQL above).
+#    #     uri is required for MongoDB; other fields are optional.
+#    #     -------------------------------------------------------------------------
+#    - type: mongodb
+#      # [required for MongoDB] Connection string.
+#      uri: mongodb+srv://user:pass@host/db
+#      password:
+#        secret: !env POWERSYNC_MONGODB_PASSWORD
+#      # [optional] Connection parameters (if not in URI).
+#      username: string
+#      database: string
+#      # [optional] Connection identifiers.
+#      name: string
+#      id: string
+#      tag: string
+#      # [optional] Change-data-capture mode. Options: off | auto_configure | read_only. Default: off.
+#      post_images: off
+#      # [optional] Cloud VPC endpoint hostname.
+#      vpc_endpoint_hostname: string
+
+#    #     -------------------------------------------------------------------------
+#    #     MySQL – uncomment this entire block to use (comment out PostgreSQL above).
+#    #     -------------------------------------------------------------------------
+#    - type: mysql
+#      # [optional] Connection string. Omit and use hostname/port/database/username/password instead.
+#      uri: string
+#      password:
+#        secret: !env POWERSYNC_MYSQL_PASSWORD
+#      # [optional] Alternative to uri: individual connection parameters.
+#      hostname: db.example.com
+#      port: 3306
+#      database: mydb
+#      username: sync
+#      # [optional] Connection identifiers.
+#      name: string
+#      id: string
+#      tag: string
+#      # [optional] TLS client certificate and key (PEM).
+#      client_certificate: string
+#      client_private_key:
+#        secret: !env POWERSYNC_MYSQL_CLIENT_KEY
+
+#    #     -------------------------------------------------------------------------
+#    #     MSSQL – uncomment this entire block to use (comment out PostgreSQL above).
+#    #     -------------------------------------------------------------------------
+#    - type: mssql
+#      # [optional] Connection string. Omit and use hostname/port/database/schema/username/password instead.
+#      uri: string
+#      password:
+#        secret: !env POWERSYNC_MSSQL_PASSWORD
+#      # [optional] Alternative to uri: individual connection parameters.
+#      hostname: sql.example.com
+#      port: 1433
+#      database: mydb
+#      schema: dbo
+#      username: sync
+#      # [optional] Connection identifiers.
+#      name: string
+#      id: string
+#      tag: string
+#      # [optional] Auth type. Options: default | azure-active-directory-password | azure-active-directory-service-principal-secret.
+#      authentication:
+#        type: default
+#        options:
+#          password:
+#            secret: !env POWERSYNC_MSSQL_PASSWORD
+#      # [optional] Polling and TLS options.
+#      additionalConfig:
+#        pollingIntervalMs: 5000
+#        pollingBatchSize: 1000
+#        trustServerCertificate: false
+
+client_auth:
+  # Validates JWTs against this Supabase project's JWKS endpoint (new-style
+  # signing keys, auto-discovered). If this project turns out to still use
+  # the legacy shared JWT secret instead, add supabase_jwt_secret here.
+  supabase: true
