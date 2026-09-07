@@ -3,6 +3,7 @@ import { ForgotPasswordPage } from '@/routes/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from '@/routes/auth/ResetPasswordPage'
 import { SignInPage } from '@/routes/auth/SignInPage'
 import { SignUpPage } from '@/routes/auth/SignUpPage'
+import { AppShell } from '@/routes/AppShell'
 import { HomePage } from '@/routes/HomePage'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 
@@ -13,7 +14,14 @@ const router = createBrowserRouter([
   { path: '/reset-password', element: <ResetPasswordPage /> },
   {
     element: <ProtectedRoute />,
-    children: [{ path: '/', element: <HomePage /> }],
+    children: [
+      {
+        element: <AppShell />,
+        children: [
+          { path: '/', element: <HomePage /> }
+        ]
+      },
+    ],
   },
 ])
 
