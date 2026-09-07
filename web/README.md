@@ -10,6 +10,8 @@ Vite + React 19 + TypeScript, with Tailwind v4 and shadcn/ui.
 - **ESLint** + `typescript-eslint` (type-aware, via `projectService`), `eslint-plugin-react-hooks`, `eslint-plugin-react-refresh`
 - **React Compiler**, enabled via `@vitejs/plugin-react`'s native `compiler: true` option
 - **Supabase Auth** (`@supabase/supabase-js`) + **react-router** (data-router mode) for auth/routing
+- **TanStack Table v9** (`@tanstack/react-table`) for the Dances table — deliberately v9's real `useTable` API, not the `useLegacyTable` v8-compatible shim (see Dances below)
+- **date-fns** for date formatting
 
 ## Scripts
 
@@ -62,7 +64,13 @@ Points at the hosted Supabase project (not local dev) — see `.env.local` (giti
 
 **`vite.config.ts` note:** PowerSync's own SDK docs say to install `vite-plugin-wasm` + `vite-plugin-top-level-await`, but Vite 8 does not require them. Vite 8 has native WASM import and top-level-await support built in. `optimizeDeps.exclude` for `@journeyapps/wa-sqlite`/`@powersync/web` and `worker: { format: 'es' }` are still needed (the SQLite engine runs in a worker and doesn't survive esbuild's dependency pre-bundling).
 
-**Editing pattern:** `EditableDanceTitle` in `HomePage.tsx` is a first, deliberately one-off cut of blur-save field editing (click text → becomes an input → commits via `commitFieldEdit` on blur/Enter) — not yet the generalized, reusable field-type component (`EditableTextField` etc., parameterized by table/column) the rest of the app's editing UI will eventually use. No validation or undo yet either — both land in later phases.
+## Dances
+
+`src/routes/DancesPage.tsx` (route: `/dances`, redirected to from `/`) — a read-only render for now (`title`, `difficulty`, `formation`, `notes`, `created_at`, `updated_at`); no editing, sorting, or column reordering/hiding yet. Two presentations sharing one `useQuery` call: a real `<Table>` at `lg:` (1024px+) and up, a stacked card list below that — touch-drag/resize this table will eventually need don't translate to a phone-width screen. Dates render compact (`date-fns`'s `format(value, 'M/d/yy')`); notes are truncated with a `title`-attribute tooltip rather than shown in full. `src/routes/DancesPage.columns.tsx` holds the column definitions and their formatting helpers.
+
+Built with **TanStack Table v9's real `useTable` API** (`features: tableFeatures({...})`, `table.FlexRender`), not the deprecated `useLegacyTable` v8-compatible shim — v8's state model doesn't work correctly under React Compiler (which this app has enabled), v9's does. `tableFeatures({})` is empty for now; add a feature only once a step actually needs it (e.g. `columnVisibilityFeature` when column hiding lands), rather than bundling everything via `stockFeatures`, which defeats v9's tree-shaking. TanStack Table ships version-matched Agent Skills inside its own npm packages (`node_modules/@tanstack/*/skills/*/SKILL.md`) — check there before writing table code in a future step.
+
+**Editing** isn't built yet — `title` and every other field here are read-only. That lands with a dedicated detail view in a later phase, not on this table/card list.
 
 ## Testing
 

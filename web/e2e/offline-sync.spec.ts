@@ -1,7 +1,14 @@
 import { createClient } from '@supabase/supabase-js'
 import { expect, test } from '@playwright/test'
 
-test('editing a dance offline syncs to Supabase once back online', async ({ page, context }) => {
+// Skipped: title editing moved out of the table/card view (now read-only,
+// see DancesPage.tsx) into the not-yet-built detail view, so there's
+// currently no UI path to trigger the edit this test drives through.
+// Re-enable once that view has a real editable field.
+test.skip('editing a dance offline syncs to Supabase once back online', async ({
+  page,
+  context,
+}) => {
   const email = process.env.E2E_TEST_EMAIL!
   const password = process.env.E2E_TEST_PASSWORD!
   const danceId = process.env.E2E_TEST_DANCE_ID!
