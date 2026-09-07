@@ -1,16 +1,11 @@
 import { useActionState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router'
-import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/contexts/AuthContext'
 import { AuthShell } from '@/routes/AuthShell'
-
-const signInSchema = z.object({
-  email: z.email('Enter a valid email address'),
-  password: z.string().min(1, 'Password is required'),
-})
+import { signInSchema } from './SignInPage.schema'
 
 interface SignInState {
   error: string | null

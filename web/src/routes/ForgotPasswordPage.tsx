@@ -1,15 +1,11 @@
 import { useActionState } from 'react'
 import { Link } from 'react-router'
-import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/contexts/AuthContext'
 import { AuthShell } from '@/routes/AuthShell'
-
-const forgotPasswordSchema = z.object({
-  email: z.email('Enter a valid email address'),
-})
+import { forgotPasswordSchema } from './ForgotPasswordPage.schema'
 
 interface ForgotPasswordState {
   error: string | null

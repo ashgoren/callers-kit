@@ -1,7 +1,10 @@
 import path from 'node:path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+// defineConfig from 'vitest/config' re-exports Vite's own defineConfig, just
+// with its type extended to also recognize the `test` block below — single
+// config file for both Vite and Vitest, the standard setup for this combo.
+import { defineConfig } from 'vitest/config'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -24,5 +27,9 @@ export default defineConfig({
     // depend directly on the classic `rollup` package, which Vite 8 no
     // longer bundles).
     format: 'es',
+  },
+  test: {
+    // 'node', not 'jsdom' — no DOM-touching tests yet.
+    environment: 'node',
   },
 })

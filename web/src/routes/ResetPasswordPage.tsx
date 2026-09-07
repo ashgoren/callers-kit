@@ -1,21 +1,11 @@
 import { useActionState } from 'react'
 import { useNavigate } from 'react-router'
-import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { supabase } from '@/lib/supabase'
 import { AuthShell } from '@/routes/AuthShell'
-
-const resetPasswordSchema = z
-  .object({
-    password: z.string().min(6, 'Password must be at least 6 characters'),
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: 'Passwords do not match',
-    path: ['confirmPassword'],
-  })
+import { resetPasswordSchema } from './ResetPasswordPage.schema'
 
 interface ResetPasswordState {
   error: string | null

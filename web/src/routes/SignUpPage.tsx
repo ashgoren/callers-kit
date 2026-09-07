@@ -1,22 +1,11 @@
 import { useActionState } from 'react'
 import { Link } from 'react-router'
-import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/contexts/AuthContext'
 import { AuthShell } from '@/routes/AuthShell'
-
-const signUpSchema = z
-  .object({
-    email: z.email('Enter a valid email address'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: 'Passwords do not match',
-    path: ['confirmPassword'],
-  })
+import { signUpSchema } from './SignUpPage.schema'
 
 interface SignUpState {
   error: string | null
