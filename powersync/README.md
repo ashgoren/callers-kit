@@ -30,4 +30,4 @@ Auth: CLI is authenticated via a stored Cloud personal access token (`powersync 
 
 ## What's actually synced
 
-`sync-config.yaml` currently defines one stream: `dances`, scoped per-user (`WHERE dances.user_id = auth.user_id()`), auto-subscribed. Nothing else is synced yet — other tables (`programs`, `choreographers`, junctions, lookups) get their own streams as the app expands past the `dances`-only foundation phase.
+`sync-config.yaml` currently defines one stream: `dances`, scoped per-user (`WHERE dances.user_id = auth.user_id()`), auto-subscribed, `SELECT *` so newly added columns sync automatically without a config change. Nothing else is synced yet — other tables (`programs`, `choreographers`, junctions) get their own streams as the app expands past the `dances`-only foundation phase. `dance_type`/`formation`/`progression` are plain enum columns on `dances` itself (not a joined lookup table), so they never need a stream of their own.
