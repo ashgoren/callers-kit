@@ -1,4 +1,4 @@
-# Caller's Kit — Web
+# Caller's Kit - Web
 
 Vite + React 19 + TypeScript, with Tailwind v4 and shadcn/ui.
 
@@ -10,7 +10,7 @@ Vite + React 19 + TypeScript, with Tailwind v4 and shadcn/ui.
 - **ESLint** + `typescript-eslint` (type-aware, via `projectService`), `eslint-plugin-react-hooks`, `eslint-plugin-react-refresh`
 - **React Compiler**, enabled via `@vitejs/plugin-react`'s native `compiler: true` option
 - **Supabase Auth** (`@supabase/supabase-js`) + **react-router** (data-router mode) for auth/routing
-- **TanStack Table v9** (`@tanstack/react-table`) for the Dances table — deliberately v9's real `useTable` API, not the `useLegacyTable` v8-compatible shim (see Dances below)
+- **TanStack Table v9** (`@tanstack/react-table`) for the Dances table
 - **date-fns** for date formatting
 
 ## Scripts
@@ -28,52 +28,56 @@ pnpm preview    # preview a production build
 
 ## Linting
 
-ESLint runs with type-aware rules enabled (`tseslint.configs.recommendedTypeChecked`), which catches issues plain `tsc` doesn't flag as type errors — e.g. `no-floating-promises`, `no-misused-promises`. Config lives in `eslint.config.js`.
+ESLint runs with type-aware rules enabled (`tseslint.configs.recommendedTypeChecked`), which catches issues plain `tsc` doesn't flag as type errors - e.g. `no-floating-promises`, `no-misused-promises`. Config lives in `eslint.config.js`.
 
-`src/components/ui/**` is exempted from `react-refresh/only-export-components` — shadcn generates components that co-locate variant helpers (e.g. `buttonVariants`) with the component export, which is vendored code, not ours to restructure.
+`src/components/ui/**` is exempted from `react-refresh/only-export-components` - shadcn generates components that co-locate variant helpers (e.g. `buttonVariants`) with the component export.
 
 ## React Compiler
 
-Enabled via `react({ compiler: true })` in `vite.config.ts`, which runs the transform through `oxc-transform-react` (the Rust/Oxc-based implementation, not Babel — `@vitejs/plugin-react` v6 no longer uses Babel by default). This is the officially supported path for this plugin version, though the `compiler` option itself is still marked `@experimental` upstream. `eslint-plugin-react-hooks` v7 (already installed) bundles the compiler-readiness lint rules (`purity`, `immutability`, `set-state-in-render`, `preserve-manual-memoization`, etc.), so compiler-safe patterns are already enforced by `pnpm lint`.
+Enabled via `react({ compiler: true })` in `vite.config.ts`, which runs the transform through `oxc-transform-react` (the Rust/Oxc-based implementation; `@vitejs/plugin-react` v6 uses Babel no longer). `eslint-plugin-react-hooks` v7 bundles the compiler-readiness lint rules (`purity`, `immutability`, `set-state-in-render`, `preserve-manual-memoization`, etc.), enforced by `pnpm lint`.
 
 ## Theming
 
-`src/contexts/ThemeContext.tsx` — light/dark/system, hand-rolled. Persisted to `localStorage`, deliberately per-device rather than synced. Applies/removes the `dark` class on `<html>`, which is what shadcn's `@custom-variant dark` line in `index.css` keys off. A small inline script in `index.html` applies the saved/system theme before React mounts, to avoid a flash of the wrong theme on every load. The control lives in `AppShell`'s user menu.
+`src/contexts/ThemeContext.tsx` - light/dark/system, hand-rolled. Persisted to `localStorage` (per-device). Applies/removes the `dark` class on `<html>`, which is what shadcn's `@custom-variant dark` line in `index.css` keys off. A small inline script in `index.html` applies the saved/system theme before React mounts. The control lives in `AppShell`'s user menu.
 
 ## Auth
 
-Points at the hosted Supabase project (not local dev) — see `.env.local` (gitignored; contains only the public `VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY`, not secrets).
+Points at the hosted Supabase project (not local dev) - see `.env.local` (gitignored; contains only the public `VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY`, not secrets).
 
-- `src/lib/supabase.ts` — the Supabase client, using default session persistence (`localStorage` + `autoRefreshToken`). This is what makes the app usable offline once signed in: the client's session survives without network, and `AuthContext`'s `user` state is only cleared by an explicit sign-out or a definitively invalid session — never merely by a failed token refresh while offline.
-- `src/contexts/AuthContext.tsx` — exposes `user`, `authLoading`, `signIn`, `signUp`, `resetPassword`, `signOut`.
-- `src/routes/auth/` — `SignInPage`, `SignUpPage`, `ForgotPasswordPage`, `ResetPasswordPage` (all sharing the `AuthShell` layout), each with its zod schema in a sibling `*.schema.ts` file (kept separate from the component so both stay independently importable — a schema imported into a test file would otherwise trip `react-refresh/only-export-components` on the component file). `src/routes/ProtectedRoute.tsx` (top-level, not under `auth/` — it gates every protected route, not just auth-specific ones) is a layout route checking `authLoading`/`user`, redirecting to `/signin` via `<Navigate>`. Built with Tailwind/shadcn and React 19's `useActionState` + zod.
-- `src/routes/AppShell.tsx` — the signed-in app's persistent chrome (header with a user menu: email + sign out), nested inside `ProtectedRoute`'s children rather than merged into it — `ProtectedRoute` stays focused on the auth gate and PowerSync connection, `AppShell` on page layout. Every protected route renders inside it via `<Outlet />`. `/` (the index route) is just `<Navigate to="/dances" replace>` — an alias for the default section.
-- The hosted Supabase project's **Authentication → URL Configuration → Redirect URLs** must include the dev origin (e.g. `http://localhost:5173/**`) alongside the production URL, or confirmation/reset-password email links will redirect to the wrong place.
-- `signUp()` intentionally returns success with no error — and sends no email — when called with an already-registered, confirmed email. This is Supabase's built-in anti-enumeration protection, not a bug.
+- `src/lib/supabase.ts` - the Supabase client, using default session persistence (`localStorage` + `autoRefreshToken`). The client's session survives without network, and `AuthContext`'s `user` state is only cleared by an explicit sign-out or a definitively invalid session - never merely by a failed token refresh while offline.
+- `src/contexts/AuthContext.tsx` - exposes `user`, `authLoading`, `signIn`, `signUp`, `resetPassword`, `signOut`.
+- `src/routes/auth/` - `SignInPage`, `SignUpPage`, `ForgotPasswordPage`, `ResetPasswordPage` (all sharing the `AuthShell` layout), each with its own zod schema in a sibling `*.schema.ts` file. `src/routes/ProtectedRoute.tsx` (top-level, not under `auth/` - it gates every protected route) is a layout route checking `authLoading`/`user`, redirecting to `/signin` via `<Navigate>`. Built with Tailwind/shadcn and React 19's `useActionState` + zod.
+- `src/routes/AppShell.tsx` - the signed-in app's persistent chrome (header with a user menu: email + sign out), nested inside `ProtectedRoute`'s children. Every protected route renders inside it via `<Outlet />`. `/` (the index route) is `<Navigate to="/dances" replace>`.
+- The hosted Supabase project's **Authentication → URL Configuration → Redirect URLs** must include the dev origin (e.g. `http://localhost:5173/**`) alongside the production URL, or confirmation/reset-password email links redirect to the wrong place.
+- `signUp()` returns success with no error - and sends no email - when called with an already-registered, confirmed email. This is Supabase's built-in anti-enumeration protection, not a bug.
 
 ## PowerSync (offline sync)
 
-`src/lib/powersync/` — see `powersync/README.md` (repo root) for the service-side config this connects to.
+`src/lib/powersync/` - see `powersync/README.md` (repo root) for the service-side config this connects to.
 
-- `schema.ts` — the local SQLite client schema. Deliberately not a 1:1 mirror of the Postgres schema; only columns the app actually reads/writes locally need to be declared here. `dance_type`/`formation`/`progression` are Postgres enum columns represented as plain `column.text` locally — no separate lookup table or sync stream, since the value lives directly on the `dances` row (see `powersync/README.md`).
-- `connector.ts` — `SupabaseConnector`, implementing `fetchCredentials()` (hands PowerSync the current Supabase session's access token) and `uploadData()` (replays the local write queue as `supabase-js` calls, going through the same RLS-protected path any normal client call uses). Note: `supabase-js` doesn't throw on failure — it returns `{ error }` — so every branch explicitly checks and throws, or a failed write would silently vanish from the upload queue instead of retrying.
-- `database.ts` — the `db` singleton (`PowerSyncDatabase` instance), created once at module scope, not inside a component/`useEffect` — doing that instead breaks sync under React Strict Mode's dev-only double-mount (the first mount's cleanup tears down the shared worker before the second mount can use it). Uses `OPFSCoopSyncVFS` rather than the `IDBBatchAtomicVFS` default — faster, avoids a known IndexedDB-VFS crash on large Safari queries, and is PowerSync's own recommended VFS for Safari/iOS multi-tab support specifically (relevant since iPad is a real target). No fallback to `IDBBatchAtomicVFS` for Safari Private Browsing (the one case OPFS doesn't support) is implemented yet.
-- `PowerSyncProvider.tsx` — wraps `ProtectedRoute`'s children, providing `db` via `@powersync/react`'s `PowerSyncContext` and calling `db.connect()` exactly once, only after `AuthContext`'s `user` resolves (never on load for a signed-out visitor).
-- `commitFieldEdit.ts` — the single chokepoint for field-level writes (`db.execute('UPDATE ...')`). `table`/`column` args are trusted, hardcoded identifiers our own components pass in, never user input — SQL placeholders only parameterize values, not identifiers.
-- `VITE_POWERSYNC_URL` in `.env.local`/`.env.example` — the PowerSync instance URL. Safe to expose client-side, same as the Supabase URL/publishable key — the security boundary is the JWT presented on connect, not obscurity of the endpoint.
+- `schema.ts` - the local SQLite client schema. Not a 1:1 mirror of the Postgres schema - only columns the app actually reads/writes locally are declared here. `dance_type`/`formation`/`progression` are Postgres enum columns represented as plain `column.text` locally (see `powersync/README.md`). `choreographers` and `dances_choreographers` are declared here too, for the Dances table's choreographers column (see Dances below).
+- `connector.ts` - `SupabaseConnector`, implementing `fetchCredentials()` (hands PowerSync the current Supabase session's access token) and `uploadData()` (replays the local write queue as `supabase-js` calls, going through the same RLS-protected path any normal client call uses). `supabase-js` doesn't throw on failure - it returns `{ error }` - so every branch explicitly checks and throws.
+- `database.ts` - the `db` singleton (`PowerSyncDatabase` instance), created once at module scope. Uses `OPFSCoopSyncVFS`. No fallback to `IDBBatchAtomicVFS` for Safari Private Browsing (the one case OPFS doesn't support) yet.
+- `PowerSyncProvider.tsx` - wraps `ProtectedRoute`'s children, providing `db` via `@powersync/react`'s `PowerSyncContext` and calling `db.connect()` once `AuthContext`'s `user` resolves.
+- `commitFieldEdit.ts` - the single chokepoint for field-level writes (`db.execute('UPDATE ...')`). `table`/`column` args are trusted, hardcoded identifiers our own components pass in, never user input - SQL placeholders only parameterize values, not identifiers.
+- `VITE_POWERSYNC_URL` in `.env.local`/`.env.example` - the PowerSync instance URL. Safe to expose client-side, same as the Supabase URL/publishable key.
 
-**`vite.config.ts` note:** PowerSync's own SDK docs say to install `vite-plugin-wasm` + `vite-plugin-top-level-await`, but Vite 8 does not require them. Vite 8 has native WASM import and top-level-await support built in. `optimizeDeps.exclude` for `@journeyapps/wa-sqlite`/`@powersync/web` and `worker: { format: 'es' }` are still needed (the SQLite engine runs in a worker and doesn't survive esbuild's dependency pre-bundling).
+**`vite.config.ts` note:** Vite 8 has native WASM import and top-level-await support built in. `optimizeDeps.exclude` for `@journeyapps/wa-sqlite`/`@powersync/web` and `worker: { format: 'es' }` are needed (the SQLite engine runs in a worker and doesn't survive esbuild's dependency pre-bundling).
 
 ## Dances
 
-`src/routes/DancesPage.tsx` (route: `/dances`, redirected to from `/`) — a read-only render for now (`title`, `difficulty`, `formation`, `notes`, `created_at`, `updated_at`); no editing, sorting, or column reordering/hiding yet. Two presentations sharing one `useQuery` call: a real `<Table>` at `lg:` (1024px+) and up, a stacked card list below that — touch-drag/resize this table will eventually need don't translate to a phone-width screen. Dates render compact (`date-fns`'s `format(value, 'M/d/yy')`); notes are truncated with a `title`-attribute tooltip rather than shown in full. `src/routes/DancesPage.columns.tsx` holds the column definitions and their formatting helpers.
+`src/routes/DancesPage.tsx` (route: `/dances`, redirected to from `/`) - a read-only render (`title`, `difficulty`, `formation`, `choreographers`, `notes`, `created_at`, `updated_at`); no editing, sorting, or column reordering/hiding yet. Two presentations sharing one query: a real `<Table>` at `lg:` (1024px+) and up, a stacked card list below that. Dates render compact (`date-fns`'s `format(value, 'M/d/yy')`); notes are truncated with a `title`-attribute tooltip; choreographers is not truncated.
 
-Built with **TanStack Table v9's real `useTable` API** (`features: tableFeatures({...})`, `table.FlexRender`), not the deprecated `useLegacyTable` v8-compatible shim — v8's state model doesn't work correctly under React Compiler (which this app has enabled), v9's does. `tableFeatures({})` is empty for now; add a feature only once a step actually needs it (e.g. `columnVisibilityFeature` when column hiding lands), rather than bundling everything via `stockFeatures`, which defeats v9's tree-shaking. TanStack Table ships version-matched Agent Skills inside its own npm packages (`node_modules/@tanstack/*/skills/*/SKILL.md`) — check there before writing table code in a future step.
+Split into three sibling files: `DancesPage.columns.tsx` (column definitions + formatting helpers), `DancesPage.data.ts` (the `useDances()` hook - the query and its data-shaping logic), and `DancesPage.tsx` itself (layout).
 
-**Editing** isn't built yet — `title` and every other field here are read-only. That lands with a dedicated detail view in a later phase, not on this table/card list.
+`choreographers` is not a column on `dances` itself - `useDances()`'s query adds it via a correlated `json_group_array(...)` subquery over `dances_choreographers`/`choreographers`, parsed client-side into a `string[]`. This result type (`DanceWithChoreographers`, in `DancesPage.columns.tsx`) is separate from the base `Dance` type.
+
+Built with TanStack Table v9's `useTable` API (`features: tableFeatures({...})`, `table.FlexRender`). `tableFeatures({})` is currently empty.
+
+**Editing** isn't built yet - `title` and every other field here are read-only. That lands with a dedicated detail view in a later phase.
 
 ## Testing
 
-**Vitest** (`pnpm test` / `pnpm test:watch`) — unit tests, colocated next to source. `vite.config.ts` splits tests by extension: plain `*.test.ts` files run under a `node` project (no DOM needed, faster), while `*.test.tsx` files run under a `jsdom` project with React Testing Library, via a shared `src/test-setup.ts`. Coverage spans pure logic (SQL/param generation, zod schema validation), Supabase/PowerSync integration points (upload-queue error handling, connect/auth-state wiring), and component behavior (auth state transitions, protected-route redirect logic) — each test file's own comments document the specific cases and why they matter.
+**Vitest** (`pnpm test` / `pnpm test:watch`) - unit tests, colocated next to source. `vite.config.ts` splits tests by extension: plain `*.test.ts` files run under a `node` project (no DOM needed, faster), while `*.test.tsx` files run under a `jsdom` project with React Testing Library, via a shared `src/test-setup.ts`. Coverage spans pure logic (SQL/param generation, zod schema validation), Supabase/PowerSync integration points (upload-queue error handling, connect/auth-state wiring), and component behavior (auth state transitions, protected-route redirect logic) - each test file's own comments document the specific cases covered.
 
-**Playwright** (`pnpm test:e2e`, Chromium only for now) — real end-to-end tests, covering the offline-edit sync round-trip, the sign-up form's wiring to the real Supabase endpoint, and the unauthenticated `/` → `/signin` redirect. Each spec's own comments document its specific scenario and why it's structured that way. Runs against a dedicated test account, not a real one — `e2e/.env` (gitignored) holds its email/password and seeded test data. `playwright.config.ts` reuses an already-running `pnpm dev` on `localhost:5173` instead of fighting over the port (common locally, since you're usually already running it) — only spawns a fresh server in CI, where nothing's running yet. It loads `.env.local` and `e2e/.env` via Node's built-in `process.loadEnvFile()`, since Playwright's config/tests run in plain Node, not through Vite (`import.meta.env` isn't available there).
+**Playwright** (`pnpm test:e2e`, Chromium only for now) - end-to-end tests, covering the offline-edit sync round-trip, the sign-up form's wiring to the real Supabase endpoint, and the unauthenticated `/` → `/signin` redirect. Each spec's own comments document its specific scenario. Runs against a dedicated test account, not a real one - `e2e/.env` (gitignored) holds its email/password and seeded test data. `playwright.config.ts` reuses an already-running `pnpm dev` on `localhost:5173`; only spawns a fresh server in CI. It loads `.env.local` and `e2e/.env` via Node's built-in `process.loadEnvFile()`, since Playwright's config/tests run in plain Node, not through Vite.

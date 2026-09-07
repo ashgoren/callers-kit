@@ -9,7 +9,13 @@ vi.mock('@powersync/react', () => ({
   useQuery: useQueryMock,
 }))
 
-function makeDance(overrides: Partial<Dance> = {}): Dance {
+// The mocked useQuery stands in for DancesPage.data.ts's raw SQL result, so
+// choreographers here is the pre-parse JSON array *string* (matching
+// json_group_array's real output), not a real array - defaults to an empty
+// array so tests that don't care about choreographers still see '-'.
+function makeDance(overrides: Partial<Dance> & { choreographers?: string } = {}): Dance & {
+  choreographers: string
+} {
   return {
     id: '1',
     title: 'Chorus Jig',
@@ -18,10 +24,11 @@ function makeDance(overrides: Partial<Dance> = {}): Dance {
     formation: 'Duple Minor - Becket',
     progression: 'Single',
     notes: 'A classic.',
-    // Noon UTC, not midnight — keeps the formatted calendar date stable
+    // Noon UTC, not midnight - keeps the formatted calendar date stable
     // across the timezone a test happens to run in.
     created_at: '2026-01-15T12:00:00.000Z',
     updated_at: '2026-03-20T12:00:00.000Z',
+    choreographers: '[]',
     ...overrides,
   }
 }
@@ -59,8 +66,27 @@ describe('DancesPage', () => {
 
     const table = screen.getByRole('table')
     const row = within(table).getByText('Untitled').closest('tr')!
-    // difficulty, formation, and notes are all null here — three '—' cells
-    expect(within(row).getAllByText('—')).toHaveLength(3)
+    // difficulty, formation, and notes are all null, plus the default empty
+    // choreographers list from makeDance() - four '-' cells
+    expect(within(row).getAllByText('—')).toHaveLength(4)
+  })
+
+  it('joins multiple choreographer names with ", ", and shows a placeholder when there are none', () => {
+    useQueryMock.mockReturnValue({
+      data: [
+        makeDance({ id: '1', title: 'Dance A', choreographers: '["Alice","Bob"]' }),
+        makeDance({ id: '2', title: 'Dance B', choreographers: '[]' }),
+      ],
+      isLoading: false,
+    })
+    render(<DancesPage />)
+
+    const table = screen.getByRole('table')
+    const rowA = within(table).getByText('Dance A').closest('tr')!
+    expect(rowA).toHaveTextContent('Alice, Bob')
+
+    const rowB = within(table).getByText('Dance B').closest('tr')!
+    expect(within(rowB).getByText('—')).toBeInTheDocument()
   })
 
   it('also renders the same dance in the card list layout', () => {
@@ -68,9 +94,9 @@ describe('DancesPage', () => {
     render(<DancesPage />)
 
     // Both layouts render simultaneously in jsdom (no real CSS breakpoints
-    // apply) — two matches confirms the card list's own rendering path also
+    // apply) - two matches confirms the card list's own rendering path also
     // shows the data, not just the table's. Not re-checking every
-    // null-handling case again here — same data, same logic, already
+    // null-handling case again here - same data, same logic, already
     // covered above.
     expect(screen.getAllByText('Becket')).toHaveLength(2)
   })

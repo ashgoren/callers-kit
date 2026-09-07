@@ -1,7 +1,7 @@
 import { column, Schema, Table } from '@powersync/web'
 
 const dances = new Table({
-  // 'id' is created automatically by PowerSync — do not declare it here
+  // 'id' is created automatically by PowerSync - do not declare it here
   created_at: column.text, // ISO 8601
   updated_at: column.text, // ISO 8601
   title: column.text,
@@ -12,7 +12,17 @@ const dances = new Table({
   notes: column.text,
 })
 
-export const AppSchema = new Schema({ dances })
+const choreographers = new Table({
+  name: column.text,
+})
+
+const dances_choreographers = new Table({
+  dance_id: column.text,
+  choreographer_id: column.text,
+})
+
+export const AppSchema = new Schema({ dances, choreographers, dances_choreographers })
 
 export type Database = (typeof AppSchema)['types']
 export type Dance = Database['dances']
+export type Choreographer = Database['choreographers']

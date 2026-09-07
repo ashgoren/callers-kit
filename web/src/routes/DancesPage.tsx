@@ -1,14 +1,11 @@
 import { useTable } from '@tanstack/react-table'
-import { useQuery } from '@powersync/react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { columns, features, formatDate, formatFormation } from './DancesPage.columns'
-import type { Dance } from '@/lib/powersync/schema'
+import type { DanceWithChoreographers } from './DancesPage.columns'
+import { useDances } from './DancesPage.data'
 
 export function DancesPage() {
-  // Reactive: auto re-runs & re-renders whenever local SQLite `dances` table changes
-  const { data: dances, isLoading } = useQuery<Dance>(
-    'SELECT id, title, difficulty, formation, notes, created_at, updated_at FROM dances',
-  )
+  const { dances, isLoading } = useDances()
 
   const table = useTable({
     features,
@@ -63,7 +60,7 @@ export function DancesPage() {
   )
 }
 
-function DanceCard({ dance }: { dance: Dance }) {
+function DanceCard({ dance }: { dance: DanceWithChoreographers }) {
   return (
     <div className="rounded-lg border p-3">
       <p className="text-sm font-medium">
@@ -74,6 +71,8 @@ function DanceCard({ dance }: { dance: Dance }) {
         <dd>{dance.difficulty ?? '—'}</dd>
         <dt className="text-muted-foreground">Formation</dt>
         <dd>{formatFormation(dance.formation)}</dd>
+        <dt className="text-muted-foreground">Choreographers</dt>
+        <dd>{dance.choreographers.length > 0 ? dance.choreographers.join(', ') : '—'}</dd>
         <dt className="text-muted-foreground">Notes</dt>
         <dd className="truncate" title={dance.notes ?? undefined}>
           {dance.notes ?? '—'}

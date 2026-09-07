@@ -2,6 +2,12 @@ import { createColumnHelper, tableFeatures } from '@tanstack/react-table'
 import { format } from 'date-fns'
 import type { Dance } from '@/lib/powersync/schema'
 
+// DancesPage's query adds this via a correlated json_group_array
+// subquery over the dances_choreographers/choreographers join.
+export interface DanceWithChoreographers extends Dance {
+  choreographers: string[]
+}
+
 export function formatDate(value: string | null): string {
   return value ? format(new Date(value), 'M/d/yy') : '—'
 }
@@ -10,13 +16,13 @@ export function formatFormation(value: string | null): string {
   return value ? value.replace(/^Duple Minor - /, '') : '—'
 }
 
-// Empty for now — no sort/filter/paginate/reorder/etc. yet (that's a later
+// Empty for now - no sort/filter/paginate/reorder/etc. yet (that's a later
 // phase), and TanStack Table v9 only installs a feature's state/APIs once
 // it's actually registered here, so an empty registration is the correct
 // minimal table for a plain read-only render, not a placeholder to fill in.
 export const features = tableFeatures({})
 
-const columnHelper = createColumnHelper<typeof features, Dance>()
+const columnHelper = createColumnHelper<typeof features, DanceWithChoreographers>()
 
 export const columns = columnHelper.columns([
   columnHelper.accessor('title', {
@@ -30,6 +36,13 @@ export const columns = columnHelper.columns([
   columnHelper.accessor('formation', {
     header: 'Formation',
     cell: (info) => formatFormation(info.getValue()),
+  }),
+  columnHelper.accessor('choreographers', {
+    header: 'Choreographers',
+    cell: (info) => {
+      const names = info.getValue()
+      return names.length > 0 ? names.join(', ') : '—'
+    },
   }),
   columnHelper.accessor('notes', {
     header: 'Notes',

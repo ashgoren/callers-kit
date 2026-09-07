@@ -12,3 +12,20 @@ streams:
     # Each user only syncs their own dances (matches the dances_user_access RLS policy)
     auto_subscribe: true
     query: SELECT * FROM dances WHERE dances.user_id = auth.user_id()
+
+  choreographers:
+    # Owner table with its own user_id column, same pattern as dances above
+    auto_subscribe: true
+    query: SELECT * FROM choreographers WHERE choreographers.user_id = auth.user_id()
+
+  dances_choreographers:
+    # Junction table has no user_id of its own - scoped via join to the
+    # owning dance's user_id instead, same as the RLS policy on this table.
+    # The source table (dances_choreographers) is deliberately left
+    # unaliased - aliasing it would sync rows under that alias's name
+    # instead of the real table name, breaking the client schema mapping.
+    auto_subscribe: true
+    query: >
+      SELECT dances_choreographers.* FROM dances_choreographers
+      JOIN dances ON dances.id = dances_choreographers.dance_id
+      WHERE dances.user_id = auth.user_id()
