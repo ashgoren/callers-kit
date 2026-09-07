@@ -3,9 +3,23 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTheme } from '@/contexts/ThemeContext'
+import type { Theme } from '@/contexts/ThemeContext'
+
+const THEMES: Theme[] = ['light', 'dark', 'system']
+
+function capitalize(word: string): string {
+  return word.charAt(0).toUpperCase() + word.slice(1)
+}
 
 // Persistent chrome for every signed-in page — nested inside ProtectedRoute
 // so it only ever renders once already authenticated. Kept separate from
@@ -13,6 +27,7 @@ import { useAuth } from '@/contexts/AuthContext'
 // PowerSync connection, not page layout.
 export function AppShell() {
   const { user, signOut } = useAuth()
+  const { theme, setTheme } = useTheme()
 
   return (
     <div className="flex min-h-svh flex-col">
@@ -29,6 +44,24 @@ export function AppShell() {
             {user?.email}
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>Theme</DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuRadioGroup
+                  value={theme}
+                  onValueChange={(value: Theme) => {
+                    setTheme(value)
+                  }}
+                >
+                  {THEMES.map((option) => (
+                    <DropdownMenuRadioItem key={option} value={option}>
+                      {capitalize(option)}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => void signOut()}>Sign out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

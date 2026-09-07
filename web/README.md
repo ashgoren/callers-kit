@@ -34,6 +34,10 @@ ESLint runs with type-aware rules enabled (`tseslint.configs.recommendedTypeChec
 
 Enabled via `react({ compiler: true })` in `vite.config.ts`, which runs the transform through `oxc-transform-react` (the Rust/Oxc-based implementation, not Babel — `@vitejs/plugin-react` v6 no longer uses Babel by default). This is the officially supported path for this plugin version, though the `compiler` option itself is still marked `@experimental` upstream. `eslint-plugin-react-hooks` v7 (already installed) bundles the compiler-readiness lint rules (`purity`, `immutability`, `set-state-in-render`, `preserve-manual-memoization`, etc.), so compiler-safe patterns are already enforced by `pnpm lint`.
 
+## Theming
+
+`src/contexts/ThemeContext.tsx` — light/dark/system, hand-rolled. Persisted to `localStorage`, deliberately per-device rather than synced. Applies/removes the `dark` class on `<html>`, which is what shadcn's `@custom-variant dark` line in `index.css` keys off. A small inline script in `index.html` applies the saved/system theme before React mounts, to avoid a flash of the wrong theme on every load. The control lives in `AppShell`'s user menu.
+
 ## Auth
 
 Points at the hosted Supabase project (not local dev) — see `.env.local` (gitignored; contains only the public `VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY`, not secrets).

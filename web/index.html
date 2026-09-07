@@ -5,6 +5,20 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Caller's Kit</title>
+    <script>
+      // Applies the saved/system theme before React mounts — without this,
+      // every load would flash the light theme for an instant before
+      // ThemeProvider's effect runs and catches up. Kept in sync by hand with
+      // ThemeContext.tsx's own resolution logic (it can't import that module,
+      // since this runs before any bundled JS does).
+      ;(function () {
+        var stored = localStorage.getItem('theme')
+        var isDark =
+          stored === 'dark' ||
+          (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.classList.toggle('dark', isDark)
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>
