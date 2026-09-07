@@ -18,6 +18,9 @@ pnpm dev        # start dev server
 pnpm build      # typecheck (tsc -b) + production build
 pnpm typecheck  # tsc -b only, no build
 pnpm lint       # eslint .
+pnpm test       # vitest run (unit tests, single pass)
+pnpm test:watch # vitest, interactive watch mode
+pnpm test:e2e   # playwright test
 pnpm preview    # preview a production build
 ```
 
@@ -37,7 +40,7 @@ Points at the hosted Supabase project (not local dev) — see `.env.local` (giti
 
 - `src/lib/supabase.ts` — the Supabase client, using default session persistence (`localStorage` + `autoRefreshToken`). This is what makes the app usable offline once signed in: the client's session survives without network, and `AuthContext`'s `user` state is only cleared by an explicit sign-out or a definitively invalid session — never merely by a failed token refresh while offline.
 - `src/contexts/AuthContext.tsx` — exposes `user`, `authLoading`, `signIn`, `signUp`, `resetPassword`, `signOut`.
-- `src/routes/` — `SignInPage`, `SignUpPage`, `ForgotPasswordPage`, `ResetPasswordPage` (all sharing the `AuthShell` layout), plus `ProtectedRoute` (a layout route gating on `authLoading`/`user`, redirecting to `/signin` via `<Navigate>`). Built with Tailwind/shadcn and React 19's `useActionState` + zod.
+- `src/routes/auth/` — `SignInPage`, `SignUpPage`, `ForgotPasswordPage`, `ResetPasswordPage` (all sharing the `AuthShell` layout), each with its zod schema in a sibling `*.schema.ts` file (kept separate from the component so both stay independently importable — a schema imported into a test file would otherwise trip `react-refresh/only-export-components` on the component file). `src/routes/ProtectedRoute.tsx` (top-level, not under `auth/` — it gates every protected route, not just auth-specific ones) is a layout route checking `authLoading`/`user`, redirecting to `/signin` via `<Navigate>`. Built with Tailwind/shadcn and React 19's `useActionState` + zod.
 - The hosted Supabase project's **Authentication → URL Configuration → Redirect URLs** must include the dev origin (e.g. `http://localhost:5173/**`) alongside the production URL, or confirmation/reset-password email links will redirect to the wrong place.
 - `signUp()` intentionally returns success with no error — and sends no email — when called with an already-registered, confirmed email. This is Supabase's built-in anti-enumeration protection, not a bug.
 
@@ -55,3 +58,18 @@ Points at the hosted Supabase project (not local dev) — see `.env.local` (giti
 **`vite.config.ts` note:** PowerSync's own SDK docs say to install `vite-plugin-wasm` + `vite-plugin-top-level-await`, but Vite 8 does not require them. Vite 8 has native WASM import and top-level-await support built in. `optimizeDeps.exclude` for `@journeyapps/wa-sqlite`/`@powersync/web` and `worker: { format: 'es' }` are still needed (the SQLite engine runs in a worker and doesn't survive esbuild's dependency pre-bundling).
 
 **Editing pattern:** `EditableDanceTitle` in `HomePage.tsx` is a first, deliberately one-off cut of blur-save field editing (click text → becomes an input → commits via `commitFieldEdit` on blur/Enter) — not yet the generalized, reusable field-type component (`EditableTextField` etc., parameterized by table/column) the rest of the app's editing UI will eventually use. No validation or undo yet either — both land in later phases.
+
+## Testing
+
+Favoring broader coverage over relying on manual re-verification — the goal is to trust the test suite rather than remember a checklist to click through by hand. The one place to economize: identical implementations (e.g. many fields sharing one generalized field-editing component) get one shared test, not one per case.
+
+**Vitest** (`pnpm test` / `pnpm test:watch`) — unit tests, colocated next to source as `*.test.ts`. Node environment; no `jsdom`/React Testing Library yet, since nothing DOM-dependent is under test — that gets added once a genuinely durable interactive component exists (the eventual generalized field-editing component), rather than for `EditableDanceTitle`'s current one-off version, which is getting replaced soon anyway. Covered so far:
+- `commitFieldEdit.test.ts` — the generated SQL/params, including the `null`-clears-a-field case.
+- `connector.test.ts` — `SupabaseConnector.uploadData()`'s PUT/PATCH/DELETE handling, and specifically that a Supabase-returned `{ error }` causes a throw rather than silently completing the transaction (`supabase-js` doesn't throw on failure by default).
+- `routes/auth/authSchemas.test.ts` — the auth pages' zod schemas, including the `signUpSchema`/`resetPasswordSchema` password-match `.refine()` (confirming a mismatch attributes the error to `confirmPassword` specifically).
+
+**Playwright** (`pnpm test:e2e`, Chromium only for now) — `e2e/offline-sync.spec.ts` is the one true end-to-end test so far: signs in through the real UI, edits a dance's title while genuinely offline (`context.setOffline`), confirms the local UI reflects it immediately, goes back online, then verifies via a *separate* authenticated Supabase client (not the app's own local cache) that the write actually reached Postgres. Cleans up after itself in a `finally` block so it's repeatable.
+
+Runs against a dedicated test account, not a real one — `e2e/.env` (gitignored) holds its email/password and seeded test data, created via the Supabase Admin API with `email_confirm: true` so no real inbox is needed. Deliberately holds no elevated-privilege key: the server-side verification step authenticates as the test user and reads its own row, which RLS already allows, rather than needing a `service_role` bypass.
+
+`playwright.config.ts` reuses an already-running `pnpm dev` on `localhost:5173` instead of fighting over the port (common locally, since you're usually already running it) — only spawns a fresh server in CI, where nothing's running yet. It loads `.env.local` and `e2e/.env` via Node's built-in `process.loadEnvFile()`, since Playwright's config/tests run in plain Node, not through Vite (`import.meta.env` isn't available there).

@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 // defineConfig from 'vitest/config' re-exports Vite's own defineConfig, just
 // with its type extended to also recognize the `test` block below — single
 // config file for both Vite and Vitest, the standard setup for this combo.
-import { defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -31,5 +31,9 @@ export default defineConfig({
   test: {
     // 'node', not 'jsdom' — no DOM-touching tests yet.
     environment: 'node',
+    // e2e/ holds Playwright specs, run via `pnpm test:e2e`, not Vitest —
+    // both tools default to matching *.spec.ts, so without this Vitest
+    // tries (and fails) to run Playwright's own test files too.
+    exclude: [...configDefaults.exclude, 'e2e/**'],
   },
 })
