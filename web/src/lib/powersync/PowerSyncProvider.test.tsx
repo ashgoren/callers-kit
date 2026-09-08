@@ -16,7 +16,7 @@ vi.mock('./database', () => ({
 
 // The real `db` export is a PowerSyncDatabase instance, so TypeScript infers
 // `import('./database').db` at that type regardless of the vi.mock() above
-// swapping its runtime value — and PowerSyncDatabase#connect, being a real
+// swapping its runtime value - and PowerSyncDatabase#connect, being a real
 // class method, carries an implicit `this` that trips @typescript-eslint/
 // unbound-method wherever we pass `db.connect` around as a bare reference
 // below. This type describes what the mock actually is at runtime, decoupling
@@ -27,12 +27,12 @@ interface MockDb {
 
 // db and PowerSyncProvider are both re-imported fresh, inside each test,
 // after vi.resetModules(). PowerSyncProvider's `hasConnected` guard is
-// module-level state with no exported way to reset it (deliberately — it's
+// module-level state with no exported way to reset it (deliberately - it's
 // not meant to be resettable in real usage), so a fresh module instance per
 // test is the only way to test each branch in isolation. Both have to come
 // from the SAME fresh module graph, or the `db.connect` mock referenced here
 // and the one PowerSyncProvider actually calls internally end up being two
-// different mock functions after the reset — vi.mock()'s factory re-runs on
+// different mock functions after the reset - vi.mock()'s factory re-runs on
 // every fresh import, producing a new vi.fn() each time.
 async function loadFresh() {
   vi.resetModules()
@@ -85,7 +85,7 @@ describe('PowerSyncProvider', () => {
 
     expect(db.connect).toHaveBeenCalledTimes(1)
     // expect.any() is typed `any` by design, so it's assignable against any
-    // expected shape — that's inherent to the asymmetric-matcher API, not a
+    // expected shape - that's inherent to the asymmetric-matcher API, not a
     // real type-safety gap here.
     /* eslint-disable @typescript-eslint/no-unsafe-assignment */
     expect(db.connect).toHaveBeenCalledWith(

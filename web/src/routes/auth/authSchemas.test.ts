@@ -4,7 +4,7 @@ import { resetPasswordSchema } from './ResetPasswordPage.schema'
 import { signInSchema } from './SignInPage.schema'
 import { signUpSchema } from './SignUpPage.schema'
 
-// Validation-only tests for the auth pages' zod schemas — not component tests
+// Validation-only tests for the auth pages' zod schemas - not component tests
 
 describe('signInSchema', () => {
   it('accepts a valid email and non-empty password', () => {

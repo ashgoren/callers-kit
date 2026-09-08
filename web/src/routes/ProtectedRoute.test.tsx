@@ -13,7 +13,7 @@ vi.mock('@/contexts/AuthContext', () => ({
 }))
 
 // PowerSyncProvider has its own real side effects (connecting to PowerSync)
-// and its own dedicated test file — replaced with a passthrough here so this
+// and its own dedicated test file - replaced with a passthrough here so this
 // file only exercises ProtectedRoute's own loading/redirect/render logic.
 vi.mock('@/lib/powersync/PowerSyncProvider', () => ({
   PowerSyncProvider: ({ children }: { children: ReactNode }) => children,

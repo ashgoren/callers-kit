@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import { ThemeProvider, useTheme } from './ThemeContext'
 
-// A controllable fake for window.matchMedia('(prefers-color-scheme: dark)') —
+// A controllable fake for window.matchMedia('(prefers-color-scheme: dark)') -
 // jsdom doesn't implement matchMedia at all, and this needs to support
 // simulating a live OS-level theme change (triggering the registered
 // listener), not just returning a fixed value once.

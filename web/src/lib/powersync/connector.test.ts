@@ -3,7 +3,7 @@ import { CrudTransaction, UpdateType } from '@powersync/web'
 import type { CommonPowerSyncDatabase, CrudEntry } from '@powersync/web'
 import { SupabaseConnector } from './connector'
 
-// supabase.from(table) returns a chainable query builder — .upsert() and
+// supabase.from(table) returns a chainable query builder - .upsert() and
 // .eq() (after .update()/.delete()) are the only calls our connector code
 // actually makes, so that's all that's faked here.
 //
@@ -23,7 +23,7 @@ const { fromMock, upsertMock, updateMock, deleteMock, eqMock, getSessionMock } =
     delete: deleteMock,
   }))
   // Real getSession() resolves { data: { session } }, session null when
-  // signed out — matched here so fetchCredentials() can be tested against
+  // signed out - matched here so fetchCredentials() can be tested against
   // both shapes without touching the real Supabase client.
   const getSessionMock = vi.fn(() =>
     Promise.resolve({ data: { session: null as { access_token: string } | null } }),
@@ -37,7 +37,7 @@ vi.mock('@/lib/supabase', () => ({
 
 // CrudEntry is an interface with a couple of comparison/serialization
 // methods (toJSON, equals, toComparisonArray) that uploadData() never calls
-// — it only reads .op/.table/.id/.opData. Faked minimally here and cast past
+// - it only reads .op/.table/.id/.opData. Faked minimally here and cast past
 // the unused methods, rather than implementing behavior nothing exercises.
 function makeCrudEntry(entry: Pick<CrudEntry, 'op' | 'table' | 'id' | 'opData'>): CrudEntry {
   return { clientId: 1, ...entry } as CrudEntry
@@ -180,7 +180,7 @@ describe('SupabaseConnector.fetchCredentials', () => {
 
     // db.connect() should only ever be called once signed in (see
     // PowerSyncProvider), so reaching here with no session means that
-    // invariant broke — this must surface loudly, not silently sync as an
+    // invariant broke - this must surface loudly, not silently sync as an
     // unauthenticated request.
     await expect(connector.fetchCredentials()).rejects.toThrow(
       'fetchCredentials() called with no active Supabase session',

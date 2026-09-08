@@ -74,7 +74,7 @@ describe('AppShell', () => {
     expect(darkOption).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByRole('menuitemradio', { name: 'System' })).toBeInTheDocument()
 
-    // fireEvent, not userEvent, here — userEvent's realistic pointer-path
+    // fireEvent, not userEvent, here - userEvent's realistic pointer-path
     // simulation trips over the parent menu's positioner, which Base UI
     // marks pointer-events:none while this submenu is open (intentional, so
     // clicks pass through to the submenu correctly) but which sits between

@@ -21,7 +21,7 @@ function capitalize(word: string): string {
   return word.charAt(0).toUpperCase() + word.slice(1)
 }
 
-// Persistent chrome for every signed-in page — nested inside ProtectedRoute
+// Persistent chrome for every signed-in page - nested inside ProtectedRoute
 // so it only ever renders once already authenticated. Kept separate from
 // ProtectedRoute itself, which is only responsible for the auth gate and
 // PowerSync connection, not page layout.

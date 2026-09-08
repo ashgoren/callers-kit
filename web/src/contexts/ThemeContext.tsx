@@ -32,7 +32,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.classList.toggle('dark', isDark(theme))
   }, [theme])
 
-  // Only relevant while 'system' is selected — reflects an OS-level theme
+  // Only relevant while 'system' is selected - reflects an OS-level theme
   // change immediately, without requiring the user to touch this app's own
   // setting.
   useEffect(() => {

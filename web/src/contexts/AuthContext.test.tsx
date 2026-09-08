@@ -12,7 +12,7 @@ const {
   signOutMock,
 } = vi.hoisted(() => ({
   // Typed via vi.fn's generic (rather than a named-but-unused parameter in
-  // the implementation) purely so TypeScript infers .mock.calls correctly —
+  // the implementation) purely so TypeScript infers .mock.calls correctly -
   // the mock itself ignores its argument entirely.
   onAuthStateChangeMock: vi.fn<
     (callback: (event: string, session: { user: User } | null) => void) => {
@@ -47,7 +47,7 @@ function wrapper({ children }: { children: ReactNode }) {
   return <AuthProvider>{children}</AuthProvider>
 }
 
-// Simulates the real onAuthStateChange firing with a given session — exactly
+// Simulates the real onAuthStateChange firing with a given session - exactly
 // as the Supabase client does once on subscribe and again on every change.
 // vi.fn() already records call arguments, so no separate capture is needed:
 // the callback AuthContext passed in is just the most recent recorded call.

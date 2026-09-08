@@ -1,7 +1,7 @@
 # PowerSync Cloud config (fetched from cloud)
 # yaml-language-server: $schema=https://unpkg.com/@powersync/cli-schemas@latest/json-schema/service-config.json
 
-# PowerSync Cloud config – source-of-truth template with all schema options as valid YAML.
+# PowerSync Cloud config - source-of-truth template with all schema options as valid YAML.
 # Docs: https://docs.powersync.com/sync/overview
 
 # [required] Service type identifier.
@@ -32,7 +32,7 @@ replication:
       sslmode: verify-full
 
 #    #     -------------------------------------------------------------------------
-#    #     MongoDB – uncomment this entire block to use (comment out PostgreSQL above).
+#    #     MongoDB - uncomment this entire block to use (comment out PostgreSQL above).
 #    #     uri is required for MongoDB; other fields are optional.
 #    #     -------------------------------------------------------------------------
 #    - type: mongodb
@@ -53,7 +53,7 @@ replication:
 #      vpc_endpoint_hostname: string
 
 #    #     -------------------------------------------------------------------------
-#    #     MySQL – uncomment this entire block to use (comment out PostgreSQL above).
+#    #     MySQL - uncomment this entire block to use (comment out PostgreSQL above).
 #    #     -------------------------------------------------------------------------
 #    - type: mysql
 #      # [optional] Connection string. Omit and use hostname/port/database/username/password instead.
@@ -75,7 +75,7 @@ replication:
 #        secret: !env POWERSYNC_MYSQL_CLIENT_KEY
 
 #    #     -------------------------------------------------------------------------
-#    #     MSSQL – uncomment this entire block to use (comment out PostgreSQL above).
+#    #     MSSQL - uncomment this entire block to use (comment out PostgreSQL above).
 #    #     -------------------------------------------------------------------------
 #    - type: mssql
 #      # [optional] Connection string. Omit and use hostname/port/database/schema/username/password instead.

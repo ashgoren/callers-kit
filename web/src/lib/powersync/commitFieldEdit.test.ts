@@ -3,7 +3,7 @@ import { commitFieldEdit } from './commitFieldEdit'
 import { db } from './database' // Actually loads the mock below, not the real module.
 
 // Mocking the whole module (rather than just db.execute) means real
-// PowerSync/wa-sqlite code never loads during this test at all — the mock
+// PowerSync/wa-sqlite code never loads during this test at all - the mock
 // factory below is hoisted by Vitest above the imports, so it fully replaces
 // './database' before commitFieldEdit.ts's own import of it resolves.
 vi.mock('./database', () => ({

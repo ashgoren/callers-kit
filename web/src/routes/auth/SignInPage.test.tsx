@@ -14,7 +14,7 @@ vi.mock('@/contexts/AuthContext', () => ({
 }))
 
 // react-router's other exports (Link, Navigate, MemoryRouter) are used as-is
-// via importOriginal — only useNavigate needs mocking, since <Navigate> alone
+// via importOriginal - only useNavigate needs mocking, since <Navigate> alone
 // can't tell us it fired (it just renders nothing where it redirects to).
 vi.mock('react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router')>()
@@ -67,7 +67,7 @@ describe('SignInPage', () => {
     await user.type(screen.getByLabelText('Password'), 'password123')
     // fireEvent.submit dispatches the submit event directly, bypassing the
     // browser's native constraint validation that a real button click would
-    // trigger on this type="email" field — that's what we want here, since
+    // trigger on this type="email" field - that's what we want here, since
     // it's the app's own zod validation (not the browser's) under test.
     fireEvent.submit(screen.getByRole('button', { name: /sign in/i }).closest('form')!)
 
