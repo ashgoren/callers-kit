@@ -36,6 +36,35 @@ function makeDance(
 }
 
 describe('DancesPage', () => {
+  it('queries all three tag-style joins with matching junction/owner tables, FK columns, and output aliases', () => {
+    // useQuery is fully mocked in every other test here, so nothing else
+    // in this file ever inspects the actual SQL DancesPage.data.ts sends -
+    // a typo in a table/column name there (e.g. the wrong FK column) would
+    // pass every other test in this file and only surface in the slower,
+    // live-data e2e suite. This asserts on the real query text instead.
+    useQueryMock.mockReturnValue({ data: [], isLoading: false })
+    render(<DancesPage />)
+
+    const query = useQueryMock.mock.calls[0][0] as string
+
+    expect(query).toContain('FROM dances')
+    for (const column of ['title', 'difficulty', 'formation', 'notes', 'created_at', 'updated_at']) {
+      expect(query).toContain(`dances.${column}`)
+    }
+
+    const joins: [junction: string, owner: string, fk: string, alias: string][] = [
+      ['dances_choreographers', 'choreographers', 'choreographer_id', 'choreographers'],
+      ['dances_key_moves', 'key_moves', 'key_move_id', 'key_moves'],
+      ['dances_vibes', 'vibes', 'vibe_id', 'vibes'],
+    ]
+    for (const [junction, owner, fk, alias] of joins) {
+      expect(query).toContain(`FROM ${junction}`)
+      expect(query).toContain(`JOIN ${owner} ON ${owner}.id = ${junction}.${fk}`)
+      expect(query).toContain(`WHERE ${junction}.dance_id = dances.id`)
+      expect(query).toContain(`AS ${alias}`)
+    }
+  })
+
   it('shows a loading state while the query is in flight', () => {
     useQueryMock.mockReturnValue({ data: [], isLoading: true })
     render(<DancesPage />)
