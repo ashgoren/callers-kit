@@ -1,5 +1,12 @@
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import { useTable } from '@tanstack/react-table'
+import type { ColumnVisibilityState } from '@tanstack/react-table'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { columns, danceFields, features } from './DancesPage.columns'
 import type { DanceWithJoins } from './DancesPage.columns'
@@ -8,11 +15,16 @@ import { useDances } from './DancesPage.data'
 export function DancesPage() {
   const { dances, isLoading } = useDances()
 
+  // Column layout will eventually persist to a synced user_table_preferences row.
+  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({})
+
   const table = useTable({
     features,
     columns,
     data: dances,
     getRowId: (row) => row.id,
+    state: { columnVisibility },
+    onColumnVisibilityChange: setColumnVisibility,
   })
 
   if (isLoading) {
@@ -23,6 +35,9 @@ export function DancesPage() {
     <div className="p-4">
       {/* Tablet and up (640px+): full table */}
       <div className="hidden sm:block">
+        <div className="mb-2 flex justify-end">
+          <ColumnsMenu table={table} />
+        </div>
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -38,7 +53,8 @@ export function DancesPage() {
           <TableBody>
             {table.getRowModel().rows.map((row) => (
               <TableRow key={row.id}>
-                {row.getAllCells().map((cell) => (
+                {/* getVisibleCells, not getAllCells (which includes hidden columns) */}
+                {row.getVisibleCells().map((cell) => (
                   <TableCell key={cell.id}>
                     <table.FlexRender cell={cell} />
                   </TableCell>
@@ -58,6 +74,37 @@ export function DancesPage() {
         ))}
       </ul>
     </div>
+  )
+}
+
+function ColumnsMenu({ table }: { table: ReturnType<typeof useTable<typeof features, DanceWithJoins>> }) {
+  const hideableColumns = table.getAllLeafColumns().filter((column) => column.getCanHide())
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger className="rounded-md border px-2 py-1 text-sm hover:bg-muted">
+        Columns
+      </DropdownMenuTrigger>
+      {/* w-56 overrides the default w-(--anchor-width) */}
+      <DropdownMenuContent align="end" className="w-56">
+        {hideableColumns.map((column) => {
+          // Reads the label from danceFields rather than column.columnDef.header.
+          const field = danceFields.find((danceField) => danceField.key === column.id)
+
+          return (
+            <DropdownMenuCheckboxItem
+              key={column.id}
+              checked={column.getIsVisible()}
+              onCheckedChange={(checked) => {
+                column.toggleVisibility(checked)
+              }}
+            >
+              {field?.label ?? column.id}
+            </DropdownMenuCheckboxItem>
+          )
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 

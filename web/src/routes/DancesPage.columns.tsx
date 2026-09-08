@@ -1,4 +1,4 @@
-import { createColumnHelper, tableFeatures } from '@tanstack/react-table'
+import { columnVisibilityFeature, createColumnHelper, tableFeatures } from '@tanstack/react-table'
 import { format } from 'date-fns'
 import type { ReactNode } from 'react'
 import type { Dance } from '@/lib/powersync/schema'
@@ -31,6 +31,8 @@ interface DanceField<K extends keyof DanceWithJoins = keyof DanceWithJoins> {
   label: string
   render: (value: DanceWithJoins[K]) => ReactNode
   cardRender?: (value: DanceWithJoins[K]) => ReactNode
+  // Defaults to hideable (undefined reads as true, matching TanStack's per-column default)
+  enableHiding?: boolean
 }
 
 // This exists purely to help TypeScript infer the generic type parameter K from the field's key.
@@ -43,6 +45,7 @@ export const danceFields: DanceField[] = [
     key: 'title',
     label: 'Title',
     render: (value) => value || mutedPlaceholder,
+    enableHiding: false,
   }),
   defineField({
     key: 'difficulty',
@@ -87,11 +90,8 @@ export const danceFields: DanceField[] = [
   }),
 ]
 
-// Empty for now - no sort/filter/paginate/reorder/etc. yet (that's a later
-// phase), and TanStack Table v9 only installs a feature's state/APIs once
-// it's actually registered here, so an empty registration is the correct
-// minimal table for a plain read-only render, not a placeholder to fill in.
-export const features = tableFeatures({})
+// Only column hiding is registered so far - sort/reorder/resize/pin next
+export const features = tableFeatures({ columnVisibilityFeature })
 
 const columnHelper = createColumnHelper<typeof features, DanceWithJoins>()
 
@@ -100,6 +100,7 @@ export const columns = columnHelper.columns(
     columnHelper.accessor(field.key, {
       header: field.label,
       cell: (info) => field.render(info.getValue()),
+      enableHiding: field.enableHiding,
     }),
   ),
 )

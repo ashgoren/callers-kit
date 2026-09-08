@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import type { Dance } from '@/lib/powersync/schema'
 import { DancesPage } from './DancesPage'
@@ -173,5 +174,55 @@ describe('DancesPage', () => {
     expect(within(table).getByText('Proper')).toBeInTheDocument()
     expect(within(table).queryByText('Duple Minor - Proper')).not.toBeInTheDocument()
     expect(within(table).getByText('Duple Minor')).toBeInTheDocument()
+  })
+
+  describe('column visibility', () => {
+    it('lists every column except the non-hideable Title as a checked toggle in the Columns menu', async () => {
+      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Columns' }))
+
+      for (const label of [
+        'Difficulty',
+        'Formation',
+        'Choreographers',
+        'Key Moves',
+        'Vibes',
+        'Notes',
+        'Created',
+        'Updated',
+      ]) {
+        expect(await screen.findByRole('menuitemcheckbox', { name: label })).toHaveAttribute('aria-checked', 'true')
+      }
+      // Title always stays visible - hiding it would leave a row with no
+      // identifying field, so it's excluded from the menu entirely rather
+      // than offered as a toggle that would misbehave if used.
+      expect(screen.queryByRole('menuitemcheckbox', { name: 'Title' })).not.toBeInTheDocument()
+    })
+
+    it('hides a column from the table when its checkbox is unchecked, and restores it when re-checked', async () => {
+      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      const table = screen.getByRole('table')
+      expect(within(table).getByRole('columnheader', { name: 'Notes' })).toBeInTheDocument()
+      expect(within(table).getByText('A classic.')).toBeInTheDocument()
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Columns' }))
+      await user.click(await screen.findByRole('menuitemcheckbox', { name: 'Notes' }))
+
+      expect(within(table).queryByRole('columnheader', { name: 'Notes' })).not.toBeInTheDocument()
+      expect(within(table).queryByText('A classic.')).not.toBeInTheDocument()
+
+      // The menu stays open after a toggle (closeOnClick defaults to false),
+      // so the same checkbox item can be clicked again to restore it.
+      await user.click(await screen.findByRole('menuitemcheckbox', { name: 'Notes' }))
+
+      expect(within(table).getByRole('columnheader', { name: 'Notes' })).toBeInTheDocument()
+      expect(within(table).getByText('A classic.')).toBeInTheDocument()
+    })
   })
 })
