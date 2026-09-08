@@ -1,4 +1,12 @@
-import { columnVisibilityFeature, createColumnHelper, tableFeatures } from '@tanstack/react-table'
+import {
+  columnVisibilityFeature,
+  createColumnHelper,
+  createSortedRowModel,
+  rowSortingFeature,
+  sortFn_alphanumeric,
+  sortFn_basic,
+  tableFeatures,
+} from '@tanstack/react-table'
 import { format } from 'date-fns'
 import type { ReactNode } from 'react'
 import type { Dance } from '@/lib/powersync/schema'
@@ -19,8 +27,13 @@ export function formatFormation(value: string | null): string {
   return value ? value.replace(/^Duple Minor - /, '') : '—'
 }
 
+// Locale-aware, so accented names still land where a reader would expect.
+function sortAlphabetically(values: string[]): string[] {
+  return [...values].sort((a, b) => a.localeCompare(b))
+}
+
 function renderTagList(value: string[]): ReactNode {
-  return value.length > 0 ? value.join(', ') : mutedPlaceholder
+  return value.length > 0 ? sortAlphabetically(value).join(', ') : mutedPlaceholder
 }
 
 // One source of truth for both the table columns and DanceCard's fields.
@@ -33,6 +46,22 @@ interface DanceField<K extends keyof DanceWithJoins = keyof DanceWithJoins> {
   cardRender?: (value: DanceWithJoins[K]) => ReactNode
   // Defaults to hideable (undefined reads as true, matching TanStack's per-column default)
   enableHiding?: boolean
+  // What to actually compare when sorting by this column - defaults to the
+  // raw value itself (via the fallback below). Only needed when the
+  // sortable value differs from what TanStack would read directly off the
+  // row: formation strips its "Duple Minor - " prefix for display and
+  // should sort the same way, and a tag list sorts by its first
+  // alphabetical entry, matching how it displays. Returning null sorts the
+  // row to the very end regardless of ascending vs. descending - the same
+  // place a missing value belongs either way (see sortUndefined below).
+  sortValue?: (value: DanceWithJoins[K]) => string | number | null
+  // This field is a passthrough: it receives a concrete built-in like
+  // sortFn_alphanumeric (typed SortFn<any, any>) and later hands it back out
+  // to TanStack's own, differently-parameterized `sortFn` column option -
+  // two opposite variance directions no single non-`any` param type can
+  // satisfy at once, so `any` here is the actual correct tool.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sortFn?: (rowA: any, rowB: any, columnId: string) => number
 }
 
 // This exists purely to help TypeScript infer the generic type parameter K from the field's key.
@@ -46,61 +75,105 @@ export const danceFields: DanceField[] = [
     label: 'Title',
     render: (value) => value || mutedPlaceholder,
     enableHiding: false,
+    // Empty string reads the same as "missing" here - both sort to the end.
+    sortValue: (value) => value || null,
+    sortFn: sortFn_alphanumeric,
   }),
   defineField({
     key: 'difficulty',
     label: 'Difficulty',
     render: (value) => (value === null ? mutedPlaceholder : value),
+    sortFn: sortFn_basic,
   }),
   defineField({
     key: 'formation',
     label: 'Formation',
     render: (value) => (value === null ? mutedPlaceholder : formatFormation(value)),
+    // Sorts by the same stripped-prefix string it displays, not raw enum value.
+    sortValue: (value) => (value === null ? null : formatFormation(value)),
+    sortFn: sortFn_alphanumeric,
   }),
   defineField({
     key: 'choreographers',
     label: 'Choreographers',
     render: renderTagList,
+    sortValue: (value) => sortAlphabetically(value)[0] ?? null, // first choreographer alphabetically
+    sortFn: sortFn_alphanumeric,
   }),
   defineField({
     key: 'key_moves',
     label: 'Key Moves',
     render: renderTagList,
+    sortValue: (value) => sortAlphabetically(value)[0] ?? null, // first key_move alphabetically
+    sortFn: sortFn_alphanumeric,
   }),
   defineField({
     key: 'vibes',
     label: 'Vibes',
     render: renderTagList,
+    sortValue: (value) => sortAlphabetically(value)[0] ?? null, // first vibe alphabetically
+    sortFn: sortFn_alphanumeric,
   }),
   defineField({
     key: 'notes',
     label: 'Notes',
     render: (value) => value ? <span className="block max-w-xs truncate" title={value}>{value}</span> : mutedPlaceholder,
     cardRender: (value) => value ? <span className="block truncate" title={value}>{value}</span> : mutedPlaceholder,
+    sortValue: (value) => value || null, // sorts to the end if missing or empty
+    sortFn: sortFn_alphanumeric,
   }),
   defineField({
     key: 'created_at',
     label: 'Created',
     render: (value) => (value === null ? mutedPlaceholder : formatDate(value)),
+    sortFn: sortFn_basic, // sorts by raw ISO timestamp
   }),
   defineField({
     key: 'updated_at',
     label: 'Updated',
     render: (value) => (value === null ? mutedPlaceholder : formatDate(value)),
+    sortFn: sortFn_basic, // sorts by raw ISO timestamp
   }),
 ]
 
-// Only column hiding is registered so far - sort/reorder/resize/pin next
-export const features = tableFeatures({ columnVisibilityFeature })
+// Column hiding and sorting are registered so far - reorder/resize/pin next
+export const features = tableFeatures({
+  columnVisibilityFeature,
+  rowSortingFeature,
+  sortedRowModel: createSortedRowModel(),
+})
 
 const columnHelper = createColumnHelper<typeof features, DanceWithJoins>()
 
 export const columns = columnHelper.columns(
   danceFields.map((field) =>
-    columnHelper.accessor(field.key, {
-      header: field.label,
-      cell: (info) => field.render(info.getValue()),
-      enableHiding: field.enableHiding,
-    }),
+    columnHelper.accessor(
+      // A function accessor, not a plain key, so this can resolve to
+      // field.sortValue's result (falling back to the raw value) instead of
+      // always reading the row directly - the sort machinery needs this
+      // resolved value, but rendering below deliberately doesn't use it.
+      (row) => {
+        const raw = row[field.key]
+        const resolved = field.sortValue ? field.sortValue(raw) : raw
+        // Coalesces null (this app's "missing" sentinel) to undefined,
+        // which is what sortUndefined below actually checks for.
+        return resolved ?? undefined
+      },
+      {
+        id: field.key,
+        header: field.label,
+        // Reads the untouched original row, not this accessor's resolved
+        // value above - that value exists purely to feed the sort
+        // machinery, and shouldn't also change what's rendered.
+        cell: (info) => field.render(info.row.original[field.key]),
+        enableHiding: field.enableHiding,
+        sortFn: field.sortFn,
+        // Missing values (now undefined, see above) always sort last,
+        // regardless of ascending vs. descending - blank cells staying put
+        // at the bottom rather than jumping to the top when you flip
+        // direction, matching how spreadsheets handle this.
+        sortUndefined: 'last',
+      },
+    ),
   ),
 )

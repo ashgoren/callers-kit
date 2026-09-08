@@ -36,6 +36,15 @@ function makeDance(
   }
 }
 
+// Assumes Title stays the first rendered column - true for this slice since
+// column reordering hasn't landed yet. Row 0 is skipped as the header row.
+function rowTitlesInOrder(table: HTMLElement): string[] {
+  return within(table)
+    .getAllByRole('row')
+    .slice(1)
+    .map((row) => within(row).getAllByRole('cell')[0].textContent ?? '')
+}
+
 describe('DancesPage', () => {
   it('queries all three tag-style joins with matching junction/owner tables, FK columns, and output aliases', () => {
     // useQuery is fully mocked in every other test here, so nothing else
@@ -223,6 +232,130 @@ describe('DancesPage', () => {
 
       expect(within(table).getByRole('columnheader', { name: 'Notes' })).toBeInTheDocument()
       expect(within(table).getByText('A classic.')).toBeInTheDocument()
+    })
+  })
+
+  describe('sorting', () => {
+    it('sorts ascending then descending then clears back to the original order on repeated clicks, showing a matching arrow each time', async () => {
+      useQueryMock.mockReturnValue({
+        data: [
+          makeDance({ id: '1', title: 'Charlie' }),
+          makeDance({ id: '2', title: 'Alpha' }),
+          makeDance({ id: '3', title: 'Bravo' }),
+        ],
+        isLoading: false,
+      })
+      render(<DancesPage />)
+
+      const table = screen.getByRole('table')
+      const titleHeader = screen.getByRole('button', { name: 'Title' })
+      expect(rowTitlesInOrder(table)).toEqual(['Charlie', 'Alpha', 'Bravo'])
+      expect(titleHeader.querySelector('svg')).not.toBeInTheDocument()
+
+      const user = userEvent.setup()
+
+      await user.click(titleHeader)
+      expect(rowTitlesInOrder(table)).toEqual(['Alpha', 'Bravo', 'Charlie'])
+      expect(titleHeader.querySelector('.lucide-arrow-up')).toBeInTheDocument()
+
+      await user.click(titleHeader)
+      expect(rowTitlesInOrder(table)).toEqual(['Charlie', 'Bravo', 'Alpha'])
+      expect(titleHeader.querySelector('.lucide-arrow-down')).toBeInTheDocument()
+
+      await user.click(titleHeader)
+      expect(rowTitlesInOrder(table)).toEqual(['Charlie', 'Alpha', 'Bravo'])
+      expect(titleHeader.querySelector('svg')).not.toBeInTheDocument()
+    })
+
+    it('sorts a row with a missing value to the end, regardless of ascending or descending', async () => {
+      useQueryMock.mockReturnValue({
+        data: [
+          makeDance({ id: '1', title: 'Has difficulty 3', difficulty: 3 }),
+          makeDance({ id: '2', title: 'Has no difficulty', difficulty: null }),
+          makeDance({ id: '3', title: 'Has difficulty 1', difficulty: 1 }),
+        ],
+        isLoading: false,
+      })
+      render(<DancesPage />)
+
+      const table = screen.getByRole('table')
+      const user = userEvent.setup()
+      const difficultyHeader = screen.getByRole('button', { name: 'Difficulty' })
+
+      await user.click(difficultyHeader)
+      expect(rowTitlesInOrder(table)).toEqual(['Has difficulty 1', 'Has difficulty 3', 'Has no difficulty'])
+
+      await user.click(difficultyHeader)
+      // Descending flips the two real values, but the missing one stays
+      // last either way - it never jumps to the top just because the
+      // direction flipped.
+      expect(rowTitlesInOrder(table)).toEqual(['Has difficulty 3', 'Has difficulty 1', 'Has no difficulty'])
+    })
+
+    it('sorts an empty-string Notes value to the end alongside a null one, not to the top', async () => {
+      // Both display identically as "—" (render uses the same truthy check),
+      // so both should be treated as equally "missing" for sorting too -
+      // '' is not nullish, so without notes' own sortValue override it would
+      // sort as the lexicographically smallest string instead, landing at
+      // the top in ascending order rather than the bottom with null.
+      useQueryMock.mockReturnValue({
+        data: [
+          makeDance({ id: '1', title: 'Has a note', notes: 'A classic.' }),
+          makeDance({ id: '2', title: 'Empty string note', notes: '' }),
+          makeDance({ id: '3', title: 'Null note', notes: null }),
+        ],
+        isLoading: false,
+      })
+      render(<DancesPage />)
+
+      const table = screen.getByRole('table')
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Notes' }))
+
+      const [first, ...rest] = rowTitlesInOrder(table)
+      expect(first).toBe('Has a note')
+      expect(rest.sort()).toEqual(['Empty string note', 'Null note'].sort())
+    })
+
+    it('sorts Formation by its displayed value (prefix stripped), not the raw stored string', async () => {
+      // Raw-string order would put "Banana" before "Duple Minor - Apple"
+      // ('B' < 'D'), but displayed order ("Apple" vs. "Banana") puts Apple
+      // first - these two rows only distinguish the fix if it's working.
+      useQueryMock.mockReturnValue({
+        data: [
+          makeDance({ id: '1', title: 'Shows Banana', formation: 'Banana' }),
+          makeDance({ id: '2', title: 'Shows Apple', formation: 'Duple Minor - Apple' }),
+        ],
+        isLoading: false,
+      })
+      render(<DancesPage />)
+
+      const table = screen.getByRole('table')
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Formation' }))
+
+      expect(rowTitlesInOrder(table)).toEqual(['Shows Apple', 'Shows Banana'])
+    })
+
+    it('sorts a tag-list column by its first name alphabetically, matching the alphabetical order it displays in', async () => {
+      useQueryMock.mockReturnValue({
+        data: [
+          // Displays "Amy, Zeb" (see the column-visibility describe block
+          // above for renderTagList's own alphabetizing) - sorts by "Amy".
+          makeDance({ id: '1', title: 'Amy and Zeb', choreographers: '["Zeb","Amy"]' }),
+          makeDance({ id: '2', title: 'Just Ben', choreographers: '["Ben"]' }),
+        ],
+        isLoading: false,
+      })
+      render(<DancesPage />)
+
+      const table = screen.getByRole('table')
+      expect(within(table).getByText('Amy, Zeb')).toBeInTheDocument()
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Choreographers' }))
+
+      expect(rowTitlesInOrder(table)).toEqual(['Amy and Zeb', 'Just Ben'])
     })
   })
 })

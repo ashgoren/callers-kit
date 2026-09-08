@@ -1,6 +1,7 @@
 import { Fragment, useState } from 'react'
 import { useTable } from '@tanstack/react-table'
-import type { ColumnVisibilityState } from '@tanstack/react-table'
+import type { ColumnVisibilityState, SortingState } from '@tanstack/react-table'
+import { ArrowDown, ArrowUp } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -17,14 +18,19 @@ export function DancesPage() {
 
   // Column layout will eventually persist to a synced user_table_preferences row.
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({})
+  const [sorting, setSorting] = useState<SortingState>([])
 
   const table = useTable({
     features,
     columns,
     data: dances,
     getRowId: (row) => row.id,
-    state: { columnVisibility },
+    state: { columnVisibility, sorting },
     onColumnVisibilityChange: setColumnVisibility,
+    onSortingChange: setSorting,
+    enableMultiSort: false, // single-column sort only
+    enableSortingRemoval: true, // third click clears sort
+    sortDescFirst: false, // first click sorts ascending
   })
 
   if (isLoading) {
@@ -44,7 +50,19 @@ export function DancesPage() {
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <TableHead key={header.id}>
-                    {header.isPlaceholder ? null : <table.FlexRender header={header} />}
+                    {/* The whole header is the sort toggle, not a separate icon */}
+                    {header.isPlaceholder ? null : (
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-1 text-left enabled:cursor-pointer disabled:cursor-default"
+                        onClick={header.column.getToggleSortingHandler()}
+                        disabled={!header.column.getCanSort()}
+                      >
+                        <table.FlexRender header={header} />
+                        {header.column.getIsSorted() === 'asc' && <ArrowUp className="size-3.5" />}
+                        {header.column.getIsSorted() === 'desc' && <ArrowDown className="size-3.5" />}
+                      </button>
+                    )}
                   </TableHead>
                 ))}
               </TableRow>
