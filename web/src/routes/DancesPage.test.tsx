@@ -358,4 +358,66 @@ describe('DancesPage', () => {
       expect(rowTitlesInOrder(table)).toEqual(['Amy and Zeb', 'Just Ben'])
     })
   })
+
+  describe('mobile sort menu', () => {
+    // Both layouts render simultaneously in jsdom (no real CSS breakpoints
+    // apply, see the "also renders the same dance in the card list layout"
+    // test above) - card titles are queried directly by list-item role
+    // rather than through the table, which the desktop-focused
+    // rowTitlesInOrder helper assumes.
+    function cardTitlesInOrder(): string[] {
+      return screen.getAllByRole('listitem').map((item) => item.querySelector('p')?.textContent ?? '')
+    }
+
+    it('reorders both the card list and the table when a field is picked, and updates the trigger label to match', async () => {
+      useQueryMock.mockReturnValue({
+        data: [
+          makeDance({ id: '1', title: 'Charlie' }),
+          makeDance({ id: '2', title: 'Alpha' }),
+          makeDance({ id: '3', title: 'Bravo' }),
+        ],
+        isLoading: false,
+      })
+      render(<DancesPage />)
+
+      expect(cardTitlesInOrder()).toEqual(['Charlie', 'Alpha', 'Bravo'])
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Sort' }))
+      await user.click(await screen.findByRole('menuitemradio', { name: 'Title' }))
+
+      // Same table instance drives both renderings - picking a field here
+      // reorders the (still-mounted-in-jsdom) desktop table too, not just
+      // the cards.
+      const table = screen.getByRole('table')
+      expect(cardTitlesInOrder()).toEqual(['Alpha', 'Bravo', 'Charlie'])
+      expect(rowTitlesInOrder(table)).toEqual(['Alpha', 'Bravo', 'Charlie'])
+      expect(screen.getByRole('button', { name: 'Sort: Title' })).toBeInTheDocument()
+    })
+
+    it('flips direction with the toggle button, which stays disabled until a field is chosen', async () => {
+      useQueryMock.mockReturnValue({
+        data: [makeDance({ id: '1', title: 'Charlie' }), makeDance({ id: '2', title: 'Alpha' })],
+        isLoading: false,
+      })
+      render(<DancesPage />)
+
+      const toggleButton = screen.getByRole('button', { name: 'Sort ascending' })
+      expect(toggleButton).toBeDisabled()
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Sort' }))
+      await user.click(await screen.findByRole('menuitemradio', { name: 'Title' }))
+
+      // Selecting a field always starts ascending, regardless of whatever
+      // direction it was left at last time it was sorted.
+      expect(cardTitlesInOrder()).toEqual(['Alpha', 'Charlie'])
+      expect(toggleButton).toBeEnabled()
+
+      await user.click(toggleButton)
+
+      expect(cardTitlesInOrder()).toEqual(['Charlie', 'Alpha'])
+      expect(screen.getByRole('button', { name: 'Sort descending' })).toBeInTheDocument()
+    })
+  })
 })

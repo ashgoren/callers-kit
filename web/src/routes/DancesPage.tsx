@@ -6,6 +6,8 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -84,13 +86,16 @@ export function DancesPage() {
       </div>
 
       {/* Phone (<640px): stacked cards */}
-      <ul className="space-y-2 sm:hidden">
-        {dances.map((dance) => (
-          <li key={dance.id}>
-            <DanceCard dance={dance} />
-          </li>
-        ))}
-      </ul>
+      <div className="sm:hidden">
+        <MobileSortMenu table={table} />
+        <ul className="space-y-2">
+          {table.getRowModel().rows.map((row) => (
+            <li key={row.id}>
+              <DanceCard dance={row.original} />
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   )
 }
@@ -123,6 +128,60 @@ function ColumnsMenu({ table }: { table: ReturnType<typeof useTable<typeof featu
         })}
       </DropdownMenuContent>
     </DropdownMenu>
+  )
+}
+
+// Phone's substitute for clicking a table header directly - a field picker
+// plus a separate direction toggle, since there's no header here to click.
+// Both act through the same table.setSorting(...) the desktop header uses,
+// so this is just a second way to drive the identical, single sort state.
+function MobileSortMenu({ table }: { table: ReturnType<typeof useTable<typeof features, DanceWithJoins>> }) {
+  const sortableColumns = table.getAllLeafColumns().filter((column) => column.getCanSort())
+  const currentSort = table.state.sorting[0]
+  const currentField = currentSort ? danceFields.find((field) => field.key === currentSort.id) : undefined
+
+  return (
+    <div className="mb-2 flex items-center justify-end gap-1">
+      <DropdownMenu>
+        <DropdownMenuTrigger className="rounded-md border px-2 py-1 text-sm hover:bg-muted">
+          {currentField ? `Sort: ${currentField.label}` : 'Sort'}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuRadioGroup
+            value={currentSort?.id ?? ''}
+            onValueChange={(value: string) => {
+              // Always resets to ascending on a field change - matching the
+              // desktop header's own first-click direction (sortDescFirst:
+              // false above), not whatever direction this field was left at
+              // the last time it happened to be sorted.
+              table.setSorting([{ id: value, desc: false }])
+            }}
+          >
+            {sortableColumns.map((column) => {
+              const field = danceFields.find((danceField) => danceField.key === column.id)
+
+              return (
+                <DropdownMenuRadioItem key={column.id} value={column.id}>
+                  {field?.label ?? column.id}
+                </DropdownMenuRadioItem>
+              )
+            })}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <button
+        type="button"
+        className="rounded-md border p-1 enabled:hover:bg-muted disabled:opacity-50"
+        disabled={!currentSort}
+        onClick={() => {
+          if (!currentSort) return
+          table.setSorting([{ id: currentSort.id, desc: !currentSort.desc }])
+        }}
+        aria-label={currentSort?.desc ? 'Sort descending' : 'Sort ascending'}
+      >
+        {currentSort?.desc ? <ArrowDown className="size-3.5" /> : <ArrowUp className="size-3.5" />}
+      </button>
+    </div>
   )
 }
 
