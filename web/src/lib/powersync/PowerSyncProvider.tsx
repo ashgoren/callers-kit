@@ -1,6 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext'
+import { Button } from '@/components/ui/button'
 import { PowerSyncContext } from '@powersync/react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { SupabaseConnector } from './connector'
 import { db } from './database'
 
@@ -14,6 +15,11 @@ let hasConnected = false
 
 export function PowerSyncProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
+  const [connectionError, setConnectionError] = useState<Error | null>(null)
+  // Bumped by the Retry button to re-run the effect below without a full
+  // page reload - the only other way to get a fresh connect() attempt,
+  // since `hasConnected` normally blocks every attempt after the first.
+  const [retryToken, setRetryToken] = useState(0)
 
   useEffect(() => {
     // fetchCredentials() (in the connector) needs an active Supabase
@@ -23,11 +29,36 @@ export function PowerSyncProvider({ children }: { children: React.ReactNode }) {
     // here - the check is just defensive, in case that ever changes.
     if (user && !hasConnected) {
       hasConnected = true
-      // Deliberately not awaited - connect() is fire-and-forget, sync runs
-      // in the background.
-      void db.connect(new SupabaseConnector())
+      // connect() itself resolves quickly (sync continues in the
+      // background) but can still reject outright - e.g. a browser that
+      // can't open the local SQLite storage at all (known case: Safari
+      // Private Browsing has no OPFS support).
+      db.connect(new SupabaseConnector()).catch((error: unknown) => {
+        hasConnected = false
+        console.error('PowerSync connect() failed:', error)
+        setConnectionError(error instanceof Error ? error : new Error(String(error)))
+      })
     }
-  }, [user])
+  }, [user, retryToken])
+
+  if (connectionError) {
+    return (
+      <div className="flex flex-col items-center gap-2 p-4 text-center text-sm">
+        <p role="alert" className="text-destructive">
+          Couldn't connect to sync: {connectionError.message}
+        </p>
+        <Button
+          variant="outline"
+          onClick={() => {
+            setConnectionError(null)
+            setRetryToken((token) => token + 1)
+          }}
+        >
+          Retry
+        </Button>
+      </div>
+    )
+  }
 
   // `db` always exists (it's a module singleton, independent of auth state),
   // so the context can be provided unconditionally - components using

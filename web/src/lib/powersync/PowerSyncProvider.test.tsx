@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { usePowerSync } from '@powersync/react'
 
@@ -11,7 +12,10 @@ vi.mock('@/contexts/AuthContext', () => ({
 }))
 
 vi.mock('./database', () => ({
-  db: { connect: vi.fn() },
+  // Resolves by default, since most tests don't care about connect()'s
+  // outcome - the error-path test below overrides this per-call with
+  // mockRejectedValueOnce/mockResolvedValueOnce.
+  db: { connect: vi.fn().mockResolvedValue(undefined) },
 }))
 
 // The real `db` export is a PowerSyncDatabase instance, so TypeScript infers
@@ -95,6 +99,36 @@ describe('PowerSyncProvider', () => {
       }),
     )
     /* eslint-enable @typescript-eslint/no-unsafe-assignment */
+  })
+
+  it('shows a retryable error instead of hanging forever when connect() rejects', async () => {
+    useAuthMock.mockReturnValue({ user: { id: '1' } })
+    const { db, PowerSyncProvider } = await loadFresh()
+    db.connect.mockRejectedValueOnce(new Error('OPFS unavailable')).mockResolvedValueOnce(undefined)
+    // Silence the deliberate console.error the component logs alongside
+    // setting error state - this test is asserting on that state, not on
+    // whether the console stays clean.
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    render(
+      <PowerSyncProvider>
+        <ContextConsumer expected={db} />
+      </PowerSyncProvider>,
+    )
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('OPFS unavailable')
+    expect(screen.queryByText('has db')).not.toBeInTheDocument()
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
+
+    // Retry succeeds (the second mockResolvedValueOnce above) and renders
+    // children again, proving the module-level hasConnected guard was
+    // actually reset by the first failure - otherwise this second attempt
+    // would silently no-op and the error would never clear.
+    expect(await screen.findByText('has db')).toBeInTheDocument()
+    expect(db.connect).toHaveBeenCalledTimes(2)
   })
 
   it('does not reconnect across an unmount/remount of the same module instance', async () => {
