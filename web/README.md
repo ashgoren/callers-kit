@@ -66,7 +66,7 @@ Points at the hosted Supabase project (not local dev) - see `.env.local` (gitign
 
 ## Dances
 
-`src/routes/DancesPage.tsx` (route: `/dances`, redirected to from `/`) - a read-only render (`title`, `difficulty`, `formation`, `choreographers`, `key_moves`, `vibes`, `notes`, `created_at`, `updated_at`); no editing, sorting, or column reordering/hiding yet. Two presentations sharing one query: a real `<Table>` at `lg:` (1024px+) and up, a stacked card list below that. Dates render compact (`date-fns`'s `format(value, 'M/d/yy')`); notes are truncated with a `title`-attribute tooltip; the tag-style join columns (choreographers, key_moves, vibes) are not truncated.
+`src/routes/DancesPage.tsx` (route: `/dances`, redirected to from `/`) - a read-only render (`title`, `difficulty`, `formation`, `choreographers`, `key_moves`, `vibes`, `notes`, `created_at`, `updated_at`); no editing, sorting, or column reordering/hiding yet. Two presentations sharing one query: a real `<Table>` at `sm:` (640px+) and up - and a stacked card list below that, for phone widths. Dates render compact (`date-fns`'s `format(value, 'M/d/yy')`); notes are truncated with a `title`-attribute tooltip; the tag-style join columns (choreographers, key_moves, vibes) are not truncated.
 
 Split into three sibling files: `DancesPage.columns.tsx` (column definitions + formatting helpers), `DancesPage.data.ts` (the `useDances()` hook - the query and its data-shaping logic), and `DancesPage.tsx` itself (layout).
 
