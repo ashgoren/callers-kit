@@ -31,3 +31,31 @@ streams:
       SELECT dances_choreographers.* FROM dances_choreographers
       JOIN dances ON dances.id = dances_choreographers.dance_id
       WHERE dances.user_id = auth.user_id()
+
+  key_moves:
+    # Owner table with its own user_id column, same pattern as choreographers above
+    auto_subscribe: true
+    query: SELECT * FROM key_moves WHERE key_moves.user_id = auth.user_id()
+
+  vibes:
+    # Owner table with its own user_id column, same pattern as choreographers above
+    auto_subscribe: true
+    query: SELECT * FROM vibes WHERE vibes.user_id = auth.user_id()
+
+  dances_key_moves:
+    # Junction table has no user_id of its own - scoped via join to the
+    # owning dance's user_id instead, same as dances_choreographers above.
+    auto_subscribe: true
+    query: >
+      SELECT dances_key_moves.* FROM dances_key_moves
+      JOIN dances ON dances.id = dances_key_moves.dance_id
+      WHERE dances.user_id = auth.user_id()
+
+  dances_vibes:
+    # Junction table has no user_id of its own - scoped via join to the
+    # owning dance's user_id instead, same as dances_choreographers above.
+    auto_subscribe: true
+    query: >
+      SELECT dances_vibes.* FROM dances_vibes
+      JOIN dances ON dances.id = dances_vibes.dance_id
+      WHERE dances.user_id = auth.user_id()

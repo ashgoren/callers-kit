@@ -5,6 +5,8 @@ import type { Dance } from '@/lib/powersync/schema'
 
 export interface DanceWithJoins extends Dance {
   choreographers: string[]
+  key_moves: string[]
+  vibes: string[]
 }
 
 const mutedPlaceholder = <span className="text-muted-foreground">—</span>
@@ -55,6 +57,16 @@ export const danceFields: DanceField[] = [
   defineField({
     key: 'choreographers',
     label: 'Choreographers',
+    render: renderTagList,
+  }),
+  defineField({
+    key: 'key_moves',
+    label: 'Key Moves',
+    render: renderTagList,
+  }),
+  defineField({
+    key: 'vibes',
+    label: 'Vibes',
     render: renderTagList,
   }),
   defineField({

@@ -30,6 +30,6 @@ Auth: CLI is authenticated via a stored Cloud personal access token (`powersync 
 
 ## What's actually synced
 
-`sync-config.yaml` defines three streams, all auto-subscribed: `dances` (`SELECT *`, scoped per-user via `WHERE dances.user_id = auth.user_id()`), `choreographers` (same per-user pattern, its own `user_id` column), and `dances_choreographers` (no `user_id` of its own - scoped via a join to the owning dance's `user_id` instead). `programs`, `dances_key_moves`, and `dances_vibes` are not yet synced. `dance_type`/`formation`/`progression` are plain enum columns on `dances` itself (not a joined lookup table), so they have no stream of their own.
+`sync-config.yaml` defines seven streams, all auto-subscribed: `dances` (`SELECT *`, scoped per-user via `WHERE dances.user_id = auth.user_id()`); `choreographers`, `key_moves`, and `vibes` (same per-user pattern, each with its own `user_id` column); and `dances_choreographers`, `dances_key_moves`, and `dances_vibes` (junction tables with no `user_id` of their own - each scoped via a join to the owning dance's `user_id` instead). `programs` is not yet synced. `dance_type`/`formation`/`progression` are plain enum columns on `dances` itself (not a joined lookup table), so they have no stream of their own.
 
 **Stream queries use full table names, never aliases** - PowerSync attributes synced rows to whatever name follows `FROM`, so an alias there makes it sync rows under that alias's name instead of the real table name, breaking the client schema mapping. `powersync validate` catches this.

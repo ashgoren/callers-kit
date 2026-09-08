@@ -10,12 +10,12 @@ vi.mock('@powersync/react', () => ({
 }))
 
 // The mocked useQuery stands in for DancesPage.data.ts's raw SQL result, so
-// choreographers here is the pre-parse JSON array *string* (matching
-// json_group_array's real output), not a real array - defaults to an empty
-// array so tests that don't care about choreographers still see '-'.
-function makeDance(overrides: Partial<Dance> & { choreographers?: string } = {}): Dance & {
-  choreographers: string
-} {
+// choreographers/key_moves/vibes here are the pre-parse JSON array *strings*
+// (matching json_group_array's real output), not real arrays - all default
+// to an empty array so tests that don't care about them still see '-'.
+function makeDance(
+  overrides: Partial<Dance> & { choreographers?: string; key_moves?: string; vibes?: string } = {},
+): Dance & { choreographers: string; key_moves: string; vibes: string } {
   return {
     id: '1',
     title: 'Chorus Jig',
@@ -29,6 +29,8 @@ function makeDance(overrides: Partial<Dance> & { choreographers?: string } = {})
     created_at: '2026-01-15T12:00:00.000Z',
     updated_at: '2026-03-20T12:00:00.000Z',
     choreographers: '[]',
+    key_moves: '[]',
+    vibes: '[]',
     ...overrides,
   }
 }
@@ -70,8 +72,9 @@ describe('DancesPage', () => {
     // so it can't be used to locate the row anymore.
     const row = within(table).getByRole('row', { name: /1\/15\/26/ })
     // title, difficulty, formation, and notes are all null/empty, plus the
-    // default empty choreographers list from makeDance() - five '—' cells
-    expect(within(row).getAllByText('—')).toHaveLength(5)
+    // default empty choreographers/key_moves/vibes lists from makeDance() -
+    // seven '—' cells
+    expect(within(row).getAllByText('—')).toHaveLength(7)
   })
 
   it('joins multiple choreographer names with ", ", and shows a placeholder when there are none', () => {
@@ -89,7 +92,30 @@ describe('DancesPage', () => {
     expect(rowA).toHaveTextContent('Alice, Bob')
 
     const rowB = within(table).getByText('Dance B').closest('tr')!
-    expect(within(rowB).getByText('—')).toBeInTheDocument()
+    // Three '—' cells: empty choreographers, plus the default empty
+    // key_moves/vibes lists from makeDance() that this test doesn't override.
+    expect(within(rowB).getAllByText('—')).toHaveLength(3)
+  })
+
+  it('joins multiple key_move and vibe names with ", ", and shows a placeholder when there are none', () => {
+    useQueryMock.mockReturnValue({
+      data: [
+        makeDance({ id: '1', title: 'Dance A', key_moves: '["Allemande","Swing"]', vibes: '["Playful"]' }),
+        makeDance({ id: '2', title: 'Dance B', key_moves: '[]', vibes: '[]' }),
+      ],
+      isLoading: false,
+    })
+    render(<DancesPage />)
+
+    const table = screen.getByRole('table')
+    const rowA = within(table).getByText('Dance A').closest('tr')!
+    expect(rowA).toHaveTextContent('Allemande, Swing')
+    expect(rowA).toHaveTextContent('Playful')
+
+    const rowB = within(table).getByText('Dance B').closest('tr')!
+    // Three '—' cells: empty key_moves and vibes, plus the default empty
+    // choreographers list from makeDance() that this test doesn't override.
+    expect(within(rowB).getAllByText('—')).toHaveLength(3)
   })
 
   it('also renders the same dance in the card list layout', () => {

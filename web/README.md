@@ -55,7 +55,7 @@ Points at the hosted Supabase project (not local dev) - see `.env.local` (gitign
 
 `src/lib/powersync/` - see `powersync/README.md` (repo root) for the service-side config this connects to.
 
-- `schema.ts` - the local SQLite client schema. Not a 1:1 mirror of the Postgres schema - only columns the app actually reads/writes locally are declared here. `dance_type`/`formation`/`progression` are Postgres enum columns represented as plain `column.text` locally (see `powersync/README.md`). `choreographers` and `dances_choreographers` are declared here too, for the Dances table's choreographers column (see Dances below).
+- `schema.ts` - the local SQLite client schema. Not a 1:1 mirror of the Postgres schema - only columns the app actually reads/writes locally are declared here. `dance_type`/`formation`/`progression` are Postgres enum columns represented as plain `column.text` locally (see `powersync/README.md`). `choreographers`/`dances_choreographers`, `key_moves`/`dances_key_moves`, and `vibes`/`dances_vibes` are declared here too, for the Dances table's tag-style join columns (see Dances below).
 - `connector.ts` - `SupabaseConnector`, implementing `fetchCredentials()` (hands PowerSync the current Supabase session's access token) and `uploadData()` (replays the local write queue as `supabase-js` calls, going through the same RLS-protected path any normal client call uses). `supabase-js` doesn't throw on failure - it returns `{ error }` - so every branch explicitly checks and throws.
 - `database.ts` - the `db` singleton (`PowerSyncDatabase` instance), created once at module scope. Uses `OPFSCoopSyncVFS`. No fallback to `IDBBatchAtomicVFS` for Safari Private Browsing (the one case OPFS doesn't support) yet.
 - `PowerSyncProvider.tsx` - wraps `ProtectedRoute`'s children, providing `db` via `@powersync/react`'s `PowerSyncContext` and calling `db.connect()` once `AuthContext`'s `user` resolves.
@@ -66,15 +66,19 @@ Points at the hosted Supabase project (not local dev) - see `.env.local` (gitign
 
 ## Dances
 
-`src/routes/DancesPage.tsx` (route: `/dances`, redirected to from `/`) - a read-only render (`title`, `difficulty`, `formation`, `choreographers`, `notes`, `created_at`, `updated_at`); no editing, sorting, or column reordering/hiding yet. Two presentations sharing one query: a real `<Table>` at `lg:` (1024px+) and up, a stacked card list below that. Dates render compact (`date-fns`'s `format(value, 'M/d/yy')`); notes are truncated with a `title`-attribute tooltip; choreographers is not truncated.
+`src/routes/DancesPage.tsx` (route: `/dances`, redirected to from `/`) - a read-only render (`title`, `difficulty`, `formation`, `choreographers`, `key_moves`, `vibes`, `notes`, `created_at`, `updated_at`); no editing, sorting, or column reordering/hiding yet. Two presentations sharing one query: a real `<Table>` at `lg:` (1024px+) and up, a stacked card list below that. Dates render compact (`date-fns`'s `format(value, 'M/d/yy')`); notes are truncated with a `title`-attribute tooltip; the tag-style join columns (choreographers, key_moves, vibes) are not truncated.
 
 Split into three sibling files: `DancesPage.columns.tsx` (column definitions + formatting helpers), `DancesPage.data.ts` (the `useDances()` hook - the query and its data-shaping logic), and `DancesPage.tsx` itself (layout).
 
-`choreographers` is not a column on `dances` itself - `useDances()`'s query adds it via a correlated `json_group_array(...)` subquery over `dances_choreographers`/`choreographers`, parsed client-side into a `string[]`. This result type (`DanceWithChoreographers`, in `DancesPage.columns.tsx`) is separate from the base `Dance` type.
+`choreographers`, `key_moves`, and `vibes` are not columns on `dances` itself - `useDances()`'s query adds each via its own correlated `json_group_array(...)` subquery (over `dances_choreographers`/`choreographers`, `dances_key_moves`/`key_moves`, and `dances_vibes`/`vibes` respectively), parsed client-side into a `string[]`. This result type (`DanceWithJoins`, in `DancesPage.columns.tsx`) is separate from the base `Dance` type.
 
 Built with TanStack Table v9's `useTable` API (`features: tableFeatures({...})`, `table.FlexRender`). `tableFeatures({})` is currently empty.
 
 **Editing** isn't built yet - `title` and every other field here are read-only. That lands with a dedicated detail view in a later phase.
+
+## Deployment
+
+Deployed to Vercel. The repo root isn't the Vite app - the Vercel project's **Settings → General → Root Directory** is set to `web`, and `vercel` CLI commands (`vercel link`, `vercel env`, etc.) must be run from inside `web/`, not the repo root. Environment variables (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_POWERSYNC_URL`) are configured directly in Vercel (dashboard or `vercel env add`), not GitHub Secrets.
 
 ## Testing
 

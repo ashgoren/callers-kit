@@ -21,8 +21,36 @@ const dances_choreographers = new Table({
   choreographer_id: column.text,
 })
 
-export const AppSchema = new Schema({ dances, choreographers, dances_choreographers })
+const key_moves = new Table({
+  name: column.text,
+})
+
+const vibes = new Table({
+  name: column.text,
+})
+
+const dances_key_moves = new Table({
+  dance_id: column.text,
+  key_move_id: column.text,
+})
+
+const dances_vibes = new Table({
+  dance_id: column.text,
+  vibe_id: column.text,
+})
+
+export const AppSchema = new Schema({
+  dances,
+  choreographers,
+  dances_choreographers,
+  key_moves,
+  vibes,
+  dances_key_moves,
+  dances_vibes,
+})
 
 export type Database = (typeof AppSchema)['types']
 export type Dance = Database['dances']
 export type Choreographer = Database['choreographers']
+export type KeyMove = Database['key_moves']
+export type Vibe = Database['vibes']
