@@ -21,8 +21,9 @@ export function DancesPage() {
 
   return (
     <div className="p-4">
-      {/* Desktop/tablet-landscape (1024px+): full table. */}
-      <div className="hidden lg:block">
+      {/* TEMPORARY, for an iPad-portrait navigability check:
+          table forced on at every width, card fallback disabled below. */}
+      <div className="block">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -49,8 +50,8 @@ export function DancesPage() {
         </Table>
       </div>
 
-      {/* Mobile/tablet-portrait (<1024px): stacked cards. */}
-      <ul className="space-y-2 lg:hidden">
+      {/* Mobile/tablet-portrait (<1024px): stacked cards. TEMPORARY: disabled, see above. */}
+      <ul className="hidden space-y-2">
         {dances.map((dance) => (
           <li key={dance.id}>
             <DanceCard dance={dance} />
