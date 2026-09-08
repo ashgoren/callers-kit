@@ -1,13 +1,25 @@
 import { render, screen, within } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Dance } from '@/lib/powersync/schema'
 import { DancesPage } from './DancesPage'
 
-const { useQueryMock } = vi.hoisted(() => ({ useQueryMock: vi.fn() }))
+const { useQueryMock, useStatusMock } = vi.hoisted(() => ({
+  useQueryMock: vi.fn(),
+  useStatusMock: vi.fn(),
+}))
 
 vi.mock('@powersync/react', () => ({
   useQuery: useQueryMock,
+  useStatus: useStatusMock,
 }))
+
+// Most tests here aren't specifically about sync status - default to
+// "already synced" so isLoading behaves purely as a function of useQuery,
+// matching every existing test's assumptions. The one test that cares about
+// hasSynced overrides this itself.
+beforeEach(() => {
+  useStatusMock.mockReturnValue({ hasSynced: true })
+})
 
 // The mocked useQuery stands in for DancesPage.data.ts's raw SQL result, so
 // choreographers/key_moves/vibes here are the pre-parse JSON array *strings*
@@ -38,6 +50,21 @@ function makeDance(
 describe('DancesPage', () => {
   it('shows a loading state while the query is in flight', () => {
     useQueryMock.mockReturnValue({ data: [], isLoading: true })
+    render(<DancesPage />)
+
+    expect(screen.getByText('Loading…')).toBeInTheDocument()
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+  })
+
+  it('keeps showing the loading state after the local query resolves, until the initial sync has completed', () => {
+    // On a brand new local database (first login on a new device, or any
+    // Incognito session), the local query resolves immediately with zero
+    // rows before real data has streamed in from the server - useQuery's
+    // isLoading alone can't tell the difference between that and a
+    // genuinely empty account. hasSynced: false is what should keep the
+    // page in a loading state instead of flashing an empty table.
+    useQueryMock.mockReturnValue({ data: [], isLoading: false })
+    useStatusMock.mockReturnValue({ hasSynced: false })
     render(<DancesPage />)
 
     expect(screen.getByText('Loading…')).toBeInTheDocument()

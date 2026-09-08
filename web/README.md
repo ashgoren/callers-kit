@@ -72,6 +72,8 @@ Split into three sibling files: `DancesPage.columns.tsx` (column definitions + f
 
 `choreographers`, `key_moves`, and `vibes` are not columns on `dances` itself - `useDances()`'s query adds each via its own correlated `json_group_array(...)` subquery (over `dances_choreographers`/`choreographers`, `dances_key_moves`/`key_moves`, and `dances_vibes`/`vibes` respectively), parsed client-side into a `string[]`. This result type (`DanceWithJoins`, in `DancesPage.columns.tsx`) is separate from the base `Dance` type.
 
+`useDances()`'s `isLoading` combines `useQuery`'s own `isLoading` with `useStatus().hasSynced` - on a brand new local database (first login on a new browser), the local query resolves immediately with zero rows before the initial sync has actually finished, so `useQuery`'s `isLoading` alone would flash an empty table rather than staying in a loading state. `hasSynced` is a persisted fact about the local database, not per-page-load, so a returning user viewing already-synced offline data never sees this extra loading state.
+
 Built with TanStack Table v9's `useTable` API (`features: tableFeatures({...})`, `table.FlexRender`). `tableFeatures({})` is currently empty.
 
 **Editing** isn't built yet - `title` and every other field here are read-only. That lands with a dedicated detail view in a later phase.

@@ -1,4 +1,4 @@
-import { useQuery } from '@powersync/react'
+import { useQuery, useStatus } from '@powersync/react'
 import type { Dance } from '@/lib/powersync/schema'
 import type { DanceWithJoins } from './DancesPage.columns'
 
@@ -40,7 +40,14 @@ export function useDances(): { dances: DanceWithJoins[]; isLoading: boolean } {
   // Reactive: auto re-runs & re-renders whenever local SQLite `dances`,
   // `dances_choreographers`/`choreographers`, `dances_key_moves`/`key_moves`,
   // or `dances_vibes`/`vibes` tables change.
-  const { data: rawDances, isLoading } = useQuery<DanceQueryRow>(DANCES_QUERY)
+  const { data: rawDances, isLoading: queryLoading } = useQuery<DanceQueryRow>(DANCES_QUERY)
+  const { hasSynced } = useStatus()
+
+  // useQuery's isLoading only reflects whether the LOCAL query has run once,
+  // not whether the initial sync from the server has finished
+  // Without also checking hasSynced, the table would show no dances
+  // for a moment rather than staying in a loading state.
+  const isLoading = queryLoading || !hasSynced
 
   // Parsed once here rather than in each cell renderer. No useMemo needed -
   // React Compiler auto-memoizes this the same way, keyed on rawDances.
