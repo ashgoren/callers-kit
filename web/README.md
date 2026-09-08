@@ -80,6 +80,8 @@ Built with TanStack Table v9's `useTable` API (`features: tableFeatures({...})`,
 
 Deployed to Vercel. The repo root isn't the Vite app - the Vercel project's **Settings → General → Root Directory** is set to `web`, and `vercel` CLI commands (`vercel link`, `vercel env`, etc.) must be run from inside `web/`, not the repo root. Environment variables (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_POWERSYNC_URL`) are configured directly in Vercel (dashboard or `vercel env add`), not GitHub Secrets.
 
+**Env vars are Production-scoped only** - a Preview deployment (e.g. from a non-`main` branch) will build successfully but fail to reach Supabase/PowerSync at runtime, since Vite bakes these in at build time from whatever scope the build environment provides. Add Preview scope (`vercel env add <name> preview`, same values as Production).
+
 ## Testing
 
 **Vitest** (`pnpm test` / `pnpm test:watch`) - unit tests, colocated next to source. `vite.config.ts` splits tests by extension: plain `*.test.ts` files run under a `node` project (no DOM needed, faster), while `*.test.tsx` files run under a `jsdom` project with React Testing Library, via a shared `src/test-setup.ts`. Each test file's own name and comments document what it covers.
