@@ -21,6 +21,11 @@ export const db = new PowerSyncDatabase({
     // platform for this app, not an afterthought. The one gap is Safari
     // Private Browsing, which doesn't support OPFS at all; no fallback to
     // IDBBatchAtomicVFS is implemented for that case yet.
+    //
+    // (A Safari-slowness investigation - initial sync taking 15-30s in
+    // Safari vs ~1s in Chrome & Firefox on the same device & network - tested
+    // AccessHandlePoolVFS and IDBBatchAtomicVFS here too. Both landed in the
+    // same 20s range, ruling out VFS/storage-backend choice as the cause.)
     vfs: WASQLiteVFS.OPFSCoopSyncVFS,
   },
 })
