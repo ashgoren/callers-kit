@@ -1,7 +1,8 @@
+import { Fragment } from 'react'
 import { useTable } from '@tanstack/react-table'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { columns, features, formatDate, formatFormation } from './DancesPage.columns'
-import type { DanceWithChoreographers } from './DancesPage.columns'
+import { columns, danceFields, features } from './DancesPage.columns'
+import type { DanceWithJoins } from './DancesPage.columns'
 import { useDances } from './DancesPage.data'
 
 export function DancesPage() {
@@ -60,27 +61,24 @@ export function DancesPage() {
   )
 }
 
-function DanceCard({ dance }: { dance: DanceWithChoreographers }) {
+// Derives its fields from the same danceFields array the table columns use.
+// We override the title field display and filter it out of the generic loop.
+function DanceCard({ dance }: { dance: DanceWithJoins }) {
+  const titleField = danceFields.find((field) => field.key === 'title')!
+
   return (
     <div className="rounded-lg border p-3">
-      <p className="text-sm font-medium">
-        {dance.title || <span className="text-muted-foreground">Untitled</span>}
-      </p>
+      <p className="text-sm font-medium">{titleField.render(dance.title)}</p>
       <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-        <dt className="text-muted-foreground">Difficulty</dt>
-        <dd>{dance.difficulty ?? '—'}</dd>
-        <dt className="text-muted-foreground">Formation</dt>
-        <dd>{formatFormation(dance.formation)}</dd>
-        <dt className="text-muted-foreground">Choreographers</dt>
-        <dd>{dance.choreographers.length > 0 ? dance.choreographers.join(', ') : '—'}</dd>
-        <dt className="text-muted-foreground">Notes</dt>
-        <dd className="truncate" title={dance.notes ?? undefined}>
-          {dance.notes ?? '—'}
-        </dd>
-        <dt className="text-muted-foreground">Created</dt>
-        <dd>{formatDate(dance.created_at)}</dd>
-        <dt className="text-muted-foreground">Updated</dt>
-        <dd>{formatDate(dance.updated_at)}</dd>
+        {danceFields
+          .filter((field) => field.key !== 'title')
+          .map((field) => (
+            <Fragment key={field.key}>
+              <dt className="text-muted-foreground">{field.label}</dt>
+              {/* min-w-0 so the value can shrink to fit the card's width, so truncate works */}
+              <dd className="min-w-0">{(field.cardRender ?? field.render)(dance[field.key])}</dd>
+            </Fragment>
+          ))}
       </dl>
     </div>
   )

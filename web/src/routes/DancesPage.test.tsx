@@ -57,7 +57,7 @@ describe('DancesPage', () => {
     expect(notesCell).toHaveAttribute('title', 'A classic.')
   })
 
-  it('shows placeholders for null difficulty/formation/notes and an Untitled fallback for an empty title', () => {
+  it('shows placeholders for null/empty title, difficulty, formation, and notes', () => {
     useQueryMock.mockReturnValue({
       data: [makeDance({ title: '', difficulty: null, formation: null, notes: null })],
       isLoading: false,
@@ -65,10 +65,13 @@ describe('DancesPage', () => {
     render(<DancesPage />)
 
     const table = screen.getByRole('table')
-    const row = within(table).getByText('Untitled').closest('tr')!
-    // difficulty, formation, and notes are all null, plus the default empty
-    // choreographers list from makeDance() - four '-' cells
-    expect(within(row).getAllByText('—')).toHaveLength(4)
+    // created_at isn't overridden, so it's the one non-empty field left to
+    // find this row by - title itself now renders '—' the same as the rest,
+    // so it can't be used to locate the row anymore.
+    const row = within(table).getByRole('row', { name: /1\/15\/26/ })
+    // title, difficulty, formation, and notes are all null/empty, plus the
+    // default empty choreographers list from makeDance() - five '—' cells
+    expect(within(row).getAllByText('—')).toHaveLength(5)
   })
 
   it('joins multiple choreographer names with ", ", and shows a placeholder when there are none', () => {
