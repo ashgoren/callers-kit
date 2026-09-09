@@ -1,4 +1,6 @@
 import {
+  columnResizingFeature,
+  columnSizingFeature,
   columnVisibilityFeature,
   createColumnHelper,
   createSortedRowModel,
@@ -62,6 +64,11 @@ interface DanceField<K extends keyof DanceWithJoins = keyof DanceWithJoins> {
   // satisfy at once, so `any` here is the actual correct tool.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   sortFn?: (rowA: any, rowB: any, columnId: string) => number
+  // Falls back to the defaultColumn sizes set on useTable() in DancesPage.tsx
+  // - only set here for fields that clearly want to start wider or narrower.
+  size?: number
+  minSize?: number
+  maxSize?: number
 }
 
 // This exists purely to help TypeScript infer the generic type parameter K from the field's key.
@@ -78,12 +85,16 @@ export const danceFields: DanceField[] = [
     // Empty string reads the same as "missing" here - both sort to the end.
     sortValue: (value) => value || null,
     sortFn: sortFn_alphanumeric,
+    size: 250,
+    minSize: 120,
   }),
   defineField({
     key: 'difficulty',
     label: 'Difficulty',
     render: (value) => (value === null ? mutedPlaceholder : value),
     sortFn: sortFn_basic,
+    size: 85,
+    minSize: 85,
   }),
   defineField({
     key: 'formation',
@@ -92,6 +103,8 @@ export const danceFields: DanceField[] = [
     // Sorts by the same stripped-prefix string it displays, not raw enum value.
     sortValue: (value) => (value === null ? null : formatFormation(value)),
     sortFn: sortFn_alphanumeric,
+    size: 95,
+    minSize: 95,
   }),
   defineField({
     key: 'choreographers',
@@ -99,6 +112,8 @@ export const danceFields: DanceField[] = [
     render: renderTagList,
     sortValue: (value) => sortAlphabetically(value)[0] ?? null, // first choreographer alphabetically
     sortFn: sortFn_alphanumeric,
+    size: 170,
+    minSize: 120,
   }),
   defineField({
     key: 'key_moves',
@@ -106,6 +121,7 @@ export const danceFields: DanceField[] = [
     render: renderTagList,
     sortValue: (value) => sortAlphabetically(value)[0] ?? null, // first key_move alphabetically
     sortFn: sortFn_alphanumeric,
+    minSize: 95,
   }),
   defineField({
     key: 'vibes',
@@ -113,34 +129,47 @@ export const danceFields: DanceField[] = [
     render: renderTagList,
     sortValue: (value) => sortAlphabetically(value)[0] ?? null, // first vibe alphabetically
     sortFn: sortFn_alphanumeric,
+    size: 90,
+    minSize: 60,
   }),
   defineField({
     key: 'notes',
     label: 'Notes',
-    render: (value) => value ? <span className="block max-w-xs truncate" title={value}>{value}</span> : mutedPlaceholder,
+    render: (value) => value ? <span title={value}>{value}</span> : mutedPlaceholder,
     cardRender: (value) => value ? <span className="block truncate" title={value}>{value}</span> : mutedPlaceholder,
     sortValue: (value) => value || null, // sorts to the end if missing or empty
     sortFn: sortFn_alphanumeric,
+    size: 260,
+    minSize: 70,
+    maxSize: 500,
   }),
   defineField({
     key: 'created_at',
     label: 'Created',
     render: (value) => (value === null ? mutedPlaceholder : formatDate(value)),
     sortFn: sortFn_basic, // sorts by raw ISO timestamp
+    size: 80,
+    minSize: 80,
   }),
   defineField({
     key: 'updated_at',
     label: 'Updated',
     render: (value) => (value === null ? mutedPlaceholder : formatDate(value)),
     sortFn: sortFn_basic, // sorts by raw ISO timestamp
+    size: 80,
+    minSize: 80,
   }),
 ]
 
-// Column hiding and sorting are registered so far - reorder/resize/pin next
+// Only the features this table actually uses are registered - TanStack Table
+// v9 only installs a feature's state/APIs once it's registered here, so this
+// list is deliberately not stockFeatures (which would register everything).
 export const features = tableFeatures({
   columnVisibilityFeature,
   rowSortingFeature,
   sortedRowModel: createSortedRowModel(),
+  columnSizingFeature,
+  columnResizingFeature,
 })
 
 const columnHelper = createColumnHelper<typeof features, DanceWithJoins>()
@@ -167,6 +196,9 @@ export const columns = columnHelper.columns(
         // machinery, and shouldn't also change what's rendered.
         cell: (info) => field.render(info.row.original[field.key]),
         enableHiding: field.enableHiding,
+        size: field.size,
+        minSize: field.minSize,
+        maxSize: field.maxSize,
         sortFn: field.sortFn,
         // Missing values (now undefined, see above) always sort last,
         // regardless of ascending vs. descending - blank cells staying put

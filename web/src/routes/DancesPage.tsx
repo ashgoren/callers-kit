@@ -18,7 +18,9 @@ import { useDances } from './DancesPage.data'
 export function DancesPage() {
   const { dances, isLoading } = useDances()
 
-  // Column layout will eventually persist to a synced user_table_preferences row.
+  // Controlled state (not internal), so it can be read/written from outside
+  // the table - currently just this component, but the same state+onChange
+  // shape a synced backing store would use.
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({})
   const [sorting, setSorting] = useState<SortingState>([])
 
@@ -33,6 +35,8 @@ export function DancesPage() {
     enableMultiSort: false, // single-column sort only
     enableSortingRemoval: true, // third click clears sort
     sortDescFirst: false, // first click sorts ascending
+    defaultColumn: { size: 150, minSize: 80, maxSize: 400 },
+    columnResizeMode: 'onChange', // live width updates while dragging, not onEnd
   })
 
   if (isLoading) {
@@ -47,11 +51,19 @@ export function DancesPage() {
           <ColumnsMenu table={table} />
         </div>
         <Table>
+          {/* One <col> per visible column, carrying its resizable width -
+              table-layout: fixed (table.tsx) only enforces widths declared
+              this way, not inline styles on individual cells. */}
+          <colgroup>
+            {table.getVisibleLeafColumns().map((column) => (
+              <col key={column.id} style={{ width: column.getSize() }} />
+            ))}
+          </colgroup>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <TableHead key={header.id} className="relative">
                     {/* The whole header is the sort toggle, not a separate icon */}
                     {header.isPlaceholder ? null : (
                       <button
@@ -64,6 +76,21 @@ export function DancesPage() {
                         {header.column.getIsSorted() === 'asc' && <ArrowUp className="size-3.5" />}
                         {header.column.getIsSorted() === 'desc' && <ArrowDown className="size-3.5" />}
                       </button>
+                    )}
+                    {header.column.getCanResize() && (
+                      // touch-none (touch-action: none) stops the browser's own touch scroll/zoom from fighting the drag on tablet -
+                      // both mousedown and touchstart are wired to the same handler, since it internally branches on which one fired.
+                      // At rest, only the centered w-px child is colored, so the divider reads as a thin line rather than a thick
+                      // block; on hover the full w-1.5 hit area itself highlights, making the whole grabbable zone obvious. active:
+                      // (not just hover:) covers touch too - it fires on press regardless of input type, confirming the right spot
+                      // was grabbed before any drag movement, which matters most on touch where there's no hover state at all.
+                      <div
+                        onMouseDown={header.getResizeHandler()}
+                        onTouchStart={header.getResizeHandler()}
+                        className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize touch-none select-none hover:bg-primary/50 active:bg-primary/50"
+                      >
+                        <div className="mx-auto h-full w-px bg-border" />
+                      </div>
                     )}
                   </TableHead>
                 ))}

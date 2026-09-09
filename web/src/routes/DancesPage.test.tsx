@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import type { Dance } from '@/lib/powersync/schema'
@@ -418,6 +418,57 @@ describe('DancesPage', () => {
 
       expect(cardTitlesInOrder()).toEqual(['Charlie', 'Alpha'])
       expect(screen.getByRole('button', { name: 'Sort descending' })).toBeInTheDocument()
+    })
+  })
+
+  describe('column resizing', () => {
+    // This verifies the static wiring: a handle exists per column, and the
+    // widths declared in DancesPage.columns.tsx/DancesPage.tsx actually
+    // reached the rendered <colgroup>. The actual drag gesture is a
+    // separate test below - TanStack's resize math is pure clientX
+    // arithmetic (no getBoundingClientRect/real layout involved), so it's
+    // genuinely exercisable here, not just this static setup.
+    it('renders a resize handle and a matching column width for every visible column', () => {
+      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      const table = screen.getByRole('table')
+      const columnCount = within(table).getAllByRole('columnheader').length
+      expect(table.querySelectorAll('.cursor-col-resize')).toHaveLength(columnCount)
+
+      const widths = Array.from(table.querySelectorAll('col')).map((col) => col.style.width)
+      // Title and Difficulty each set their own explicit size; Key Moves
+      // falls through to the table-wide defaultColumn size instead.
+      expect(widths).toContain('250px')
+      expect(widths).toContain('85px')
+      expect(widths).toContain('150px')
+    })
+
+    it('grows a column by the drag distance when its resize handle is dragged', () => {
+      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      const table = screen.getByRole('table')
+      const difficultyHeader = screen.getByRole('columnheader', { name: 'Difficulty' })
+      const handle = difficultyHeader.querySelector('.cursor-col-resize')!
+
+      // The resize handler tracks the raw clientX delta between mousedown
+      // and mousemove (see columnResizingFeature.utils.js) - it never reads
+      // real layout, so a 100px rightward drag should grow the column by
+      // exactly 100px regardless of where these coordinates actually fall
+      // on jsdom's fake screen.
+      fireEvent.mouseDown(handle, { clientX: 300 })
+      fireEvent.mouseMove(document, { clientX: 400 })
+      fireEvent.mouseUp(document, { clientX: 400 })
+
+      // Finds Difficulty's actual position among the rendered headers rather
+      // than assuming one - the <colgroup> and header row are built from
+      // the same visible-columns list in the same render, so their indices
+      // always line up regardless of column order.
+      const headers = within(table).getAllByRole('columnheader')
+      const difficultyIndex = headers.indexOf(difficultyHeader)
+      const difficultyColWidth = table.querySelectorAll('col')[difficultyIndex].style.width
+      expect(difficultyColWidth).toBe('185px') // 85px starting size + 100px drag
     })
   })
 })

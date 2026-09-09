@@ -9,7 +9,11 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
     >
       <table
         data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
+        // table-fixed so a <colgroup>'s per-column widths (set by consumers
+        // doing column resizing) are actually enforced - under the default
+        // table-layout: auto, per-cell width is only ever a suggestion and
+        // gets overridden by whichever row has the widest content.
+        className={cn("w-full table-fixed caption-bottom text-sm", className)}
         {...props}
       />
     </div>
@@ -66,8 +70,17 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   return (
     <th
       data-slot="table-head"
+      // truncate (not just whitespace-nowrap), so a resized-narrow column
+      // clips overflowing content instead of visually bleeding into the
+      // next cell - table-layout: fixed (see Table above) means the width
+      // set on a resized column is now real and enforceable, so this needs
+      // to actually be honored, not just suggested. (Imperfect for a header
+      // whose content is a flex layout - the button/arrow-icon markup
+      // inside can still hard-clip without a "…", since flex children don't
+      // shrink below their content size by default - low-stakes since
+      // header labels are short static app copy, not open-ended user data.)
       className={cn(
-        "h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground has-[[role=checkbox]]:pr-0",
+        "h-10 truncate px-2 text-left align-middle font-medium text-foreground has-[[role=checkbox]]:pr-0",
         className
       )}
       {...props}
@@ -80,7 +93,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
     <td
       data-slot="table-cell"
       className={cn(
-        "p-2 align-middle whitespace-nowrap has-[[role=checkbox]]:pr-0",
+        "truncate p-2 align-middle has-[[role=checkbox]]:pr-0",
         className
       )}
       {...props}
