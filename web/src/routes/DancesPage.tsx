@@ -81,13 +81,15 @@ export function DancesPage() {
                       // touch-none (touch-action: none) stops the browser's own touch scroll/zoom from fighting the drag on tablet -
                       // both mousedown and touchstart are wired to the same handler, since it internally branches on which one fired.
                       // At rest, only the centered w-px child is colored, so the divider reads as a thin line rather than a thick
-                      // block; on hover the full w-1.5 hit area itself highlights, making the whole grabbable zone obvious. active:
-                      // (not just hover:) covers touch too - it fires on press regardless of input type, confirming the right spot
-                      // was grabbed before any drag movement, which matters most on touch where there's no hover state at all.
+                      // block; on hover the full hit area highlights, making the whole grabbable zone obvious. active: (not just
+                      // hover:) covers touch too - it fires on press regardless of input type, confirming the right spot was
+                      // grabbed before any drag movement, which matters most on touch where there's no hover state at all.
+                      // pointer-coarse: widens the hit area for touch specifically (a fingertip is far less precise than a mouse
+                      // cursor) without affecting the mouse/trackpad experience, which stays at the original, narrower w-1.5.
                       <div
                         onMouseDown={header.getResizeHandler()}
                         onTouchStart={header.getResizeHandler()}
-                        className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize touch-none select-none hover:bg-primary/50 active:bg-primary/50"
+                        className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize touch-none select-none hover:bg-primary/50 active:bg-primary/50 pointer-coarse:w-4"
                       >
                         <div className="mx-auto h-full w-px bg-border" />
                       </div>

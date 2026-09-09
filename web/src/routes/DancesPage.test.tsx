@@ -437,11 +437,10 @@ describe('DancesPage', () => {
       expect(table.querySelectorAll('.cursor-col-resize')).toHaveLength(columnCount)
 
       const widths = Array.from(table.querySelectorAll('col')).map((col) => col.style.width)
-      // Title and Difficulty each set their own explicit size; Key Moves
-      // falls through to the table-wide defaultColumn size instead.
+      // Title, Choreographers, and Difficulty each set their own explicit size in danceFields.
       expect(widths).toContain('250px')
-      expect(widths).toContain('85px')
       expect(widths).toContain('150px')
+      expect(widths).toContain('105px')
     })
 
     it('grows a column by the drag distance when its resize handle is dragged', () => {
@@ -468,7 +467,7 @@ describe('DancesPage', () => {
       const headers = within(table).getAllByRole('columnheader')
       const difficultyIndex = headers.indexOf(difficultyHeader)
       const difficultyColWidth = table.querySelectorAll('col')[difficultyIndex].style.width
-      expect(difficultyColWidth).toBe('185px') // 85px starting size + 100px drag
+      expect(difficultyColWidth).toBe('205px') // 105px starting size + 100px drag
     })
   })
 })
