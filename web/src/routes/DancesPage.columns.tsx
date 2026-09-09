@@ -86,15 +86,42 @@ export const danceFields: DanceField[] = [
     sortValue: (value) => value || null,
     sortFn: sortFn_alphanumeric,
     size: 250,
-    minSize: 120,
+    minSize: 80,
+  }),
+  defineField({
+    key: 'choreographers',
+    label: 'Choreographers',
+    render: renderTagList,
+    sortValue: (value) => sortAlphabetically(value)[0] ?? null, // first choreographer alphabetically
+    sortFn: sortFn_alphanumeric,
+    size: 150,
+    minSize: 80,
+  }),
+  defineField({
+    key: 'key_moves',
+    label: 'Key Moves',
+    render: renderTagList,
+    sortValue: (value) => sortAlphabetically(value)[0] ?? null, // first key_move alphabetically
+    sortFn: sortFn_alphanumeric,
+    size: 105,
+    minSize: 80,
+  }),
+  defineField({
+    key: 'vibes',
+    label: 'Vibes',
+    render: renderTagList,
+    sortValue: (value) => sortAlphabetically(value)[0] ?? null, // first vibe alphabetically
+    sortFn: sortFn_alphanumeric,
+    size: 105,
+    minSize: 80,
   }),
   defineField({
     key: 'difficulty',
     label: 'Difficulty',
     render: (value) => (value === null ? mutedPlaceholder : value),
     sortFn: sortFn_basic,
-    size: 85,
-    minSize: 85,
+    size: 105,
+    minSize: 80,
   }),
   defineField({
     key: 'formation',
@@ -103,34 +130,8 @@ export const danceFields: DanceField[] = [
     // Sorts by the same stripped-prefix string it displays, not raw enum value.
     sortValue: (value) => (value === null ? null : formatFormation(value)),
     sortFn: sortFn_alphanumeric,
-    size: 95,
-    minSize: 95,
-  }),
-  defineField({
-    key: 'choreographers',
-    label: 'Choreographers',
-    render: renderTagList,
-    sortValue: (value) => sortAlphabetically(value)[0] ?? null, // first choreographer alphabetically
-    sortFn: sortFn_alphanumeric,
-    size: 170,
-    minSize: 120,
-  }),
-  defineField({
-    key: 'key_moves',
-    label: 'Key Moves',
-    render: renderTagList,
-    sortValue: (value) => sortAlphabetically(value)[0] ?? null, // first key_move alphabetically
-    sortFn: sortFn_alphanumeric,
-    minSize: 95,
-  }),
-  defineField({
-    key: 'vibes',
-    label: 'Vibes',
-    render: renderTagList,
-    sortValue: (value) => sortAlphabetically(value)[0] ?? null, // first vibe alphabetically
-    sortFn: sortFn_alphanumeric,
-    size: 90,
-    minSize: 60,
+    size: 105,
+    minSize: 80,
   }),
   defineField({
     key: 'notes',
@@ -140,7 +141,7 @@ export const danceFields: DanceField[] = [
     sortValue: (value) => value || null, // sorts to the end if missing or empty
     sortFn: sortFn_alphanumeric,
     size: 260,
-    minSize: 70,
+    minSize: 80,
     maxSize: 500,
   }),
   defineField({
@@ -148,7 +149,7 @@ export const danceFields: DanceField[] = [
     label: 'Created',
     render: (value) => (value === null ? mutedPlaceholder : formatDate(value)),
     sortFn: sortFn_basic, // sorts by raw ISO timestamp
-    size: 80,
+    size: 90,
     minSize: 80,
   }),
   defineField({
@@ -156,7 +157,7 @@ export const danceFields: DanceField[] = [
     label: 'Updated',
     render: (value) => (value === null ? mutedPlaceholder : formatDate(value)),
     sortFn: sortFn_basic, // sorts by raw ISO timestamp
-    size: 80,
+    size: 90,
     minSize: 80,
   }),
 ]
