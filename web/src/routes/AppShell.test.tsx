@@ -56,12 +56,12 @@ describe('AppShell', () => {
     expect(screen.getByText('Page content')).toBeInTheDocument()
   })
 
-  it('shows a plain loading message instead of the route outlet until the initial sync completes', () => {
+  it('shows a loading spinner instead of the route outlet until the initial sync completes', () => {
     useStatusMock.mockReturnValue({ hasSynced: false })
     renderAppShell()
 
     expect(screen.queryByText('Page content')).not.toBeInTheDocument()
-    expect(screen.getByText('Loading…')).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument()
   })
 
   it('reveals the detailed slow-sync explanation only once loading has taken a few seconds', () => {
@@ -73,7 +73,7 @@ describe('AppShell', () => {
     useStatusMock.mockReturnValue({ hasSynced: false })
     renderAppShell()
 
-    expect(screen.getByText('Loading…')).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument()
     expect(screen.queryByText(/this can take up to a minute/)).not.toBeInTheDocument()
 
     act(() => {

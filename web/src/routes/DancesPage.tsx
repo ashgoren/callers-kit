@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTable } from '@tanstack/react-table'
+import { Spinner } from '@/components/ui/spinner'
 import { useDances } from './DancesPage.data'
 import { columns, features } from './DancesPage.columns'
 import { TableView } from './DancesPage.TableView'
@@ -33,7 +34,11 @@ export function DancesPage() {
   })
 
   if (isLoading) {
-    return <p className="text-muted-foreground p-4 text-center text-sm">Loading…</p>
+    return (
+      <div className="p-4 text-center">
+        <Spinner className="size-6 text-muted-foreground" />
+      </div>
+    )
   }
 
   return (

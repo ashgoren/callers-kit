@@ -13,6 +13,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Spinner } from '@/components/ui/spinner'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { Theme } from '@/contexts/ThemeContext'
@@ -41,7 +42,7 @@ export function AppShell() {
   // hasSynced starts undefined for a moment on every page load - even on an
   // already-synced device - while PowerSync reads its local, offline sync
   // status (a local-only SQL query, no network round trip needed). That
-  // resolves almost instantly on a normal refresh, so a plain "Loading…" is
+  // resolves almost instantly on a normal refresh, so just a spinner is
   // shown at first; the more detailed explanation only appears once loading
   // has actually taken a few seconds, which only happens for a genuinely
   // slow first sync (or a real connection problem) - never for that brief,
@@ -102,11 +103,14 @@ export function AppShell() {
         {hasSynced ? (
           <Outlet />
         ) : (
-          <p className="text-muted-foreground p-4 text-center text-sm">
-            {showSlowSyncMessage
-              ? 'Still loading your data - this can take up to a minute on a new device…'
-              : 'Loading…'}
-          </p>
+          <div className="flex flex-col items-center gap-2 p-4 text-center">
+            <Spinner className="size-6 text-muted-foreground" />
+            {showSlowSyncMessage && (
+              <p className="text-muted-foreground text-sm">
+                Still loading your data - this can take up to a minute on a new device…
+              </p>
+            )}
+          </div>
         )}
       </main>
     </div>

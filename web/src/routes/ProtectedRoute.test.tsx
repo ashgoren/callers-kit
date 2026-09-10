@@ -38,7 +38,7 @@ describe('ProtectedRoute', () => {
     useAuthMock.mockReturnValue({ user: null, authLoading: true })
     renderProtectedRoute()
 
-    expect(screen.getByText('Loading…')).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument()
   })
 
   it('redirects to /signin when not authenticated', () => {

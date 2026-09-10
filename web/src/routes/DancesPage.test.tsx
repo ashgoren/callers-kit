@@ -80,7 +80,7 @@ describe('DancesPage', () => {
     useQueryMock.mockReturnValue({ data: [], isLoading: true })
     render(<DancesPage />)
 
-    expect(screen.getByText('Loading…')).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
 
