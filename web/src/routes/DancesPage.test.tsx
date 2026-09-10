@@ -470,4 +470,46 @@ describe('DancesPage', () => {
       expect(difficultyColWidth).toBe('205px') // 105px starting size + 100px drag
     })
   })
+
+  describe('column pinning', () => {
+    it('pins Title by default (shown as "Unpin"), with every other column offered as "Pin"', async () => {
+      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Columns' }))
+
+      expect(await screen.findByRole('button', { name: 'Unpin Title' })).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: 'Pin Difficulty' })).toBeInTheDocument()
+    })
+
+    it('sticky-positions Title by default, and removes that once unpinned', async () => {
+      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      const titleHeader = screen.getByRole('columnheader', { name: 'Title' })
+      expect(titleHeader.style.position).toBe('sticky')
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Columns' }))
+      await user.click(await screen.findByRole('button', { name: 'Unpin Title' }))
+
+      expect(titleHeader.style.position).not.toBe('sticky')
+      expect(await screen.findByRole('button', { name: 'Pin Title' })).toBeInTheDocument()
+    })
+
+    it('sticky-positions a column once its Pin button is clicked', async () => {
+      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      const difficultyHeader = screen.getByRole('columnheader', { name: 'Difficulty' })
+      expect(difficultyHeader.style.position).not.toBe('sticky')
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Columns' }))
+      await user.click(await screen.findByRole('button', { name: 'Pin Difficulty' }))
+
+      expect(difficultyHeader.style.position).toBe('sticky')
+    })
+  })
 })

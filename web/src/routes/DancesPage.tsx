@@ -1,7 +1,7 @@
 import { Fragment, useState } from 'react'
 import { useTable } from '@tanstack/react-table'
-import type { ColumnVisibilityState, SortingState } from '@tanstack/react-table'
-import { ArrowDown, ArrowUp } from 'lucide-react'
+import type { ColumnPinningState, ColumnVisibilityState, SortingState } from '@tanstack/react-table'
+import { ArrowDown, ArrowUp, Pin, PinOff } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -15,23 +15,35 @@ import { columns, danceFields, features } from './DancesPage.columns'
 import type { DanceWithJoins } from './DancesPage.columns'
 import { useDances } from './DancesPage.data'
 
+// TanStack's pinning feature only computes which columns are pinned & px offset.
+// So we apply sticky CSS here, start is column.getStart('start'), the pinned column's
+// pixel offset from the left edge, accounting for any pinned columns before it.
+function pinnedCellStyle(isPinned: false | 'start' | 'end', start: number) {
+  if (!isPinned) return undefined
+  return {
+    position: 'sticky' as const,
+    insetInlineStart: isPinned === 'start' ? `${start}px` : undefined,
+    zIndex: 1,
+  }
+}
+
 export function DancesPage() {
   const { dances, isLoading } = useDances()
 
-  // Controlled state (not internal), so it can be read/written from outside
-  // the table - currently just this component, but the same state+onChange
-  // shape a synced backing store would use.
+  // Controlled state, so it can be read/written from outside the table.
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({})
   const [sorting, setSorting] = useState<SortingState>([])
+  const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({ start: ['title'], end: [] })
 
   const table = useTable({
     features,
     columns,
     data: dances,
     getRowId: (row) => row.id,
-    state: { columnVisibility, sorting },
+    state: { columnVisibility, sorting, columnPinning },
     onColumnVisibilityChange: setColumnVisibility,
     onSortingChange: setSorting,
+    onColumnPinningChange: setColumnPinning,
     enableMultiSort: false, // single-column sort only
     enableSortingRemoval: true, // third click clears sort
     sortDescFirst: false, // first click sorts ascending
@@ -63,7 +75,11 @@ export function DancesPage() {
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} className="relative">
+                  <TableHead
+                    key={header.id}
+                    className={header.column.getIsPinned() ? 'relative bg-background' : 'relative'}
+                    style={pinnedCellStyle(header.column.getIsPinned(), header.column.getStart('start'))}
+                  >
                     {/* The whole header is the sort toggle, not a separate icon */}
                     {header.isPlaceholder ? null : (
                       <button
@@ -101,10 +117,31 @@ export function DancesPage() {
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id}>
+              // group: lets a pinned cell's own background respond to this
+              // row being hovered (see the cell's group-hover: class below) -
+              // without it, the row's own hover:bg-muted/50 would visibly
+              // stop at the pinned column's edge, since that column's opaque
+              // background (needed so scrolled-past content doesn't show
+              // through it) would otherwise paint over the row's highlight.
+              <TableRow key={row.id} className="group">
                 {/* getVisibleCells, not getAllCells (which includes hidden columns) */}
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
+                  <TableCell
+                    key={cell.id}
+                    // A pinned cell needs its own opaque background so
+                    // scrolled-past content doesn't show through it - and
+                    // that hover tint has to stay fully opaque too
+                    // (bg-muted, no /50): group-hover: replaces bg-background
+                    // entirely while the row is hovered, so a translucent
+                    // hover color would make the pinned column see-through
+                    // to whatever had scrolled underneath it for exactly as
+                    // long as that row stayed hovered - the actual bug this
+                    // was built to fix. Unpinned cells don't need any of
+                    // this - there's nothing underneath them to hide, so
+                    // they just take the row's own hover:bg-muted/50.
+                    className={cell.column.getIsPinned() ? 'bg-background group-hover:bg-muted' : undefined}
+                    style={pinnedCellStyle(cell.column.getIsPinned(), cell.column.getStart('start'))}
+                  >
                     <table.FlexRender cell={cell} />
                   </TableCell>
                 ))}
@@ -130,7 +167,7 @@ export function DancesPage() {
 }
 
 function ColumnsMenu({ table }: { table: ReturnType<typeof useTable<typeof features, DanceWithJoins>> }) {
-  const hideableColumns = table.getAllLeafColumns().filter((column) => column.getCanHide())
+  const allColumns = table.getAllLeafColumns()
 
   return (
     <DropdownMenu>
@@ -139,20 +176,44 @@ function ColumnsMenu({ table }: { table: ReturnType<typeof useTable<typeof featu
       </DropdownMenuTrigger>
       {/* w-56 overrides the default w-(--anchor-width) */}
       <DropdownMenuContent align="end" className="w-56">
-        {hideableColumns.map((column) => {
+        {allColumns.map((column) => {
           // Reads the label from danceFields rather than column.columnDef.header.
           const field = danceFields.find((danceField) => danceField.key === column.id)
+          const label = field?.label ?? column.id
+          const isPinned = column.getIsPinned() === 'start'
 
           return (
-            <DropdownMenuCheckboxItem
-              key={column.id}
-              checked={column.getIsVisible()}
-              onCheckedChange={(checked) => {
-                column.toggleVisibility(checked)
-              }}
-            >
-              {field?.label ?? column.id}
-            </DropdownMenuCheckboxItem>
+            <div key={column.id} className="flex items-center">
+              {column.getCanHide() ? (
+                <DropdownMenuCheckboxItem
+                  className="flex-1"
+                  checked={column.getIsVisible()}
+                  onCheckedChange={(checked) => {
+                    column.toggleVisibility(checked)
+                  }}
+                >
+                  {label}
+                </DropdownMenuCheckboxItem>
+              ) : (
+                // Title: no visibility toggle (see the columns menu tests),
+                // but still needs the same label position as a real item so
+                // its pin toggle lines up with everyone else's.
+                <span className="flex-1 py-1 pl-1.5 text-sm">{label}</span>
+              )}
+              {column.getCanPin() && (
+                <button
+                  type="button"
+                  aria-label={isPinned ? `Unpin ${label}` : `Pin ${label}`}
+                  aria-pressed={isPinned}
+                  onClick={() => {
+                    column.pin(isPinned ? false : 'start')
+                  }}
+                  className="mr-1 shrink-0 rounded p-1 hover:bg-accent"
+                >
+                  {isPinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
+                </button>
+              )}
+            </div>
           )
         })}
       </DropdownMenuContent>
