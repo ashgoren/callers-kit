@@ -590,6 +590,28 @@ describe('DancesPage', () => {
       expect(titleHeader.style.insetInlineStart).toBe('0px')
       expect(difficultyHeader.style.insetInlineStart).toBe('250px')
     })
+
+    it('puts a divider on the last pinned column, in both the header and the body rows, as a persistent boundary between the frozen and scrollable regions', async () => {
+      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      const titleHeader = screen.getByRole('columnheader', { name: 'Title' })
+      const difficultyHeader = screen.getByRole('columnheader', { name: 'Difficulty' })
+      const titleCell = within(screen.getByRole('table')).getByText('Chorus Jig').closest('td')!
+      // Title is the only (and therefore last) pinned column by default.
+      expect(within(titleHeader).queryByTestId('pin-boundary-divider')).toBeInTheDocument()
+      expect(within(difficultyHeader).queryByTestId('pin-boundary-divider')).not.toBeInTheDocument()
+      expect(within(titleCell).queryByTestId('pin-boundary-divider')).toBeInTheDocument()
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Columns' }))
+      await user.click(await screen.findByRole('button', { name: 'Pin Difficulty' }))
+
+      // The divider follows whichever pinned column is now last - Difficulty,
+      // pinned second - not Title anymore.
+      expect(within(titleHeader).queryByTestId('pin-boundary-divider')).not.toBeInTheDocument()
+      expect(within(difficultyHeader).queryByTestId('pin-boundary-divider')).toBeInTheDocument()
+    })
   })
 
   describe('column header context menu', () => {

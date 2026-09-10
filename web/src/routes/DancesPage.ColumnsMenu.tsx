@@ -56,7 +56,7 @@ export function ColumnsMenu({ table }: { table: TableInstance }) {
   }
 
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger className="rounded-md border px-2 py-1 text-sm hover:bg-muted">
         Columns
       </DropdownMenuTrigger>

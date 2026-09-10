@@ -17,6 +17,10 @@ function pinnedCellStyle(isPinned: false | 'start' | 'end', start: number) {
   }
 }
 
+function PinBoundaryDivider() {
+  return <div data-testid="pin-boundary-divider" className="pointer-events-none absolute inset-y-0 right-0 w-0.5 bg-border" />
+}
+
 export function TableView({ table }: { table: TableInstance }) {
   return (
     <>
@@ -92,6 +96,7 @@ export function TableView({ table }: { table: TableInstance }) {
                       )}
                     </ContextMenuContent>
                   </ContextMenu>
+                  {header.column.getIsLastColumn('start') && <PinBoundaryDivider />}
                 </TableHead>
               ))}
             </TableRow>
@@ -112,6 +117,7 @@ export function TableView({ table }: { table: TableInstance }) {
                   style={pinnedCellStyle(cell.column.getIsPinned(), cell.column.getStart('start'))}
                 >
                   <table.FlexRender cell={cell} />
+                  {cell.column.getIsLastColumn('start') && <PinBoundaryDivider />}
                 </TableCell>
               ))}
             </TableRow>
