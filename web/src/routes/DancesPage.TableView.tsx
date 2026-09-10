@@ -1,4 +1,5 @@
 import { ArrowDown, ArrowUp } from 'lucide-react'
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ColumnsMenu } from './DancesPage.ColumnsMenu'
 import type { TableInstance } from './DancesPage.columns'
@@ -46,28 +47,51 @@ export function TableView({ table }: { table: TableInstance }) {
                   className={header.column.getIsPinned() ? 'relative bg-background' : 'relative'}
                   style={pinnedCellStyle(header.column.getIsPinned(), header.column.getStart('start'))}
                 >
-                  {/* The whole header is the sort toggle, not a separate icon */}
-                  {header.isPlaceholder ? null : (
-                    <button
-                      type="button"
-                      className="flex w-full items-center gap-1 text-left enabled:cursor-pointer disabled:cursor-default"
-                      onClick={header.column.getToggleSortingHandler()}
-                      disabled={!header.column.getCanSort()}
-                    >
-                      <table.FlexRender header={header} />
-                      {header.column.getIsSorted() === 'asc' && <ArrowUp className="size-3.5" />}
-                      {header.column.getIsSorted() === 'desc' && <ArrowDown className="size-3.5" />}
-                    </button>
-                  )}
-                  {header.column.getCanResize() && (
-                    <div
-                      onMouseDown={header.getResizeHandler()}
-                      onTouchStart={header.getResizeHandler()}
-                      className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize touch-none select-none hover:bg-primary/50 active:bg-primary/50 pointer-coarse:w-4"
-                    >
-                      <div className="mx-auto h-full w-px bg-border" />
-                    </div>
-                  )}
+                  <ContextMenu>
+                    <ContextMenuTrigger className="contents">
+                      {/* Click header for sort */}
+                      {header.isPlaceholder ? null : (
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-1 text-left enabled:cursor-pointer disabled:cursor-default"
+                          onClick={header.column.getToggleSortingHandler()}
+                          disabled={!header.column.getCanSort()}
+                        >
+                          <table.FlexRender header={header} />
+                          {header.column.getIsSorted() === 'asc' && <ArrowUp className="size-3.5" />}
+                          {header.column.getIsSorted() === 'desc' && <ArrowDown className="size-3.5" />}
+                        </button>
+                      )}
+                      {/* Drag to resize */}
+                      {header.column.getCanResize() && (
+                        <div
+                          onMouseDown={header.getResizeHandler()}
+                          onTouchStart={header.getResizeHandler()}
+                          className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize touch-none select-none hover:bg-primary/50 active:bg-primary/50 pointer-coarse:w-4"
+                        >
+                          <div className="mx-auto h-full w-px bg-border" />
+                        </div>
+                      )}
+                    </ContextMenuTrigger>
+                    {/* Right-click context menu for hide & pin */}
+                    <ContextMenuContent>
+                      {header.column.getCanHide() && (
+                        <ContextMenuItem
+                          disabled={header.column.getIsVisible() && table.getVisibleLeafColumns().length === 1}
+                          onClick={() => header.column.toggleVisibility(false)}
+                        >
+                          Hide
+                        </ContextMenuItem>
+                      )}
+                      {header.column.getCanPin() && (
+                        <ContextMenuItem
+                          onClick={() => header.column.pin(header.column.getIsPinned() === 'start' ? false : 'start')}
+                        >
+                          {header.column.getIsPinned() === 'start' ? 'Unpin' : 'Pin'}
+                        </ContextMenuItem>
+                      )}
+                    </ContextMenuContent>
+                  </ContextMenu>
                 </TableHead>
               ))}
             </TableRow>

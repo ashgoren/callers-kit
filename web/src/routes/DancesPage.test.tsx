@@ -592,6 +592,81 @@ describe('DancesPage', () => {
     })
   })
 
+  describe('column header context menu', () => {
+    it('hides a column via a right-click on its header', async () => {
+      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      const notesHeader = screen.getByRole('columnheader', { name: 'Notes' })
+      fireEvent.contextMenu(within(notesHeader).getByRole('button'))
+
+      const user = userEvent.setup()
+      await user.click(await screen.findByRole('menuitem', { name: 'Hide' }))
+
+      expect(screen.queryByRole('columnheader', { name: 'Notes' })).not.toBeInTheDocument()
+    })
+
+    it('offers Unpin (not Pin) for an already-pinned column, and unpins it on click', async () => {
+      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      // Title is pinned by default.
+      const titleHeader = screen.getByRole('columnheader', { name: 'Title' })
+      expect(titleHeader.style.position).toBe('sticky')
+      fireEvent.contextMenu(within(titleHeader).getByRole('button'))
+
+      expect(screen.queryByRole('menuitem', { name: 'Pin' })).not.toBeInTheDocument()
+      const user = userEvent.setup()
+      await user.click(await screen.findByRole('menuitem', { name: 'Unpin' }))
+
+      expect(titleHeader.style.position).not.toBe('sticky')
+    })
+
+    it('pins a column via a right-click on its header, matching the sticky style the manage-columns menu applies', async () => {
+      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      const difficultyHeader = screen.getByRole('columnheader', { name: 'Difficulty' })
+      expect(difficultyHeader.style.position).not.toBe('sticky')
+      fireEvent.contextMenu(within(difficultyHeader).getByRole('button'))
+
+      expect(screen.queryByRole('menuitem', { name: 'Unpin' })).not.toBeInTheDocument()
+      const user = userEvent.setup()
+      await user.click(await screen.findByRole('menuitem', { name: 'Pin' }))
+
+      expect(difficultyHeader.style.position).toBe('sticky')
+    })
+
+    it('disables Hide on the last remaining visible column, matching the manage-columns menu guard', async () => {
+      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      // Hide every column except Title via the manage-columns menu first.
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Columns' }))
+      for (const label of ['Difficulty', 'Formation', 'Choreographers', 'Key Moves', 'Vibes', 'Notes', 'Created', 'Updated']) {
+        await user.click(await screen.findByRole('switch', { name: label }))
+      }
+      await user.keyboard('{Escape}')
+
+      const titleHeader = screen.getByRole('columnheader', { name: 'Title' })
+      fireEvent.contextMenu(within(titleHeader).getByRole('button'))
+
+      // Unlike the manage-columns menu's Switch (whose disabled state is
+      // enforced in JS via its own useButton guard, so a synthetic click
+      // could be asserted against directly), a disabled ContextMenuItem
+      // relies on its own data-disabled:pointer-events-none CSS class plus
+      // tabindex="-1" (unreachable by Tab) for real protection - jsdom
+      // doesn't compile/apply Tailwind's stylesheet, so there's no real
+      // computed pointer-events for a synthetic click to respect here.
+      // Asserting the disabled state itself (which is what actually drives
+      // that CSS) is the meaningful, jsdom-checkable part of this guard.
+      const hideItem = await screen.findByRole('menuitem', { name: 'Hide' })
+      expect(hideItem).toHaveAttribute('aria-disabled', 'true')
+      expect(hideItem).toHaveAttribute('tabindex', '-1')
+    })
+  })
+
   describe('computeColumnReorder', () => {
     // This is the decision logic dnd-kit's onDragEnd hands off to: given the
     // current pinned/unpinned id lists and which column was dragged onto
