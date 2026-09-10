@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Dance } from '@/lib/powersync/schema'
 import { DancesPage } from './DancesPage'
 import { computeColumnReorder } from './DancesPage.reorder'
@@ -10,6 +10,44 @@ const { useQueryMock } = vi.hoisted(() => ({ useQueryMock: vi.fn() }))
 vi.mock('@powersync/react', () => ({
   useQuery: useQueryMock,
 }))
+
+// jsdom doesn't implement matchMedia at all. TableView's useCoarsePointer hook
+// calls window.matchMedia('(pointer: coarse)') to decide whether to render the
+// header's right-click context menu (skipped on touch, since it would race
+// dnd-kit's own long-press) and whether the sort button gets touch-none. This
+// fakes a controllable pointer, defaulting to fine (mouse) - every test here
+// exercises the mouse/context-menu behavior unless it opts into coarse via
+// mockPointer(true).
+function mockPointer(initialIsCoarse: boolean) {
+  let matches = initialIsCoarse
+  const listeners = new Set<() => void>()
+  window.matchMedia = vi.fn().mockReturnValue({
+    get matches() {
+      return matches
+    },
+    addEventListener: (_event: string, listener: () => void) => {
+      listeners.add(listener)
+    },
+    removeEventListener: (_event: string, listener: () => void) => {
+      listeners.delete(listener)
+    },
+  })
+  return {
+    setIsCoarse: (value: boolean) => {
+      matches = value
+      listeners.forEach((listener) => {
+        listener()
+      })
+    },
+  }
+}
+
+// Re-mocked before every test (not just once at module load) so a test that
+// opts into a coarse pointer via mockPointer(true) can't leak that into
+// whichever test happens to run next.
+beforeEach(() => {
+  mockPointer(false)
+})
 
 // The mocked useQuery stands in for DancesPage.data.ts's raw SQL result, so
 // choreographers/key_moves/vibes here are the pre-parse JSON array *strings*
@@ -547,14 +585,18 @@ describe('DancesPage', () => {
       useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
-      const titleHeader = screen.getByRole('columnheader', { name: 'Title' })
-      expect(titleHeader.style.position).toBe('sticky')
+      expect(screen.getByRole('columnheader', { name: 'Title' }).style.position).toBe('sticky')
 
       const user = userEvent.setup()
       await user.click(screen.getByRole('button', { name: 'Columns' }))
       await user.click(await screen.findByRole('button', { name: 'Unpin Title' }))
 
-      expect(titleHeader.style.position).not.toBe('sticky')
+      // Re-queried, not the reference from before the click: pinning/unpinning
+      // moves a header between two separate pinned/unpinned SortableContext
+      // subtrees (see TableView.tsx, added for header-drag reordering), so
+      // React remounts it rather than reconciling in place - the old element
+      // reference goes stale the moment it crosses that boundary.
+      expect(screen.getByRole('columnheader', { name: 'Title' }).style.position).not.toBe('sticky')
       expect(await screen.findByRole('button', { name: 'Pin Title' })).toBeInTheDocument()
     })
 
@@ -562,26 +604,27 @@ describe('DancesPage', () => {
       useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
-      const difficultyHeader = screen.getByRole('columnheader', { name: 'Difficulty' })
-      expect(difficultyHeader.style.position).not.toBe('sticky')
+      expect(screen.getByRole('columnheader', { name: 'Difficulty' }).style.position).not.toBe('sticky')
 
       const user = userEvent.setup()
       await user.click(screen.getByRole('button', { name: 'Columns' }))
       await user.click(await screen.findByRole('button', { name: 'Pin Difficulty' }))
 
-      expect(difficultyHeader.style.position).toBe('sticky')
+      // Re-queried - see the previous test's comment on why.
+      expect(screen.getByRole('columnheader', { name: 'Difficulty' }).style.position).toBe('sticky')
     })
 
     it('offsets a second pinned column past the first one\'s width, rather than stacking them at the same position', async () => {
       useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
-      const titleHeader = screen.getByRole('columnheader', { name: 'Title' })
-      const difficultyHeader = screen.getByRole('columnheader', { name: 'Difficulty' })
-
       const user = userEvent.setup()
       await user.click(screen.getByRole('button', { name: 'Columns' }))
       await user.click(await screen.findByRole('button', { name: 'Pin Difficulty' }))
+
+      // Re-queried after pinning, not captured beforehand - see above.
+      const titleHeader = screen.getByRole('columnheader', { name: 'Title' })
+      const difficultyHeader = screen.getByRole('columnheader', { name: 'Difficulty' })
 
       // pinnedCellStyle sets insetInlineStart from column.getStart('start'),
       // which sums the widths of every pinned column ahead of this one -
@@ -595,12 +638,10 @@ describe('DancesPage', () => {
       useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
-      const titleHeader = screen.getByRole('columnheader', { name: 'Title' })
-      const difficultyHeader = screen.getByRole('columnheader', { name: 'Difficulty' })
       const titleCell = within(screen.getByRole('table')).getByText('Chorus Jig').closest('td')!
       // Title is the only (and therefore last) pinned column by default.
-      expect(within(titleHeader).queryByTestId('pin-boundary-divider')).toBeInTheDocument()
-      expect(within(difficultyHeader).queryByTestId('pin-boundary-divider')).not.toBeInTheDocument()
+      expect(within(screen.getByRole('columnheader', { name: 'Title' })).queryByTestId('pin-boundary-divider')).toBeInTheDocument()
+      expect(within(screen.getByRole('columnheader', { name: 'Difficulty' })).queryByTestId('pin-boundary-divider')).not.toBeInTheDocument()
       expect(within(titleCell).queryByTestId('pin-boundary-divider')).toBeInTheDocument()
 
       const user = userEvent.setup()
@@ -608,9 +649,9 @@ describe('DancesPage', () => {
       await user.click(await screen.findByRole('button', { name: 'Pin Difficulty' }))
 
       // The divider follows whichever pinned column is now last - Difficulty,
-      // pinned second - not Title anymore.
-      expect(within(titleHeader).queryByTestId('pin-boundary-divider')).not.toBeInTheDocument()
-      expect(within(difficultyHeader).queryByTestId('pin-boundary-divider')).toBeInTheDocument()
+      // pinned second - not Title anymore. Re-queried after pinning - see above.
+      expect(within(screen.getByRole('columnheader', { name: 'Title' })).queryByTestId('pin-boundary-divider')).not.toBeInTheDocument()
+      expect(within(screen.getByRole('columnheader', { name: 'Difficulty' })).queryByTestId('pin-boundary-divider')).toBeInTheDocument()
     })
   })
 
@@ -641,7 +682,11 @@ describe('DancesPage', () => {
       const user = userEvent.setup()
       await user.click(await screen.findByRole('menuitem', { name: 'Unpin' }))
 
-      expect(titleHeader.style.position).not.toBe('sticky')
+      // Re-queried, not the reference from before the click - unpinning moves
+      // this header out of the pinned SortableContext subtree into the
+      // unpinned one (see TableView.tsx), which remounts it rather than
+      // updating it in place.
+      expect(screen.getByRole('columnheader', { name: 'Title' }).style.position).not.toBe('sticky')
     })
 
     it('pins a column via a right-click on its header, matching the sticky style the manage-columns menu applies', async () => {
@@ -656,7 +701,8 @@ describe('DancesPage', () => {
       const user = userEvent.setup()
       await user.click(await screen.findByRole('menuitem', { name: 'Pin' }))
 
-      expect(difficultyHeader.style.position).toBe('sticky')
+      // Re-queried - see the previous test's comment on why.
+      expect(screen.getByRole('columnheader', { name: 'Difficulty' }).style.position).toBe('sticky')
     })
 
     it('disables Hide on the last remaining visible column, matching the manage-columns menu guard', async () => {
@@ -686,6 +732,79 @@ describe('DancesPage', () => {
       const hideItem = await screen.findByRole('menuitem', { name: 'Hide' })
       expect(hideItem).toHaveAttribute('aria-disabled', 'true')
       expect(hideItem).toHaveAttribute('tabindex', '-1')
+    })
+  })
+
+  describe('column header drag reorder', () => {
+    // The actual drag gesture isn't simulated here, for the same reason the
+    // manage-columns menu's own reorder tests don't either: dnd-kit's
+    // closestCenter collision detection depends on real getBoundingClientRect
+    // values, which jsdom fakes as all-zero. This just verifies the static
+    // wiring: every sort button also carries dnd-kit's sortable attributes,
+    // proving the drag-to-reorder listeners are actually attached to it (not
+    // just click-to-sort) - the reorder decision itself is computeColumnReorder,
+    // already covered directly below.
+    it('wires every sort button up for drag-based reordering, alongside click-to-sort', () => {
+      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      for (const label of ['Title', 'Difficulty', 'Formation', 'Choreographers', 'Key Moves', 'Vibes', 'Notes', 'Created', 'Updated']) {
+        const sortButton = within(screen.getByRole('columnheader', { name: label })).getByRole('button')
+        expect(sortButton).toHaveAttribute('aria-roledescription', 'sortable')
+      }
+    })
+
+    it('gives the sort button touch-none on a mouse/fine pointer, so a mouse drag claims the gesture immediately', () => {
+      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      const sortButton = within(screen.getByRole('columnheader', { name: 'Title' })).getByRole('button')
+      expect(sortButton.className).toMatch(/\btouch-none\b/)
+    })
+
+    it('omits touch-none from the sort button on a coarse/touch pointer, so a quick swipe still scrolls natively', () => {
+      mockPointer(true)
+      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      const sortButton = within(screen.getByRole('columnheader', { name: 'Title' })).getByRole('button')
+      expect(sortButton.className).not.toMatch(/\btouch-none\b/)
+    })
+  })
+
+  describe('column header context menu on a coarse/touch pointer', () => {
+    // base-ui's ContextMenuTrigger detects its own long-press via raw touch
+    // events, with a hardcoded 500ms delay that can't be configured or
+    // canceled mid-gesture - on a touch pointer it would race dnd-kit's own
+    // long-press-to-drag (see TableView.tsx's useCoarsePointer), so the
+    // context menu is skipped there entirely. Hide/pin stay reachable via the
+    // Columns menu instead (already covered by the `column visibility` and
+    // `column reordering` describe blocks above).
+    it('never opens, even on a right-click/contextmenu event', () => {
+      mockPointer(true)
+      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      const notesHeader = screen.getByRole('columnheader', { name: 'Notes' })
+      fireEvent.contextMenu(within(notesHeader).getByRole('button'))
+
+      expect(screen.queryByRole('menuitem', { name: 'Hide' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: 'Pin' })).not.toBeInTheDocument()
+    })
+
+    it('reappears if the pointer type switches back to fine mid-session, e.g. a mouse being attached', () => {
+      const pointer = mockPointer(true)
+      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      act(() => {
+        pointer.setIsCoarse(false)
+      })
+
+      const notesHeader = screen.getByRole('columnheader', { name: 'Notes' })
+      fireEvent.contextMenu(within(notesHeader).getByRole('button'))
+
+      expect(screen.queryByRole('menuitem', { name: 'Hide' })).toBeInTheDocument()
     })
   })
 

@@ -1,8 +1,32 @@
+import { useEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp } from 'lucide-react'
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
+import { closestCenter, DndContext, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { restrictToHorizontalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
+import { horizontalListSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { ColumnsMenu } from './DancesPage.ColumnsMenu'
+import { computeColumnReorder } from './DancesPage.reorder'
+import type { Ref } from 'react'
+import type { CollisionDetection, DragEndEvent, Modifier } from '@dnd-kit/core'
 import type { TableInstance } from './DancesPage.columns'
+
+type LeafHeader = ReturnType<TableInstance['getLeafHeaders']>[number]
+
+// Hide column header context menu on touch devices so it doesn't race with column reorder.
+function useCoarsePointer(): boolean {
+  const [isCoarse, setIsCoarse] = useState(() => window.matchMedia('(pointer: coarse)').matches)
+
+  useEffect(() => {
+    const media = window.matchMedia('(pointer: coarse)')
+    const onChange = () => setIsCoarse(media.matches)
+    media.addEventListener('change', onChange)
+    return () => media.removeEventListener('change', onChange)
+  }, [])
+
+  return isCoarse
+}
 
 // TanStack's pinning feature only computes which columns are pinned & px offset.
 // The sticky CSS that actually keeps a pinned column in place is applied here.
@@ -17,11 +41,108 @@ function pinnedCellStyle(isPinned: false | 'start' | 'end', start: number) {
   }
 }
 
-function PinBoundaryDivider() {
-  return <div data-testid="pin-boundary-divider" className="pointer-events-none absolute inset-y-0 right-0 w-0.5 bg-border" />
+function PinBoundaryDivider({ ref }: { ref?: Ref<HTMLDivElement> }) {
+  return <div ref={ref} data-testid="pin-boundary-divider" className="pointer-events-none absolute inset-y-0 right-0 w-0.5 bg-border" />
+}
+
+function ColumnResizeHandle({ header }: { header: LeafHeader }) {
+  return (
+    <div
+      onMouseDown={header.getResizeHandler()}
+      onTouchStart={header.getResizeHandler()}
+      className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize touch-none select-none hover:bg-primary/50 active:bg-primary/50 pointer-coarse:w-4"
+    >
+      <div className="mx-auto h-full w-px bg-border" />
+    </div>
+  )
+}
+
+function HeaderContextMenuItems({ table, header, isPinned }: {
+  table: TableInstance
+  header: LeafHeader
+  isPinned: false | 'start' | 'end'
+}) {
+  return (
+    <>
+      {header.column.getCanHide() && (
+        <ContextMenuItem
+          disabled={header.column.getIsVisible() && table.getVisibleLeafColumns().length === 1}
+          onClick={() => header.column.toggleVisibility(false)}
+        >
+          Hide
+        </ContextMenuItem>
+      )}
+      {header.column.getCanPin() && (
+        <ContextMenuItem onClick={() => header.column.pin(isPinned === 'start' ? false : 'start')}>
+          {isPinned === 'start' ? 'Unpin' : 'Pin'}
+        </ContextMenuItem>
+      )}
+    </>
+  )
 }
 
 export function TableView({ table }: { table: TableInstance }) {
+  // Pinned and unpinned columns are two separate reorderable groups here.
+  const leafHeaders = table.getLeafHeaders()
+  const pinnedHeaders = leafHeaders.filter((header) => header.column.getIsPinned() === 'start')
+  const unpinnedHeaders = leafHeaders.filter((header) => header.column.getIsPinned() !== 'start')
+  const pinnedIds = new Set(pinnedHeaders.map((header) => header.column.id))
+
+  const sameGroupCollisionDetection: CollisionDetection = (args) => {
+    const activeIsPinned = pinnedIds.has(args.active.id as string)
+    const sameGroupContainers = args.droppableContainers.filter(
+      (container) => pinnedIds.has(container.id as string) === activeIsPinned,
+    )
+    return closestCenter({ ...args, droppableContainers: sameGroupContainers })
+  }
+
+  const pinBoundaryDividerRef = useRef<HTMLDivElement | null>(null)
+  const [pinBoundaryX, setPinBoundaryX] = useState<number | null>(null)
+
+  const restrictToOwnPinGroup: Modifier = ({ transform, active, draggingNodeRect }) => {
+    if (!active || !draggingNodeRect || pinBoundaryX === null) return transform
+
+    const center = draggingNodeRect.left + draggingNodeRect.width / 2 + transform.x
+
+    if (pinnedIds.has(active.id as string)) {
+      if (center > pinBoundaryX) {
+        return { ...transform, x: transform.x - (center - pinBoundaryX) }
+      }
+    } else if (center < pinBoundaryX) {
+      return { ...transform, x: transform.x + (pinBoundaryX - center) }
+    }
+    return transform
+  }
+
+  // Force grab pointer anywhere on screen while dragging
+  const [isDraggingAnyHeader, setIsDraggingAnyHeader] = useState(false)
+
+  useEffect(() => {
+    if (!isDraggingAnyHeader) return
+    document.body.classList.add('is-dragging-column')
+    return () => document.body.classList.remove('is-dragging-column')
+  }, [isDraggingAnyHeader])
+
+  function handleDragEnd(event: DragEndEvent) {
+    setIsDraggingAnyHeader(false)
+    const { active, over } = event
+    if (!over) return
+
+    const result = computeColumnReorder(
+      pinnedHeaders.map((header) => header.column.id),
+      unpinnedHeaders.map((header) => header.column.id),
+      active.id as string,
+      over.id as string,
+    )
+    if (!result) return
+
+    if ('pinnedIds' in result) {
+      table.setColumnPinning((old) => ({ ...old, start: result.pinnedIds }))
+    } else {
+      table.setColumnOrder(result.unpinnedIds)
+    }
+  }
+
   return (
     <>
       <div className="mb-2 flex justify-end">
@@ -38,70 +159,45 @@ export function TableView({ table }: { table: TableInstance }) {
             by id - always land on the column the header row actually put
             in that position. */}
         <colgroup>
-          {table.getLeafHeaders().map((header) => (
+          {leafHeaders.map((header) => (
             <col key={header.column.id} style={{ width: header.column.getSize() }} />
           ))}
         </colgroup>
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <TableHead
-                  key={header.id}
-                  className={header.column.getIsPinned() ? 'relative bg-background' : 'relative'}
-                  style={pinnedCellStyle(header.column.getIsPinned(), header.column.getStart('start'))}
-                >
-                  <ContextMenu>
-                    <ContextMenuTrigger className="contents">
-                      {/* Click header for sort */}
-                      {header.isPlaceholder ? null : (
-                        <button
-                          type="button"
-                          className="flex w-full items-center gap-1 text-left enabled:cursor-pointer disabled:cursor-default"
-                          onClick={header.column.getToggleSortingHandler()}
-                          disabled={!header.column.getCanSort()}
-                        >
-                          <table.FlexRender header={header} />
-                          {header.column.getIsSorted() === 'asc' && <ArrowUp className="size-3.5" />}
-                          {header.column.getIsSorted() === 'desc' && <ArrowDown className="size-3.5" />}
-                        </button>
-                      )}
-                      {/* Drag to resize */}
-                      {header.column.getCanResize() && (
-                        <div
-                          onMouseDown={header.getResizeHandler()}
-                          onTouchStart={header.getResizeHandler()}
-                          className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize touch-none select-none hover:bg-primary/50 active:bg-primary/50 pointer-coarse:w-4"
-                        >
-                          <div className="mx-auto h-full w-px bg-border" />
-                        </div>
-                      )}
-                    </ContextMenuTrigger>
-                    {/* Right-click context menu for hide & pin */}
-                    <ContextMenuContent>
-                      {header.column.getCanHide() && (
-                        <ContextMenuItem
-                          disabled={header.column.getIsVisible() && table.getVisibleLeafColumns().length === 1}
-                          onClick={() => header.column.toggleVisibility(false)}
-                        >
-                          Hide
-                        </ContextMenuItem>
-                      )}
-                      {header.column.getCanPin() && (
-                        <ContextMenuItem
-                          onClick={() => header.column.pin(header.column.getIsPinned() === 'start' ? false : 'start')}
-                        >
-                          {header.column.getIsPinned() === 'start' ? 'Unpin' : 'Pin'}
-                        </ContextMenuItem>
-                      )}
-                    </ContextMenuContent>
-                  </ContextMenu>
-                  {header.column.getIsLastColumn('start') && <PinBoundaryDivider />}
-                </TableHead>
-              ))}
-            </TableRow>
-          ))}
-        </TableHeader>
+        {/* activationConstraint: plain click on sort button doesn't cross threshold, so dnd-kit
+            doesn't intercept it, and the click's own onClick (sort) fires normally.
+            Only a real drag past 8px starts a reorder. */}
+        <DndContext
+          sensors={useSensors(
+            useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+            useSensor(TouchSensor, { activationConstraint: { delay: 500, tolerance: 5 } }),
+          )}
+          collisionDetection={sameGroupCollisionDetection}
+          onDragStart={() => {
+            setIsDraggingAnyHeader(true)
+            setPinBoundaryX(pinBoundaryDividerRef.current?.getBoundingClientRect().right ?? null)
+          }}
+          onDragCancel={() => setIsDraggingAnyHeader(false)}
+          onDragEnd={handleDragEnd}
+          modifiers={[restrictToHorizontalAxis, restrictToParentElement, restrictToOwnPinGroup]}
+          autoScroll={false}
+        >
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                <SortableContext items={pinnedHeaders.map((header) => header.column.id)} strategy={horizontalListSortingStrategy}>
+                  {pinnedHeaders.map((header) => (
+                    <SortableTableHead key={header.id} table={table} header={header} pinBoundaryDividerRef={pinBoundaryDividerRef} />
+                  ))}
+                </SortableContext>
+                <SortableContext items={unpinnedHeaders.map((header) => header.column.id)} strategy={horizontalListSortingStrategy}>
+                  {unpinnedHeaders.map((header) => (
+                    <SortableTableHead key={header.id} table={table} header={header} pinBoundaryDividerRef={pinBoundaryDividerRef} />
+                  ))}
+                </SortableContext>
+              </TableRow>
+            ))}
+          </TableHeader>
+        </DndContext>
         <TableBody>
           {table.getRowModel().rows.map((row) => (
             // group: allows pinned cell's bg to respond to this row being hovered (see cell's group-hover class below).
@@ -125,5 +221,91 @@ export function TableView({ table }: { table: TableInstance }) {
         </TableBody>
       </Table>
     </>
+  )
+}
+
+// table.Subscribe fixes React Compiler caching stale results for getIsPinned/getIsVisible/getIsSorted
+function SortableTableHead({
+  table,
+  header,
+  pinBoundaryDividerRef,
+}: {
+  table: TableInstance
+  header: LeafHeader
+  pinBoundaryDividerRef: Ref<HTMLDivElement | null>
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: header.column.id })
+  const isCoarsePointer = useCoarsePointer()
+
+  return (
+    <table.Subscribe selector={(state) => ({ columnVisibility: state.columnVisibility, columnPinning: state.columnPinning, sorting: state.sorting })}>
+      {() => {
+        const isPinned = header.column.getIsPinned()
+        const isSorted = header.column.getIsSorted()
+
+        const sortButton = header.isPlaceholder ? null : (
+          <button
+            type="button"
+            // touch-none only on mouse/pointer devices allows mouse drag claim the gesture immediately
+            // On a touch it's deliberately omitted so a quick swipe still scrolls natively.
+            className={`flex w-full items-center gap-1 text-left enabled:cursor-pointer disabled:cursor-default ${isCoarsePointer ? '' : 'touch-none'} ${isDragging ? 'cursor-grabbing' : ''}`}
+            onClick={header.column.getToggleSortingHandler()}
+            disabled={!header.column.getCanSort()}
+            {...attributes}
+            {...listeners}
+          >
+            <table.FlexRender header={header} />
+            {isSorted === 'asc' && <ArrowUp className="size-3.5" />}
+            {isSorted === 'desc' && <ArrowDown className="size-3.5" />}
+          </button>
+        )
+
+        return (
+          <TableHead
+            ref={setNodeRef}
+            className={`relative ${isDragging ? 'bg-accent' : isPinned ? 'bg-background' : ''}`}
+            style={{
+              ...pinnedCellStyle(isPinned, header.column.getStart('start')),
+              transform: CSS.Translate.toString(transform),
+              transition: [transition, 'background-color 150ms ease'].filter(Boolean).join(', '),
+              ...(isDragging && { zIndex: 10 }),
+            }}
+          >
+            {isCoarsePointer ? (
+              // Tap for sort, long-press to reorder. No context menu here - its own
+              // long-press would race dnd-kit's (see useCoarsePointer above); hide/pin
+              // remain reachable via the Columns menu instead. ContextMenuTrigger (used
+              // on the non-coarse branch below) normally suppresses the platform's own
+              // long-press menu as a side effect of existing - preventDefault on the
+              // native contextmenu event (fired by Android/desktop browsers) plus
+              // WebkitTouchCallout: none (iOS Safari's separate copy/look-up callout,
+              // which isn't a contextmenu event at all) reproduce that here.
+              <div
+                className="contents select-none"
+                style={{ WebkitTouchCallout: 'none' }}
+                onContextMenu={(event) => event.preventDefault()}
+              >
+                {sortButton}
+                {header.column.getCanResize() && <ColumnResizeHandle header={header} />}
+              </div>
+            ) : (
+              <ContextMenu>
+                <ContextMenuTrigger className="contents">
+                  {/* Click for sort, drag (past a small threshold) to reorder */}
+                  {sortButton}
+                  {/* Drag to resize */}
+                  {header.column.getCanResize() && <ColumnResizeHandle header={header} />}
+                </ContextMenuTrigger>
+                {/* Right-click context menu for hide & pin */}
+                <ContextMenuContent>
+                  <HeaderContextMenuItems table={table} header={header} isPinned={isPinned} />
+                </ContextMenuContent>
+              </ContextMenu>
+            )}
+            {header.column.getIsLastColumn('start') && <PinBoundaryDivider ref={pinBoundaryDividerRef} />}
+          </TableHead>
+        )
+      }}
+    </table.Subscribe>
   )
 }
