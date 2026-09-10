@@ -13,6 +13,7 @@ import {
 } from '@tanstack/react-table'
 import { format } from 'date-fns'
 import type { ReactNode } from 'react'
+import type { useTable } from '@tanstack/react-table'
 import type { Dance } from '@/lib/powersync/schema'
 
 export interface DanceWithJoins extends Dance {
@@ -176,6 +177,11 @@ export const features = tableFeatures({
   columnPinningFeature,
   columnOrderingFeature,
 })
+
+// Shared across DancesPage.tsx and its extracted pieces (ColumnsMenu, Mobile)
+// so every one of them types its `table` prop against the same instance
+// shape, instead of each re-deriving it from useTable's own generics.
+export type TableInstance = ReturnType<typeof useTable<typeof features, DanceWithJoins>>
 
 const columnHelper = createColumnHelper<typeof features, DanceWithJoins>()
 
