@@ -1,19 +1,28 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
+import { closestCenter, DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import type { CollisionDetection, DragEndEvent } from '@dnd-kit/core'
+import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers'
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { useTable } from '@tanstack/react-table'
-import type { ColumnPinningState, ColumnVisibilityState, SortingState } from '@tanstack/react-table'
-import { ArrowDown, ArrowUp, Pin, PinOff } from 'lucide-react'
+import type { ColumnOrderState, ColumnPinningState, ColumnVisibilityState, SortingState } from '@tanstack/react-table'
+import { ArrowDown, ArrowUp, GripVertical, Pin, PinOff } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { columns, danceFields, features } from './DancesPage.columns'
 import type { DanceWithJoins } from './DancesPage.columns'
 import { useDances } from './DancesPage.data'
+import { computeColumnReorder } from './DancesPage.reorder'
+
+type TableInstance = ReturnType<typeof useTable<typeof features, DanceWithJoins>>
 
 // TanStack's pinning feature only computes which columns are pinned & px offset.
 // So we apply sticky CSS here, start is column.getStart('start'), the pinned column's
@@ -27,6 +36,23 @@ function pinnedCellStyle(isPinned: false | 'start' | 'end', start: number) {
   }
 }
 
+// table.getVisibleLeafColumns() doesn't account for pinning regions, so
+// it can put a pinned column anywhere its position in columnOrder happens
+// to land it. But the actual rendered header/body cells do apply pinning,
+// always rendering start-pinned columns first. A <colgroup>'s <col>
+// elements apply to table columns purely by position, not by id, so using
+// the non-pinning-aware list here would silently misassign widths to
+// the wrong columns the moment a pinned column isn't already first in
+// columnOrder. Concatenating all three regions in the same
+// start/center/end order the real rendering uses keeps this in sync with it.
+function getRenderOrderedVisibleColumns(table: TableInstance) {
+  return [
+    ...table.getPinnedVisibleLeafColumns('start'),
+    ...table.getPinnedVisibleLeafColumns('center'),
+    ...table.getPinnedVisibleLeafColumns('end'),
+  ]
+}
+
 export function DancesPage() {
   const { dances, isLoading } = useDances()
 
@@ -34,16 +60,18 @@ export function DancesPage() {
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({})
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({ start: ['title'], end: [] })
+  const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([]) // defaults to order columns were defined in
 
   const table = useTable({
     features,
     columns,
     data: dances,
     getRowId: (row) => row.id,
-    state: { columnVisibility, sorting, columnPinning },
+    state: { columnVisibility, sorting, columnPinning, columnOrder },
     onColumnVisibilityChange: setColumnVisibility,
     onSortingChange: setSorting,
     onColumnPinningChange: setColumnPinning,
+    onColumnOrderChange: setColumnOrder,
     enableMultiSort: false, // single-column sort only
     enableSortingRemoval: true, // third click clears sort
     sortDescFirst: false, // first click sorts ascending
@@ -67,7 +95,7 @@ export function DancesPage() {
               table-layout: fixed (table.tsx) only enforces widths declared
               this way, not inline styles on individual cells. */}
           <colgroup>
-            {table.getVisibleLeafColumns().map((column) => (
+            {getRenderOrderedVisibleColumns(table).map((column) => (
               <col key={column.id} style={{ width: column.getSize() }} />
             ))}
           </colgroup>
@@ -166,8 +194,62 @@ export function DancesPage() {
   )
 }
 
-function ColumnsMenu({ table }: { table: ReturnType<typeof useTable<typeof features, DanceWithJoins>> }) {
-  const allColumns = table.getAllLeafColumns()
+function ColumnsMenu({ table }: { table: TableInstance }) {
+  // Pinned and unpinned columns are two separate reorderable groups.
+  // TanStack itself keeps them separate: a pinned column's order
+  // relative to other pinned columns comes from columnPinning.start's own
+  // array order, not columnOrder (which only ever affects the unpinned
+  // "center" region). getPinnedLeafColumns (not getAllLeafColumns().filter(...))
+  // is what actually reflects that live order - filtering getAllLeafColumns
+  // preserves whatever order it already had, which doesn't change when
+  // columnPinning.start's own order does, so a pinned reorder would update
+  // the real table but never visibly reorder this menu's own list.
+  const pinnedColumns = table.getPinnedLeafColumns('start')
+  const unpinnedColumns = table.getPinnedLeafColumns('center')
+  const pinnedIds = new Set(pinnedColumns.map((column) => column.id))
+
+  // Restricts valid drop targets to whichever group (pinned/unpinned) the
+  // dragged column already belongs to, so a pinned column
+  // can't be dropped into the unpinned group (or vice versa).
+  const sameGroupCollisionDetection: CollisionDetection = (args) => {
+    const activeIsPinned = pinnedIds.has(args.active.id as string)
+    const sameGroupContainers = args.droppableContainers.filter(
+      (container) => pinnedIds.has(container.id as string) === activeIsPinned,
+    )
+    return closestCenter({ ...args, droppableContainers: sameGroupContainers })
+  }
+
+  // The grip button's own cursor-grabbing class only applies while the
+  // pointer's over it, so  the cursor falls back to whatever's underneath.
+  const [isDraggingAnyRow, setIsDraggingAnyRow] = useState(false)
+
+  useEffect(() => {
+    if (!isDraggingAnyRow) return
+    document.body.classList.add('is-dragging-column')
+    return () => {
+      document.body.classList.remove('is-dragging-column')
+    }
+  }, [isDraggingAnyRow])
+
+  function handleDragEnd(event: DragEndEvent) {
+    setIsDraggingAnyRow(false)
+    const { active, over } = event
+    if (!over) return
+
+    const result = computeColumnReorder(
+      pinnedColumns.map((column) => column.id),
+      unpinnedColumns.map((column) => column.id),
+      active.id as string,
+      over.id as string,
+    )
+    if (!result) return
+
+    if ('pinnedIds' in result) {
+      table.setColumnPinning((old) => ({ ...old, start: result.pinnedIds }))
+    } else {
+      table.setColumnOrder(result.unpinnedIds)
+    }
+  }
 
   return (
     <DropdownMenu>
@@ -176,48 +258,108 @@ function ColumnsMenu({ table }: { table: ReturnType<typeof useTable<typeof featu
       </DropdownMenuTrigger>
       {/* w-56 overrides the default w-(--anchor-width) */}
       <DropdownMenuContent align="end" className="w-56">
-        {allColumns.map((column) => {
-          // Reads the label from danceFields rather than column.columnDef.header.
-          const field = danceFields.find((danceField) => danceField.key === column.id)
-          const label = field?.label ?? column.id
-          const isPinned = column.getIsPinned() === 'start'
-
-          return (
-            <div key={column.id} className="flex items-center">
-              {column.getCanHide() ? (
-                <DropdownMenuCheckboxItem
-                  className="flex-1"
-                  checked={column.getIsVisible()}
-                  onCheckedChange={(checked) => {
-                    column.toggleVisibility(checked)
-                  }}
-                >
-                  {label}
-                </DropdownMenuCheckboxItem>
-              ) : (
-                // Title: no visibility toggle (see the columns menu tests),
-                // but still needs the same label position as a real item so
-                // its pin toggle lines up with everyone else's.
-                <span className="flex-1 py-1 pl-1.5 text-sm">{label}</span>
-              )}
-              {column.getCanPin() && (
-                <button
-                  type="button"
-                  aria-label={isPinned ? `Unpin ${label}` : `Pin ${label}`}
-                  aria-pressed={isPinned}
-                  onClick={() => {
-                    column.pin(isPinned ? false : 'start')
-                  }}
-                  className="mr-1 shrink-0 rounded p-1 hover:bg-accent"
-                >
-                  {isPinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
-                </button>
-              )}
+        {/* restrictToParentElement measures the dragged row's real DOM
+            .parentElement at drag-start - each group needs its own actual
+            wrapper <div> (SortableContext/DndContext don't render one) so
+            that rect is scoped to just that group, preventing a pinned row
+            from being dragged into the unpinned rows' space (or vice versa). */}
+        <DndContext
+          sensors={useSensors(useSensor(PointerSensor))}
+          collisionDetection={sameGroupCollisionDetection}
+          onDragStart={() => {
+            setIsDraggingAnyRow(true)
+          }}
+          onDragEnd={handleDragEnd}
+          onDragCancel={() => {
+            setIsDraggingAnyRow(false)
+          }}
+          modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+          autoScroll={false}
+        >
+          <SortableContext items={pinnedColumns.map((column) => column.id)} strategy={verticalListSortingStrategy}>
+            <div>
+              {pinnedColumns.map((column) => (
+                <SortableColumnRow key={column.id} table={table} columnId={column.id} />
+              ))}
             </div>
-          )
-        })}
+          </SortableContext>
+          {pinnedColumns.length > 0 && <DropdownMenuSeparator />}
+          <SortableContext items={unpinnedColumns.map((column) => column.id)} strategy={verticalListSortingStrategy}>
+            <div>
+              {unpinnedColumns.map((column) => (
+                <SortableColumnRow key={column.id} table={table} columnId={column.id} />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       </DropdownMenuContent>
     </DropdownMenu>
+  )
+}
+
+// Takes table + columnId, not a column object, and looks the column up fresh
+// via table.getColumn(columnId), cuz passing a column object down breaks
+// a second click on the same row's checkbox/pin button.
+function SortableColumnRow({ table, columnId }: { table: TableInstance; columnId: string }) {
+  const column = table.getColumn(columnId)
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: columnId })
+
+  if (!column) return null
+
+  const field = danceFields.find((danceField) => danceField.key === columnId)
+  const label = field?.label ?? columnId
+  const isPinned = column.getIsPinned() === 'start'
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className="flex items-center"
+    >
+      {/* touch-none so a touch-drag on the handle doesn't also try to scroll
+          the menu - same reasoning as the column-resize handle's touch-none.
+          cursor-grab/cursor-grabbing is the standard drag-handle convention -
+          an open hand while just hovering, a closed one while actually
+          dragging (isDragging, from useSortable). */}
+      <button
+        type="button"
+        aria-label={`Reorder ${label}`}
+        className={`shrink-0 touch-none rounded p-1 text-muted-foreground hover:bg-accent ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="size-3.5" />
+      </button>
+      {column.getCanHide() ? (
+        <DropdownMenuCheckboxItem
+          className="flex-1"
+          checked={column.getIsVisible()}
+          onCheckedChange={(checked) => {
+            column.toggleVisibility(checked)
+          }}
+        >
+          {label}
+        </DropdownMenuCheckboxItem>
+      ) : (
+        // Title: no visibility toggle (see the columns menu tests), but
+        // still needs the same label position as a real item so its pin
+        // toggle lines up with everyone else's.
+        <span className="flex-1 py-1 pl-1.5 text-sm">{label}</span>
+      )}
+      {column.getCanPin() && (
+        <button
+          type="button"
+          aria-label={isPinned ? `Unpin ${label}` : `Pin ${label}`}
+          aria-pressed={isPinned}
+          onClick={() => {
+            column.pin(isPinned ? false : 'start')
+          }}
+          className="mr-1 shrink-0 rounded p-1 hover:bg-accent"
+        >
+          {isPinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
+        </button>
+      )}
+    </div>
   )
 }
 

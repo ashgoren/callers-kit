@@ -1,4 +1,5 @@
 import {
+  columnOrderingFeature,
   columnPinningFeature,
   columnResizingFeature,
   columnSizingFeature,
@@ -173,6 +174,7 @@ export const features = tableFeatures({
   columnSizingFeature,
   columnResizingFeature,
   columnPinningFeature,
+  columnOrderingFeature,
 })
 
 const columnHelper = createColumnHelper<typeof features, DanceWithJoins>()

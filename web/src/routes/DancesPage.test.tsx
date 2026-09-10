@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import type { Dance } from '@/lib/powersync/schema'
 import { DancesPage } from './DancesPage'
+import { computeColumnReorder } from './DancesPage.reorder'
 
 const { useQueryMock } = vi.hoisted(() => ({ useQueryMock: vi.fn() }))
 
@@ -469,6 +470,48 @@ describe('DancesPage', () => {
       const difficultyColWidth = table.querySelectorAll('col')[difficultyIndex].style.width
       expect(difficultyColWidth).toBe('205px') // 105px starting size + 100px drag
     })
+
+    it('stops shrinking a column at its minSize, even when dragged well past it', () => {
+      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      const table = screen.getByRole('table')
+      const difficultyHeader = screen.getByRole('columnheader', { name: 'Difficulty' })
+      const handle = difficultyHeader.querySelector('.cursor-col-resize')!
+
+      // Difficulty starts at 105px with a minSize of 80px - dragging 1000px
+      // left asks for a deeply negative width, which the resize feature
+      // clamps to minSize rather than letting it go any smaller.
+      fireEvent.mouseDown(handle, { clientX: 1000 })
+      fireEvent.mouseMove(document, { clientX: 0 })
+      fireEvent.mouseUp(document, { clientX: 0 })
+
+      const headers = within(table).getAllByRole('columnheader')
+      const difficultyIndex = headers.indexOf(difficultyHeader)
+      const difficultyColWidth = table.querySelectorAll('col')[difficultyIndex].style.width
+      expect(difficultyColWidth).toBe('80px')
+    })
+
+    it('stops growing a column at its maxSize, even when dragged well past it', () => {
+      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      const table = screen.getByRole('table')
+      const notesHeader = screen.getByRole('columnheader', { name: 'Notes' })
+      const handle = notesHeader.querySelector('.cursor-col-resize')!
+
+      // Notes starts at 260px with a maxSize of 500px - dragging 1000px
+      // right asks for a much wider column than that, which the resize
+      // feature clamps to maxSize rather than letting it grow any further.
+      fireEvent.mouseDown(handle, { clientX: 0 })
+      fireEvent.mouseMove(document, { clientX: 1000 })
+      fireEvent.mouseUp(document, { clientX: 1000 })
+
+      const headers = within(table).getAllByRole('columnheader')
+      const notesIndex = headers.indexOf(notesHeader)
+      const notesColWidth = table.querySelectorAll('col')[notesIndex].style.width
+      expect(notesColWidth).toBe('500px')
+    })
   })
 
   describe('column pinning', () => {
@@ -510,6 +553,105 @@ describe('DancesPage', () => {
       await user.click(await screen.findByRole('button', { name: 'Pin Difficulty' }))
 
       expect(difficultyHeader.style.position).toBe('sticky')
+    })
+
+    it('offsets a second pinned column past the first one\'s width, rather than stacking them at the same position', async () => {
+      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      const titleHeader = screen.getByRole('columnheader', { name: 'Title' })
+      const difficultyHeader = screen.getByRole('columnheader', { name: 'Difficulty' })
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Columns' }))
+      await user.click(await screen.findByRole('button', { name: 'Pin Difficulty' }))
+
+      // pinnedCellStyle sets insetInlineStart from column.getStart('start'),
+      // which sums the widths of every pinned column ahead of this one -
+      // Difficulty, pinned second, should start exactly where Title's
+      // 250px width ends, not at 0 (which would overlap Title instead).
+      expect(titleHeader.style.insetInlineStart).toBe('0px')
+      expect(difficultyHeader.style.insetInlineStart).toBe('250px')
+    })
+  })
+
+  describe('computeColumnReorder', () => {
+    // This is the decision logic dnd-kit's onDragEnd hands off to: given the
+    // current pinned/unpinned id lists and which column was dragged onto
+    // which, decide whether - and how - to reorder. It's tested directly,
+    // independent of any actual drag gesture, for the same jsdom-layout
+    // reason called out below: dnd-kit's own collision detection can't be
+    // meaningfully simulated here, but this pure function has no such
+    // dependency, so it can be checked thoroughly on its own.
+    const pinnedIds = ['title', 'difficulty']
+    const unpinnedIds = ['formation', 'notes', 'created_at']
+
+    it('reorders within the pinned group when both ids are pinned', () => {
+      expect(computeColumnReorder(pinnedIds, unpinnedIds, 'difficulty', 'title')).toEqual({
+        pinnedIds: ['difficulty', 'title'],
+      })
+    })
+
+    it('reorders within the unpinned group when both ids are unpinned', () => {
+      expect(computeColumnReorder(pinnedIds, unpinnedIds, 'created_at', 'formation')).toEqual({
+        unpinnedIds: ['created_at', 'formation', 'notes'],
+      })
+    })
+
+    it('is a no-op when dragging a column onto itself', () => {
+      expect(computeColumnReorder(pinnedIds, unpinnedIds, 'title', 'title')).toBeNull()
+      expect(computeColumnReorder(pinnedIds, unpinnedIds, 'notes', 'notes')).toBeNull()
+    })
+
+    it('is a no-op when the active column is pinned and the target is unpinned', () => {
+      expect(computeColumnReorder(pinnedIds, unpinnedIds, 'title', 'notes')).toBeNull()
+    })
+
+    it('is a no-op when the active column is unpinned and the target is pinned', () => {
+      expect(computeColumnReorder(pinnedIds, unpinnedIds, 'notes', 'title')).toBeNull()
+    })
+
+    it('is a no-op when either id belongs to neither group', () => {
+      expect(computeColumnReorder(pinnedIds, unpinnedIds, 'unknown', 'title')).toBeNull()
+      expect(computeColumnReorder(pinnedIds, unpinnedIds, 'title', 'unknown')).toBeNull()
+      expect(computeColumnReorder(pinnedIds, unpinnedIds, 'unknown', 'also-unknown')).toBeNull()
+    })
+  })
+
+  describe('column reordering', () => {
+    // The actual drag gesture isn't simulated here, unlike resize's - dnd-kit's
+    // closestCenter collision detection (deciding which column you dragged
+    // over) depends on real getBoundingClientRect values, which jsdom fakes
+    // as all-zero, so a simulated drag wouldn't land on a meaningful target.
+    // Resize's drag test worked because that math is pure clientX arithmetic,
+    // with no dependency on real layout at all. This just verifies the
+    // static wiring: a drag handle exists for every column in the menu.
+    it('renders a drag handle for every column in the manage-columns menu', async () => {
+      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Columns' }))
+
+      for (const label of ['Title', 'Choreographers', 'Key Moves', 'Vibes', 'Difficulty', 'Formation', 'Notes', 'Created', 'Updated']) {
+        expect(await screen.findByRole('button', { name: `Reorder ${label}` })).toBeInTheDocument()
+      }
+    })
+
+    it('separates pinned columns from unpinned ones with a divider, so they read as two distinct reorderable groups', async () => {
+      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Columns' }))
+
+      const separator = await screen.findByRole('separator')
+      // Title is pinned by default, so it belongs before the divider;
+      // Difficulty isn't pinned, so it belongs after.
+      const titleHandle = screen.getByRole('button', { name: 'Reorder Title' })
+      const difficultyHandle = screen.getByRole('button', { name: 'Reorder Difficulty' })
+      expect(titleHandle.compareDocumentPosition(separator) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(difficultyHandle.compareDocumentPosition(separator) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
     })
   })
 })

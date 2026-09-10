@@ -128,3 +128,10 @@
     @apply font-sans;
     }
 }
+
+/* Forces a grabbing cursor everywhere while a column is being dragged
+   (DancesPage's manage-columns menu), including over descendants
+   that set their own cursor. */
+body.is-dragging-column * {
+  cursor: grabbing !important;
+}
