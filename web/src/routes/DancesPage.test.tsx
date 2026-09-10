@@ -187,7 +187,7 @@ describe('DancesPage', () => {
   })
 
   describe('column visibility', () => {
-    it('lists every column except the non-hideable Title as a checked toggle in the Columns menu', async () => {
+    it('lists every column, Title included, as a checked toggle in the Columns menu', async () => {
       useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
@@ -195,6 +195,7 @@ describe('DancesPage', () => {
       await user.click(screen.getByRole('button', { name: 'Columns' }))
 
       for (const label of [
+        'Title',
         'Difficulty',
         'Formation',
         'Choreographers',
@@ -204,15 +205,11 @@ describe('DancesPage', () => {
         'Created',
         'Updated',
       ]) {
-        expect(await screen.findByRole('menuitemcheckbox', { name: label })).toHaveAttribute('aria-checked', 'true')
+        expect(await screen.findByRole('switch', { name: label })).toHaveAttribute('aria-checked', 'true')
       }
-      // Title always stays visible - hiding it would leave a row with no
-      // identifying field, so it's excluded from the menu entirely rather
-      // than offered as a toggle that would misbehave if used.
-      expect(screen.queryByRole('menuitemcheckbox', { name: 'Title' })).not.toBeInTheDocument()
     })
 
-    it('hides a column from the table when its checkbox is unchecked, and restores it when re-checked', async () => {
+    it('hides a column from the table when its toggle is switched off, and restores it when switched back on', async () => {
       useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
@@ -222,17 +219,37 @@ describe('DancesPage', () => {
 
       const user = userEvent.setup()
       await user.click(screen.getByRole('button', { name: 'Columns' }))
-      await user.click(await screen.findByRole('menuitemcheckbox', { name: 'Notes' }))
+      await user.click(await screen.findByRole('switch', { name: 'Notes' }))
 
       expect(within(table).queryByRole('columnheader', { name: 'Notes' })).not.toBeInTheDocument()
       expect(within(table).queryByText('A classic.')).not.toBeInTheDocument()
 
-      // The menu stays open after a toggle (closeOnClick defaults to false),
-      // so the same checkbox item can be clicked again to restore it.
-      await user.click(await screen.findByRole('menuitemcheckbox', { name: 'Notes' }))
+      await user.click(await screen.findByRole('switch', { name: 'Notes' }))
 
       expect(within(table).getByRole('columnheader', { name: 'Notes' })).toBeInTheDocument()
       expect(within(table).getByText('A classic.')).toBeInTheDocument()
+    })
+
+    it('disables the last remaining visible column\'s toggle, so the table can never end up with no columns shown', async () => {
+      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Columns' }))
+
+      // Hide every column except Title, one at a time.
+      for (const label of ['Difficulty', 'Formation', 'Choreographers', 'Key Moves', 'Vibes', 'Notes', 'Created', 'Updated']) {
+        await user.click(await screen.findByRole('switch', { name: label }))
+      }
+
+      const titleToggle = screen.getByRole('switch', { name: 'Title' })
+      expect(titleToggle).toHaveAttribute('aria-checked', 'true')
+      expect(titleToggle).toHaveAttribute('aria-disabled', 'true')
+
+      // Disabled, so clicking it does nothing - Title stays visible.
+      await user.click(titleToggle)
+      expect(titleToggle).toHaveAttribute('aria-checked', 'true')
+      expect(within(screen.getByRole('table')).getByRole('columnheader', { name: 'Title' })).toBeInTheDocument()
     })
   })
 

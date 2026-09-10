@@ -49,26 +49,10 @@ interface DanceField<K extends keyof DanceWithJoins = keyof DanceWithJoins> {
   label: string
   render: (value: DanceWithJoins[K]) => ReactNode
   cardRender?: (value: DanceWithJoins[K]) => ReactNode
-  // Defaults to hideable (undefined reads as true, matching TanStack's per-column default)
   enableHiding?: boolean
-  // What to actually compare when sorting by this column - defaults to the
-  // raw value itself (via the fallback below). Only needed when the
-  // sortable value differs from what TanStack would read directly off the
-  // row: formation strips its "Duple Minor - " prefix for display and
-  // should sort the same way, and a tag list sorts by its first
-  // alphabetical entry, matching how it displays. Returning null sorts the
-  // row to the very end regardless of ascending vs. descending - the same
-  // place a missing value belongs either way (see sortUndefined below).
   sortValue?: (value: DanceWithJoins[K]) => string | number | null
-  // This field is a passthrough: it receives a concrete built-in like
-  // sortFn_alphanumeric (typed SortFn<any, any>) and later hands it back out
-  // to TanStack's own, differently-parameterized `sortFn` column option -
-  // two opposite variance directions no single non-`any` param type can
-  // satisfy at once, so `any` here is the actual correct tool.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   sortFn?: (rowA: any, rowB: any, columnId: string) => number
-  // Falls back to the defaultColumn sizes set on useTable() in DancesPage.tsx
-  // - only set here for fields that clearly want to start wider or narrower.
   size?: number
   minSize?: number
   maxSize?: number
@@ -84,8 +68,6 @@ export const danceFields: DanceField[] = [
     key: 'title',
     label: 'Title',
     render: (value) => value || mutedPlaceholder,
-    enableHiding: false,
-    // Empty string reads the same as "missing" here - both sort to the end.
     sortValue: (value) => value || null,
     sortFn: sortFn_alphanumeric,
     size: 250,
@@ -165,9 +147,7 @@ export const danceFields: DanceField[] = [
   }),
 ]
 
-// Only the features this table actually uses are registered - TanStack Table
-// v9 only installs a feature's state/APIs once it's registered here, so this
-// list is deliberately not stockFeatures (which would register everything).
+// Tanstack Table features this table actually uses are registered.
 export const features = tableFeatures({
   columnVisibilityFeature,
   rowSortingFeature,
