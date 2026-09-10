@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { usePowerSync } from '@powersync/react'
 
 const { useAuthMock } = vi.hoisted(() => ({
@@ -12,21 +12,24 @@ vi.mock('@/contexts/AuthContext', () => ({
 }))
 
 vi.mock('./database', () => ({
-  // Resolves by default, since most tests don't care about connect()'s
-  // outcome - the error-path test below overrides this per-call with
-  // mockRejectedValueOnce/mockResolvedValueOnce.
-  db: { connect: vi.fn().mockResolvedValue(undefined) },
+  // Both resolve by default, since most tests don't care about the startup
+  // outcome - the error-path test below overrides waitForReady per-call with
+  // mockRejectedValueOnce/mockResolvedValueOnce (the one that can actually
+  // reject in real usage - see PowerSyncProvider's own comment on why
+  // connect() can't).
+  db: { connect: vi.fn().mockResolvedValue(undefined), waitForReady: vi.fn().mockResolvedValue(undefined) },
 }))
 
 // The real `db` export is a PowerSyncDatabase instance, so TypeScript infers
 // `import('./database').db` at that type regardless of the vi.mock() above
-// swapping its runtime value - and PowerSyncDatabase#connect, being a real
-// class method, carries an implicit `this` that trips @typescript-eslint/
-// unbound-method wherever we pass `db.connect` around as a bare reference
-// below. This type describes what the mock actually is at runtime, decoupling
-// `db` from the real class so `.connect` is just a plain mock function.
+// swapping its runtime value - and PowerSyncDatabase's methods, being real
+// class methods, carry an implicit `this` that trips @typescript-eslint/
+// unbound-method wherever we pass one around as a bare reference below. This
+// type describes what the mock actually is at runtime, decoupling `db` from
+// the real class so each method is just a plain mock function.
 interface MockDb {
   connect: ReturnType<typeof vi.fn>
+  waitForReady: ReturnType<typeof vi.fn>
 }
 
 // db and PowerSyncProvider are both re-imported fresh, inside each test,
@@ -49,6 +52,12 @@ function ContextConsumer({ expected }: { expected: unknown }) {
   const powersync = usePowerSync()
   return <div>{powersync === expected ? 'has db' : 'no db'}</div>
 }
+
+afterEach(() => {
+  // Only the reload-error test below stubs `location` - restore it
+  // unconditionally so that stub can never leak into a later test.
+  vi.unstubAllGlobals()
+})
 
 describe('PowerSyncProvider', () => {
   it('provides db via PowerSyncContext regardless of auth state', async () => {
@@ -101,14 +110,22 @@ describe('PowerSyncProvider', () => {
     /* eslint-enable @typescript-eslint/no-unsafe-assignment */
   })
 
-  it('shows a retryable error instead of hanging forever when connect() rejects', async () => {
+  it('shows a reload-only error instead of hanging forever when the local database fails to open (e.g. OPFS unavailable in private/incognito browsing)', async () => {
     useAuthMock.mockReturnValue({ user: { id: '1' } })
     const { db, PowerSyncProvider } = await loadFresh()
-    db.connect.mockRejectedValueOnce(new Error('OPFS unavailable')).mockResolvedValueOnce(undefined)
+    // waitForReady, not connect, is what actually rejects for this - see
+    // PowerSyncProvider's own comment on why connect() can't be used here.
+    db.waitForReady.mockRejectedValueOnce(new Error('OPFS unavailable'))
     // Silence the deliberate console.error the component logs alongside
     // setting error state - this test is asserting on that state, not on
     // whether the console stays clean.
     vi.spyOn(console, 'error').mockImplementation(() => {})
+    // The error UI reloads the page rather than re-running connect() on the
+    // same module instance - see PowerSyncProvider's comment on why an
+    // in-place retry could never succeed against this failure. jsdom's
+    // location.reload throws "Not implemented" unless stubbed.
+    const reloadMock = vi.fn()
+    vi.stubGlobal('location', { ...window.location, reload: reloadMock })
 
     render(
       <PowerSyncProvider>
@@ -121,14 +138,9 @@ describe('PowerSyncProvider', () => {
     expect(screen.queryByText('has db')).not.toBeInTheDocument()
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'Retry' }))
+    await user.click(screen.getByRole('button', { name: 'Reload page' }))
 
-    // Retry succeeds (the second mockResolvedValueOnce above) and renders
-    // children again, proving the module-level hasConnected guard was
-    // actually reset by the first failure - otherwise this second attempt
-    // would silently no-op and the error would never clear.
-    expect(await screen.findByText('has db')).toBeInTheDocument()
-    expect(db.connect).toHaveBeenCalledTimes(2)
+    expect(reloadMock).toHaveBeenCalledTimes(1)
   })
 
   it('does not reconnect across an unmount/remount of the same module instance', async () => {

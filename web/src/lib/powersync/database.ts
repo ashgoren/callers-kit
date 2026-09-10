@@ -18,9 +18,9 @@ export const db = new PowerSyncDatabase({
     // per-page-read overhead), avoids a known IndexedDB-VFS crash on large
     // Safari queries, and is PowerSync's own recommended VFS for Safari/iOS
     // multi-tab support specifically - relevant since iPad is a real target
-    // platform for this app, not an afterthought. The one gap is Safari
-    // Private Browsing, which doesn't support OPFS at all; no fallback to
-    // IDBBatchAtomicVFS is implemented for that case yet.
+    // platform for this app, not an afterthought. The one gap is private/
+    // incognito browsing, which doesn't support OPFS at all in most
+    // non-Chromium browsers; no fallback to IDBBatchAtomicVFS is implemented for that case yet.
     //
     // (A Safari-slowness investigation - initial sync taking 15-30s in
     // Safari vs ~1s in Chrome & Firefox on the same device & network - tested

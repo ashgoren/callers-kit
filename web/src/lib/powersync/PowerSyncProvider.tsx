@@ -16,10 +16,6 @@ let hasConnected = false
 export function PowerSyncProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
   const [connectionError, setConnectionError] = useState<Error | null>(null)
-  // Bumped by the Retry button to re-run the effect below without a full
-  // page reload - the only other way to get a fresh connect() attempt,
-  // since `hasConnected` normally blocks every attempt after the first.
-  const [retryToken, setRetryToken] = useState(0)
 
   useEffect(() => {
     // fetchCredentials() (in the connector) needs an active Supabase
@@ -29,32 +25,48 @@ export function PowerSyncProvider({ children }: { children: React.ReactNode }) {
     // here - the check is just defensive, in case that ever changes.
     if (user && !hasConnected) {
       hasConnected = true
-      // connect() itself resolves quickly (sync continues in the
-      // background) but can still reject outright - e.g. a browser that
-      // can't open the local SQLite storage at all (known case: Safari
-      // Private Browsing has no OPFS support).
-      db.connect(new SupabaseConnector()).catch((error: unknown) => {
-        hasConnected = false
-        console.error('PowerSync connect() failed:', error)
+      // db.connect()'s own promise can't be used to detect this: internally,
+      // ConnectionManager.connect() (@powersync/shared-internals) wraps the
+      // whole attempt in .catch(() => {}), by design, so it can keep
+      // silently retrying a transient network/sync issue instead of
+      // surfacing every one as a hard error - meaning connect() effectively
+      // never rejects. waitForReady() is the one that actually rejects, and
+      // only for a genuinely broken local database: it resolves once
+      // PowerSync finishes opening + initializing the local SQLite database,
+      // before any network sync is involved at all - e.g. a browser that
+      // can't provide the configured storage (known case: private/incognito
+      // browsing has no OPFS support in most non-Chromium browsers -
+      // confirmed in both Safari and Firefox). Both are awaited together
+      // since either failing means there's nothing usable to show.
+      //
+      // Every step inside that local-database init is local-only (opening
+      // storage, loading the schema, running a PRAGMA) - none of it touches
+      // the network - so a rejection here is never a transient blip the way
+      // a network hiccup would be. It's also not something a plain retry on
+      // this same page could fix even if it were transient: `db` is a
+      // module-level singleton, so its cached, already-rejected internal
+      // ready-promise is exactly what waitForReady() would keep returning on
+      // a second call. Only a real reload - a fresh module graph, a fresh
+      // `db` - can possibly produce a different outcome, which is why the
+      // error UI below reloads the page rather than re-running this effect.
+      Promise.all([db.waitForReady(), db.connect(new SupabaseConnector())]).catch((error: unknown) => {
+        console.error('PowerSync failed to start:', error)
         setConnectionError(error instanceof Error ? error : new Error(String(error)))
       })
     }
-  }, [user, retryToken])
+  }, [user])
 
   if (connectionError) {
     return (
       <div className="flex flex-col items-center gap-2 p-4 text-center text-sm">
         <p role="alert" className="text-destructive">
-          Couldn't connect to sync: {connectionError.message}
+          Couldn't start sync: {connectionError.message}
         </p>
-        <Button
-          variant="outline"
-          onClick={() => {
-            setConnectionError(null)
-            setRetryToken((token) => token + 1)
-          }}
-        >
-          Retry
+        <p className="text-muted-foreground mb-2">
+          This usually means the browser does not support local storage - e.g. private/incognito browsing mode.
+        </p>
+        <Button variant="outline" onClick={() => window.location.reload()}>
+          Reload page
         </Button>
       </div>
     )
