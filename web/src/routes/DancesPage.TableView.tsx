@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { ColumnsMenu } from './DancesPage.ColumnsMenu'
 import { computeColumnReorder } from './DancesPage.reorder'
-import type { Ref } from 'react'
+import type { Ref, TouchEvent as ReactTouchEvent } from 'react'
 import type { CollisionDetection, DragEndEvent, Modifier } from '@dnd-kit/core'
 import type { TableInstance } from './DancesPage.columns'
 
@@ -46,13 +46,53 @@ function PinBoundaryDivider({ ref }: { ref?: Ref<HTMLDivElement> }) {
 }
 
 function ColumnResizeHandle({ header }: { header: LeafHeader }) {
+  const isCoarsePointer = useCoarsePointer()
+  const resizeHandler = header.getResizeHandler()
+
+  // Require an actual long press before a resize starts on touch.
+  // TanStack's resize handler has no delay concept of its own,
+  // so this hand-rolls a delay/tolerance/cancel pattern.
+  function handleTouchStart(event: ReactTouchEvent<HTMLDivElement>) {
+    const touch = event.touches[0]
+    if (!touch) return
+    const startX = touch.clientX
+    const startY = touch.clientY
+    const nativeEvent = event.nativeEvent
+
+    function onTouchMove(moveEvent: TouchEvent) {
+      const moveTouch = moveEvent.touches[0]
+      if (!moveTouch) return
+      if (Math.abs(moveTouch.clientX - startX) > 5 || Math.abs(moveTouch.clientY - startY) > 5) {
+        cancelPending()
+      }
+    }
+
+    function cancelPending() {
+      window.clearTimeout(timeoutId)
+      document.removeEventListener('touchmove', onTouchMove)
+      document.removeEventListener('touchend', cancelPending)
+      document.removeEventListener('touchcancel', cancelPending)
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      cancelPending()
+      resizeHandler(nativeEvent)
+    }, 500)
+
+    document.addEventListener('touchmove', onTouchMove, { passive: true })
+    document.addEventListener('touchend', cancelPending)
+    document.addEventListener('touchcancel', cancelPending)
+  }
+
   return (
     <div
-      onMouseDown={header.getResizeHandler()}
-      onTouchStart={header.getResizeHandler()}
-      className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize touch-none select-none hover:bg-primary/50 active:bg-primary/50 pointer-coarse:w-4"
+      onMouseDown={resizeHandler}
+      onTouchStart={isCoarsePointer ? handleTouchStart : resizeHandler}
+      className={`absolute top-0 right-0 h-full cursor-col-resize select-none active:bg-primary/50 ${
+        isCoarsePointer ? 'w-4 bg-border/40' : 'w-1.5 touch-none hover:bg-primary/50'
+      }`}
     >
-      <div className="mx-auto h-full w-px bg-border" />
+      <div className={`mx-auto h-full bg-border ${isCoarsePointer ? 'w-0.5' : 'w-px'}`} />
     </div>
   )
 }
