@@ -1,27 +1,37 @@
-import { useState } from 'react'
 import { useTable } from '@tanstack/react-table'
 import { Spinner } from '@/components/ui/spinner'
+import { useTableColumnState } from '@/lib/powersync/useTableColumnState'
 import { useDances } from './DancesPage.data'
-import { columns, features } from './DancesPage.columns'
+import { columns, DEFAULT_COLUMN_STATE, features } from './DancesPage.columns'
 import { TableView } from './DancesPage.TableView'
 import { CardList } from './DancesPage.CardList'
-import type { ColumnOrderState, ColumnPinningState, ColumnVisibilityState, SortingState } from '@tanstack/react-table'
 
 export function DancesPage() {
-  const { dances, isLoading } = useDances()
-
-  // Controlled state, so eventually it can be synced to db.
-  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({})
-  const [sorting, setSorting] = useState<SortingState>([{ id: 'title', desc: false }])
-  const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({ start: ['title'], end: [] })
-  const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([]) // defaults to order columns were defined in
+  const { dances, isLoading: dancesLoading } = useDances()
+  const {
+    state,
+    isLoading: preferencesLoading,
+    setColumnVisibility,
+    setSorting,
+    setColumnPinning,
+    setColumnOrder,
+  } = useTableColumnState('dances', DEFAULT_COLUMN_STATE)
 
   const table = useTable({
     features,
     columns,
     data: dances,
     getRowId: (row) => row.id,
-    state: { columnVisibility, sorting, columnPinning, columnOrder },
+    // columnSizing is deliberately left out here - including it would make
+    // TanStack treat it as controlled, freezing it at this hook's value
+    // (not wired up yet) instead of letting the table manage live drag
+    // resizing internally.
+    state: {
+      columnVisibility: state.columnVisibility,
+      sorting: state.sorting,
+      columnPinning: state.columnPinning,
+      columnOrder: state.columnOrder,
+    },
     onColumnVisibilityChange: setColumnVisibility,
     onSortingChange: setSorting,
     onColumnPinningChange: setColumnPinning,
@@ -33,7 +43,7 @@ export function DancesPage() {
     columnResizeMode: 'onChange', // live width updates while dragging
   })
 
-  if (isLoading) {
+  if (dancesLoading || preferencesLoading) {
     return (
       <div className="p-4 text-center">
         <Spinner className="size-6 text-muted-foreground" />

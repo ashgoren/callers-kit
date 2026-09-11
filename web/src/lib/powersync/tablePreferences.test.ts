@@ -1,0 +1,67 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { db } from './database' // Actually loads the mock below, not the real module.
+import { parseColumnState, resolveUpdater, writeColumnState } from './tablePreferences'
+import type { TableColumnState } from './tablePreferences'
+
+vi.mock('./database', () => ({
+  db: { execute: vi.fn() },
+}))
+
+const defaults: TableColumnState = {
+  columnVisibility: {},
+  sorting: [{ id: 'title', desc: false }],
+  columnPinning: { start: ['title'], end: [] },
+  columnOrder: [],
+  columnSizing: {},
+}
+
+describe('parseColumnState', () => {
+  it('returns the defaults untouched when there is no row yet', () => {
+    expect(parseColumnState(undefined, defaults)).toBe(defaults)
+  })
+
+  it('merges a stored row over the defaults, field by field', () => {
+    const row = {
+      id: '1',
+      column_state: JSON.stringify({ columnVisibility: { notes: false }, sorting: [{ id: 'difficulty', desc: true }] }),
+    }
+
+    expect(parseColumnState(row, defaults)).toEqual({
+      ...defaults,
+      columnVisibility: { notes: false },
+      sorting: [{ id: 'difficulty', desc: true }],
+    })
+  })
+
+  it('falls back to the default for a field missing from an older stored row (e.g. columnSizing added later)', () => {
+    const row = { id: '1', column_state: JSON.stringify({ columnOrder: ['title', 'notes'] }) }
+
+    expect(parseColumnState(row, defaults)).toEqual({ ...defaults, columnOrder: ['title', 'notes'] })
+  })
+})
+
+describe('resolveUpdater', () => {
+  it('returns a plain value as-is', () => {
+    expect(resolveUpdater([{ id: 'title', desc: true }], [])).toEqual([{ id: 'title', desc: true }])
+  })
+
+  it('calls a function updater with the current value', () => {
+    const updater = (old: string[]) => [...old, 'new']
+    expect(resolveUpdater(updater, ['existing'])).toEqual(['existing', 'new'])
+  })
+})
+
+describe('writeColumnState', () => {
+  beforeEach(() => {
+    vi.mocked(db.execute).mockClear()
+  })
+
+  it('updates the row by id', async () => {
+    await writeColumnState('42', defaults)
+
+    expect(db.execute).toHaveBeenCalledWith('UPDATE user_table_preferences SET column_state = ? WHERE id = ?', [
+      JSON.stringify(defaults),
+      '42',
+    ])
+  })
+})

@@ -13,6 +13,31 @@ vi.mock('@powersync/react', () => ({
   useQuery: useQueryMock,
 }))
 
+// DancesPage now issues two separate useQuery calls - the dances data query
+// (DancesPage.data.ts) and the column-preferences query (useTableColumnState) -
+// both routed through the one useQueryMock above. Most tests in this file
+// only care about the dances query's result, so the preferences query
+// defaults to "a row already exists, with an empty column_state" - matching
+// production reality, where every user has one from signup (see
+// seed_dances_column_preferences) - with an empty object, not the built-in
+// defaults, since that's genuinely what a freshly seeded row holds; a test
+// can override what's stored via storedColumnState (see the "persisted
+// column state" describe block below).
+function mockDances(result: { data: unknown[]; isLoading: boolean }, storedColumnState: object = {}) {
+  useQueryMock.mockImplementation((sql: string) =>
+    sql.includes('user_table_preferences')
+      ? { data: [{ id: 'prefs-1', column_state: JSON.stringify(storedColumnState) }], isLoading: false }
+      : result,
+  )
+}
+
+// Column-preference writes go through db.execute (see tablePreferences.ts) -
+// mocked the same way commitFieldEdit.test.ts mocks it, so no test here
+// touches the real PowerSync/wa-sqlite machinery.
+vi.mock('@/lib/powersync/database', () => ({
+  db: { execute: vi.fn() },
+}))
+
 // jsdom doesn't implement matchMedia at all. TableView's useCoarsePointer hook
 // calls window.matchMedia('(pointer: coarse)') to decide whether to render the
 // header's right-click context menu (skipped on touch, since it would race
@@ -93,7 +118,7 @@ describe('DancesPage', () => {
     // a typo in a table/column name there (e.g. the wrong FK column) would
     // pass every other test in this file and only surface in the slower,
     // live-data e2e suite. This asserts on the real query text instead.
-    useQueryMock.mockReturnValue({ data: [], isLoading: false })
+    mockDances({ data: [], isLoading: false })
     render(<DancesPage />)
 
     const query = useQueryMock.mock.calls[0][0] as string
@@ -121,7 +146,7 @@ describe('DancesPage', () => {
   })
 
   it('shows a loading state while the query is in flight', () => {
-    useQueryMock.mockReturnValue({ data: [], isLoading: true })
+    mockDances({ data: [], isLoading: true })
     render(<DancesPage />)
 
     expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument()
@@ -129,7 +154,7 @@ describe('DancesPage', () => {
   })
 
   it('renders a dance row with all columns correctly formatted', () => {
-    useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+    mockDances({ data: [makeDance()], isLoading: false })
     render(<DancesPage />)
 
     const table = screen.getByRole('table')
@@ -144,7 +169,7 @@ describe('DancesPage', () => {
   })
 
   it('shows placeholders for null/empty title, difficulty, formation, and notes', () => {
-    useQueryMock.mockReturnValue({
+    mockDances({
       data: [makeDance({ title: '', difficulty: null, formation: null, notes: null })],
       isLoading: false,
     })
@@ -162,7 +187,7 @@ describe('DancesPage', () => {
   })
 
   it('joins multiple choreographer names with ", ", and shows a placeholder when there are none', () => {
-    useQueryMock.mockReturnValue({
+    mockDances({
       data: [
         makeDance({ id: '1', title: 'Dance A', choreographers: '["Alice","Bob"]' }),
         makeDance({ id: '2', title: 'Dance B', choreographers: '[]' }),
@@ -182,7 +207,7 @@ describe('DancesPage', () => {
   })
 
   it('joins multiple key_move and vibe names with ", ", and shows a placeholder when there are none', () => {
-    useQueryMock.mockReturnValue({
+    mockDances({
       data: [
         makeDance({ id: '1', title: 'Dance A', key_moves: '["Allemande","Swing"]', vibes: '["Playful"]' }),
         makeDance({ id: '2', title: 'Dance B', key_moves: '[]', vibes: '[]' }),
@@ -203,7 +228,7 @@ describe('DancesPage', () => {
   })
 
   it('also renders the same dance in the card list layout', () => {
-    useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+    mockDances({ data: [makeDance()], isLoading: false })
     render(<DancesPage />)
 
     // Both layouts render simultaneously in jsdom (no real CSS breakpoints
@@ -215,7 +240,7 @@ describe('DancesPage', () => {
   })
 
   it('truncates Notes in the card list via cardRender, unlike the table cell\'s untruncated render', () => {
-    useQueryMock.mockReturnValue({ data: [makeDance({ notes: 'A classic.' })], isLoading: false })
+    mockDances({ data: [makeDance({ notes: 'A classic.' })], isLoading: false })
     render(<DancesPage />)
 
     const tableNotesCell = within(screen.getByRole('table')).getByText('A classic.')
@@ -227,7 +252,7 @@ describe('DancesPage', () => {
   })
 
   it('shortens a "Duple Minor - X" formation to just X, but leaves a bare "Duple Minor" unchanged', () => {
-    useQueryMock.mockReturnValue({
+    mockDances({
       data: [
         makeDance({ id: '1', title: 'Dance A', formation: 'Duple Minor - Proper' }),
         makeDance({ id: '2', title: 'Dance B', formation: 'Duple Minor' }),
@@ -244,7 +269,7 @@ describe('DancesPage', () => {
 
   describe('column visibility', () => {
     it('lists every column, Title included, as a checked toggle in the Columns menu', async () => {
-      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
       const user = userEvent.setup()
@@ -266,7 +291,7 @@ describe('DancesPage', () => {
     })
 
     it('hides a column from the table when its toggle is switched off, and restores it when switched back on', async () => {
-      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
       const table = screen.getByRole('table')
@@ -287,7 +312,7 @@ describe('DancesPage', () => {
     })
 
     it('disables the last remaining visible column\'s toggle, so the table can never end up with no columns shown', async () => {
-      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
       const user = userEvent.setup()
@@ -311,7 +336,7 @@ describe('DancesPage', () => {
 
   describe('sorting', () => {
     it('defaults to sorting by title ascending, then toggles between ascending and descending on repeated clicks (no unsorted state, since multi-sort is disabled)', async () => {
-      useQueryMock.mockReturnValue({
+      mockDances({
         data: [
           makeDance({ id: '1', title: 'Charlie' }),
           makeDance({ id: '2', title: 'Alpha' }),
@@ -342,7 +367,7 @@ describe('DancesPage', () => {
     })
 
     it('sorts a row with a missing value to the end, regardless of ascending or descending', async () => {
-      useQueryMock.mockReturnValue({
+      mockDances({
         data: [
           makeDance({ id: '1', title: 'Has difficulty 3', difficulty: 3 }),
           makeDance({ id: '2', title: 'Has no difficulty', difficulty: null }),
@@ -372,7 +397,7 @@ describe('DancesPage', () => {
       // '' is not nullish, so without notes' own sortValue override it would
       // sort as the lexicographically smallest string instead, landing at
       // the top in ascending order rather than the bottom with null.
-      useQueryMock.mockReturnValue({
+      mockDances({
         data: [
           makeDance({ id: '1', title: 'Has a note', notes: 'A classic.' }),
           makeDance({ id: '2', title: 'Empty string note', notes: '' }),
@@ -395,7 +420,7 @@ describe('DancesPage', () => {
       // Raw-string order would put "Banana" before "Duple Minor - Apple"
       // ('B' < 'D'), but displayed order ("Apple" vs. "Banana") puts Apple
       // first - these two rows only distinguish the fix if it's working.
-      useQueryMock.mockReturnValue({
+      mockDances({
         data: [
           makeDance({ id: '1', title: 'Shows Banana', formation: 'Banana' }),
           makeDance({ id: '2', title: 'Shows Apple', formation: 'Duple Minor - Apple' }),
@@ -412,7 +437,7 @@ describe('DancesPage', () => {
     })
 
     it('sorts a tag-list column by its first name alphabetically, matching the alphabetical order it displays in', async () => {
-      useQueryMock.mockReturnValue({
+      mockDances({
         data: [
           // Displays "Amy, Zeb" (see the column-visibility describe block
           // above for renderTagList's own alphabetizing) - sorts by "Amy".
@@ -436,7 +461,7 @@ describe('DancesPage', () => {
       // Same shape of check as the Choreographers test above, but for a
       // different tag-list field - each field wires its own sortValue/sortFn,
       // so this doesn't follow automatically from Choreographers' own test.
-      useQueryMock.mockReturnValue({
+      mockDances({
         data: [
           makeDance({ id: '1', title: 'Zeb and Amy', key_moves: '["Zeb","Amy"]' }),
           makeDance({ id: '2', title: 'Just Ben', key_moves: '["Ben"]' }),
@@ -453,7 +478,7 @@ describe('DancesPage', () => {
     })
 
     it('sorts Vibes by its first name alphabetically, matching the alphabetical order it displays in', async () => {
-      useQueryMock.mockReturnValue({
+      mockDances({
         data: [
           makeDance({ id: '1', title: 'Zeb and Amy', vibes: '["Zeb","Amy"]' }),
           makeDance({ id: '2', title: 'Just Ben', vibes: '["Ben"]' }),
@@ -470,7 +495,7 @@ describe('DancesPage', () => {
     })
 
     it('sorts Created by raw timestamp, ascending then descending', async () => {
-      useQueryMock.mockReturnValue({
+      mockDances({
         data: [
           makeDance({ id: '1', title: 'Newer', created_at: '2026-03-20T12:00:00.000Z' }),
           makeDance({ id: '2', title: 'Older', created_at: '2026-01-15T12:00:00.000Z' }),
@@ -489,7 +514,7 @@ describe('DancesPage', () => {
     })
 
     it('sorts Updated by raw timestamp, ascending then descending', async () => {
-      useQueryMock.mockReturnValue({
+      mockDances({
         data: [
           makeDance({ id: '1', title: 'Newer', updated_at: '2026-03-20T12:00:00.000Z' }),
           makeDance({ id: '2', title: 'Older', updated_at: '2026-01-15T12:00:00.000Z' }),
@@ -519,7 +544,7 @@ describe('DancesPage', () => {
     }
 
     it('defaults to sorting by title ascending, and reorders both the card list and the table when a different field is picked', async () => {
-      useQueryMock.mockReturnValue({
+      mockDances({
         data: [
           makeDance({ id: '1', title: 'Charlie' }),
           makeDance({ id: '2', title: 'Alpha' }),
@@ -547,7 +572,7 @@ describe('DancesPage', () => {
     })
 
     it('flips direction with the toggle button, which starts enabled since a field (title) is sorted by default', async () => {
-      useQueryMock.mockReturnValue({
+      mockDances({
         data: [makeDance({ id: '1', title: 'Charlie' }), makeDance({ id: '2', title: 'Alpha' })],
         isLoading: false,
       })
@@ -573,7 +598,7 @@ describe('DancesPage', () => {
     // arithmetic (no getBoundingClientRect/real layout involved), so it's
     // genuinely exercisable here, not just this static setup.
     it('renders a resize handle and a matching column width for every visible column', () => {
-      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
       const table = screen.getByRole('table')
@@ -588,7 +613,7 @@ describe('DancesPage', () => {
     })
 
     it('grows a column by the drag distance when its resize handle is dragged', () => {
-      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
       const table = screen.getByRole('table')
@@ -615,7 +640,7 @@ describe('DancesPage', () => {
     })
 
     it('stops shrinking a column at its minSize, even when dragged well past it', () => {
-      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
       const table = screen.getByRole('table')
@@ -636,7 +661,7 @@ describe('DancesPage', () => {
     })
 
     it('stops growing a column at its maxSize, even when dragged well past it', () => {
-      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
       const table = screen.getByRole('table')
@@ -659,7 +684,7 @@ describe('DancesPage', () => {
 
   describe('column pinning', () => {
     it('pins Title by default (shown as "Unpin"), with every other column offered as "Pin"', async () => {
-      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
       const user = userEvent.setup()
@@ -670,7 +695,7 @@ describe('DancesPage', () => {
     })
 
     it('sticky-positions Title by default, and removes that once unpinned', async () => {
-      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
       expect(screen.getByRole('columnheader', { name: 'Title' }).style.position).toBe('sticky')
@@ -689,7 +714,7 @@ describe('DancesPage', () => {
     })
 
     it('sticky-positions a column once its Pin button is clicked', async () => {
-      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
       expect(screen.getByRole('columnheader', { name: 'Difficulty' }).style.position).not.toBe('sticky')
@@ -706,7 +731,7 @@ describe('DancesPage', () => {
       // Guards SortableColumnRow's own "2nd click bug" fix (see its comment
       // in ColumnsMenu.tsx): clicking Pin/Unpin on the same rendered row
       // twice in a row, without re-querying or reopening the menu in between.
-      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
       const user = userEvent.setup()
@@ -720,7 +745,7 @@ describe('DancesPage', () => {
     })
 
     it('offsets a second pinned column past the first one\'s width, rather than stacking them at the same position', async () => {
-      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
       const user = userEvent.setup()
@@ -740,7 +765,7 @@ describe('DancesPage', () => {
     })
 
     it('puts a divider on the last pinned column, in both the header and the body rows, as a persistent boundary between the frozen and scrollable regions', async () => {
-      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
       const titleCell = within(screen.getByRole('table')).getByText('Chorus Jig').closest('td')!
@@ -762,7 +787,7 @@ describe('DancesPage', () => {
 
   describe('column header context menu', () => {
     it('hides a column via a right-click on its header', async () => {
-      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
       const notesHeader = screen.getByRole('columnheader', { name: 'Notes' })
@@ -775,7 +800,7 @@ describe('DancesPage', () => {
     })
 
     it('offers Unpin (not Pin) for an already-pinned column, and unpins it on click', async () => {
-      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
       // Title is pinned by default.
@@ -795,7 +820,7 @@ describe('DancesPage', () => {
     })
 
     it('pins a column via a right-click on its header, matching the sticky style the manage-columns menu applies', async () => {
-      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
       const difficultyHeader = screen.getByRole('columnheader', { name: 'Difficulty' })
@@ -811,7 +836,7 @@ describe('DancesPage', () => {
     })
 
     it('disables Hide on the last remaining visible column, matching the manage-columns menu guard', async () => {
-      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
       // Hide every column except Title via the manage-columns menu first.
@@ -850,7 +875,7 @@ describe('DancesPage', () => {
     // just click-to-sort) - the reorder decision itself is computeColumnReorder,
     // already covered directly below.
     it('wires every sort button up for drag-based reordering, alongside click-to-sort', () => {
-      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
       for (const label of ['Title', 'Difficulty', 'Formation', 'Choreographers', 'Key Moves', 'Vibes', 'Notes', 'Created', 'Updated']) {
@@ -860,7 +885,7 @@ describe('DancesPage', () => {
     })
 
     it('gives the sort button touch-none on a mouse/fine pointer, so a mouse drag claims the gesture immediately', () => {
-      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
       const sortButton = within(screen.getByRole('columnheader', { name: 'Title' })).getByRole('button')
@@ -869,7 +894,7 @@ describe('DancesPage', () => {
 
     it('omits touch-none from the sort button on a coarse/touch pointer, so a quick swipe still scrolls natively', () => {
       mockPointer(true)
-      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
       const sortButton = within(screen.getByRole('columnheader', { name: 'Title' })).getByRole('button')
@@ -887,7 +912,7 @@ describe('DancesPage', () => {
     // `column reordering` describe blocks above).
     it('never opens, even on a right-click/contextmenu event', () => {
       mockPointer(true)
-      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
       const notesHeader = screen.getByRole('columnheader', { name: 'Notes' })
@@ -899,7 +924,7 @@ describe('DancesPage', () => {
 
     it('reappears if the pointer type switches back to fine mid-session, e.g. a mouse being attached', () => {
       const pointer = mockPointer(true)
-      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
       act(() => {
@@ -1046,7 +1071,7 @@ describe('DancesPage', () => {
     // with no dependency on real layout at all. This just verifies the
     // static wiring: a drag handle exists for every column in the menu.
     it('renders a drag handle for every column in the manage-columns menu', async () => {
-      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
       const user = userEvent.setup()
@@ -1058,7 +1083,7 @@ describe('DancesPage', () => {
     })
 
     it('separates pinned columns from unpinned ones with a divider, so they read as two distinct reorderable groups', async () => {
-      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
       const user = userEvent.setup()
@@ -1071,6 +1096,42 @@ describe('DancesPage', () => {
       const difficultyHandle = screen.getByRole('button', { name: 'Reorder Difficulty' })
       expect(titleHandle.compareDocumentPosition(separator) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(difficultyHandle.compareDocumentPosition(separator) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
+    })
+  })
+
+  describe('persisted column state', () => {
+    it('renders with a previously saved column layout instead of the built-in defaults', () => {
+      mockDances(
+        { data: [makeDance()], isLoading: false },
+        { columnVisibility: { notes: false }, sorting: [{ id: 'difficulty', desc: true }] },
+      )
+      render(<DancesPage />)
+
+      // Notes was hidden in the saved layout - shouldn't render at all,
+      // unlike every other test in this file where it's visible by default.
+      expect(screen.queryByRole('columnheader', { name: 'Notes' })).not.toBeInTheDocument()
+      // Sorted by Difficulty descending in the saved layout, not the
+      // built-in Title-ascending default.
+      const difficultyHeader = screen.getByRole('button', { name: 'Difficulty' })
+      expect(difficultyHeader.querySelector('.lucide-arrow-down')).toBeInTheDocument()
+    })
+
+    it('persists a column visibility change to the local db, updating the seeded row by id', async () => {
+      mockDances({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Columns' }))
+      await user.click(await screen.findByRole('switch', { name: 'Notes' }))
+
+      const { db } = await import('@/lib/powersync/database')
+      expect(db.execute).toHaveBeenCalledWith('UPDATE user_table_preferences SET column_state = ? WHERE id = ?', [
+        expect.any(String),
+        'prefs-1',
+      ])
+      const [, params] = vi.mocked(db.execute).mock.calls[0]
+      const savedState = JSON.parse((params as [string, string])[0]) as { columnVisibility: unknown }
+      expect(savedState.columnVisibility).toEqual({ notes: false })
     })
   })
 })

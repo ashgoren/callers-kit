@@ -15,6 +15,7 @@ import { format } from 'date-fns'
 import type { ReactNode } from 'react'
 import type { SortFn, useTable } from '@tanstack/react-table'
 import type { Dance } from '@/lib/powersync/schema'
+import type { TableColumnState } from '@/lib/powersync/tablePreferences'
 
 export interface DanceWithJoins extends Dance {
   choreographers: string[]
@@ -151,6 +152,14 @@ export const danceFields: DanceField[] = [
 // each re-implementing the same find().
 export function getDanceField(key: string) {
   return danceFields.find((field) => field.key === key)
+}
+
+export const DEFAULT_COLUMN_STATE: TableColumnState = {
+  columnVisibility: {},
+  sorting: [{ id: 'title', desc: false }],
+  columnPinning: { start: ['title'], end: [] },
+  columnOrder: [], // defaults to the order columns were defined in
+  columnSizing: {}, // not wired up yet
 }
 
 // Tanstack Table features this table actually uses are registered.
