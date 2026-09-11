@@ -39,7 +39,7 @@ export function ColumnResizeHandle({ table, header }: { table: TableInstance; he
       {() => {
         // Reads state.columnResizing above (not just header.column.getIsResizing()
         // directly below) for the same React Compiler staleness reason documented
-        // on SortableTableHead's table.Subscribe in TableView.tsx - getIsResizing()
+        // on TableHeaderCell's table.Subscribe - getIsResizing()
         // hides its real dependency behind the stable header/column object.
         const isResizing = header.column.getIsResizing()
 

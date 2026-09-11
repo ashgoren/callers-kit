@@ -70,10 +70,9 @@ export function useHeaderReorder(table: TableInstance) {
     unpinnedHeaders,
     pinBoundaryDividerRef,
     dndContextProps: {
-      // activationConstraint: plain click on sort button doesn't cross threshold, so
-      // dnd-kit doesn't intercept it, and the click's own onClick (sort) fires
-      // normally. Only a real drag past 8px (mouse) or a long press (touch) starts
-      // a reorder.
+      // activationConstraint:
+      // plain click on header doesn't cross threshold, so dnd-kit doesn't intercept it, so the click's
+      // own onClick (sort) fires normally. Only a drag past 8px (mouse) or long press (touch) starts reorder.
       sensors: useSensors(
         useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
         useSensor(TouchSensor, { activationConstraint: { delay: 500, tolerance: 5 } }),
@@ -87,13 +86,8 @@ export function useHeaderReorder(table: TableInstance) {
       onDragEnd: handleDragEnd,
       modifiers: [restrictToHorizontalAxis, restrictToParentElement, restrictToOwnPinGroup],
       autoScroll: false,
-      // DndContext also renders its own hidden screen-reader instructions and a
-      // live-announcement region as <div>s alongside whatever's passed as
-      // children - since this DndContext sits directly inside <table> (wrapping
-      // a <thead>), those <div>s would otherwise land as direct children of
-      // <table> too, which is invalid HTML. Moving them to document.body
-      // keeps them working without that invalid nesting.
-      accessibility: { container: document.body },
+      // move DndContext's accessibility divs out of the table because react doesn't allow divs inside a table
+      accessibility: { container: document.body }
     }
   }
 }
