@@ -13,8 +13,8 @@ import type { TableInstance } from './DancesPage.columns'
 // dndContextProps object meant to be spread directly onto <DndContext>.
 export function useHeaderReorder(table: TableInstance) {
   const leafHeaders = table.getLeafHeaders()
-  const pinnedHeaders = leafHeaders.filter((header) => header.column.getIsPinned() === 'start')
-  const unpinnedHeaders = leafHeaders.filter((header) => header.column.getIsPinned() !== 'start')
+  const pinnedHeaders = table.getStartLeafHeaders()
+  const unpinnedHeaders = table.getCenterLeafHeaders()
   const pinnedIds = new Set(pinnedHeaders.map((header) => header.column.id))
   const collisionDetection = makeSameGroupCollisionDetection(pinnedIds)
 
