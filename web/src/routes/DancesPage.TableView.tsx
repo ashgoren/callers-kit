@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import { DndContext, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { restrictToHorizontalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
@@ -7,6 +7,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { useCoarsePointer } from '@/hooks/useCoarsePointer'
+import { useDragBodyClass } from '@/hooks/useDragBodyClass'
 import { ColumnResizeHandle } from './DancesPage.ColumnResizeHandle'
 import { ColumnsMenu } from './DancesPage.ColumnsMenu'
 import { computeColumnReorder, makeSameGroupCollisionDetection } from './DancesPage.reorder'
@@ -81,14 +82,7 @@ export function TableView({ table }: { table: TableInstance }) {
     return transform
   }
 
-  // Force grab pointer anywhere on screen while dragging
-  const [isDraggingAnyHeader, setIsDraggingAnyHeader] = useState(false)
-
-  useEffect(() => {
-    if (!isDraggingAnyHeader) return
-    document.body.classList.add('is-dragging-column')
-    return () => document.body.classList.remove('is-dragging-column')
-  }, [isDraggingAnyHeader])
+  const [, setIsDraggingAnyHeader] = useDragBodyClass()
 
   function handleDragEnd(event: DragEndEvent) {
     setIsDraggingAnyHeader(false)

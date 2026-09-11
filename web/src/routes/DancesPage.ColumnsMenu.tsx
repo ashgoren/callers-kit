@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import type { DragEndEvent } from '@dnd-kit/core'
 import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers'
@@ -7,6 +6,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, Pin } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Switch } from '@/components/ui/switch'
+import { useDragBodyClass } from '@/hooks/useDragBodyClass'
 import { danceFields } from './DancesPage.columns'
 import type { TableInstance } from './DancesPage.columns'
 import { computeColumnReorder, makeSameGroupCollisionDetection } from './DancesPage.reorder'
@@ -17,15 +17,7 @@ export function ColumnsMenu({ table }: { table: TableInstance }) {
   const unpinnedColumns = table.getPinnedLeafColumns('center') // unpinned columns
   const pinnedIds = new Set(pinnedColumns.map((column) => column.id))
   const sameGroupCollisionDetection = makeSameGroupCollisionDetection(pinnedIds)
-
-  // Force grip pointer anywhere on screen while dragging.
-  const [isDraggingAnyRow, setIsDraggingAnyRow] = useState(false)
-
-  useEffect(() => {
-    if (!isDraggingAnyRow) return
-    document.body.classList.add('is-dragging-column')
-    return () => document.body.classList.remove('is-dragging-column')
-  }, [isDraggingAnyRow])
+  const [, setIsDraggingAnyRow] = useDragBodyClass()
 
   function handleDragEnd(event: DragEndEvent) {
     setIsDraggingAnyRow(false)
