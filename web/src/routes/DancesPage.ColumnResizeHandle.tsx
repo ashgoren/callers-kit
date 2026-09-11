@@ -1,70 +1,38 @@
-import type { TouchEvent as ReactTouchEvent } from 'react'
+import { useRef } from 'react'
 import { useCoarsePointer } from '@/hooks/useCoarsePointer'
+import { useLongPressTouch } from '@/hooks/useLongPressTouch'
 import type { LeafHeader, TableInstance } from './DancesPage.columns'
 
 export function ColumnResizeHandle({ table, header }: { table: TableInstance; header: LeafHeader }) {
   const isCoarsePointer = useCoarsePointer()
   const resizeHandler = header.getResizeHandler()
+  const handleRef = useRef<HTMLDivElement>(null)
 
   // Requires an actual long press before a resize starts on touch - the same
   // problem, and the same fix, as the header's own drag-to-reorder: the handle
   // sits right at a horizontally-scrolling table's edge, so a finger just
   // trying to scroll easily lands on it and would otherwise trigger a resize
-  // on the very first touchmove. TanStack's resize handler has no delay
-  // concept of its own (unlike dnd-kit's TouchSensor), so this hand-rolls the
-  // same delay/tolerance/cancel pattern by hand.
+  // on the very first touchmove. useLongPressTouch is the generic delay/
+  // tolerance/cancel mechanism for this (see its own comment for why it's
+  // needed here specifically, instead of reusing dnd-kit's TouchSensor the
+  // way the header's drag-to-reorder does).
   //
   // Since touch-action is unconditionally none below (see that comment), native
   // scrolling can never take over here no matter how quickly you swipe past the
-  // tolerance - so once a swipe is detected, this takes over scrolling itself
-  // (a direct scrollLeft adjustment per move, tracking the finger 1:1) rather
-  // than leaving the divider a dead zone. That's the trade-off: this has no
-  // momentum/deceleration after release the way native scrolling does, since
-  // it's just following the finger, not a real touch-scroll gesture.
-  function handleTouchStart(event: ReactTouchEvent<HTMLDivElement>) {
-    const touch = event.touches[0]
-    if (!touch) return
-    if (event.cancelable) event.preventDefault()
-    const scrollContainer = event.currentTarget.closest<HTMLElement>('[data-slot="table-container"]')
-    const startX = touch.clientX
-    const startY = touch.clientY
-    const nativeEvent = event.nativeEvent
-    let isScrolling = false
-    let lastX = startX
-
-    function onTouchMove(moveEvent: TouchEvent) {
-      const moveTouch = moveEvent.touches[0]
-      if (!moveTouch) return
-
-      if (isScrolling) {
-        scrollContainer?.scrollBy({ left: lastX - moveTouch.clientX })
-        lastX = moveTouch.clientX
-        return
-      }
-
-      if (Math.abs(moveTouch.clientX - startX) > 5 || Math.abs(moveTouch.clientY - startY) > 5) {
-        window.clearTimeout(timeoutId)
-        isScrolling = true
-        lastX = moveTouch.clientX
-      }
-    }
-
-    function endGesture() {
-      window.clearTimeout(timeoutId)
-      document.removeEventListener('touchmove', onTouchMove)
-      document.removeEventListener('touchend', endGesture)
-      document.removeEventListener('touchcancel', endGesture)
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      endGesture()
-      resizeHandler(nativeEvent)
-    }, 500)
-
-    document.addEventListener('touchmove', onTouchMove, { passive: true })
-    document.addEventListener('touchend', endGesture)
-    document.addEventListener('touchcancel', endGesture)
-  }
+  // tolerance - so onScroll takes over scrolling manually (a direct scrollLeft
+  // adjustment per move, tracking the finger 1:1) rather than leaving the
+  // divider a dead zone. That's the trade-off: this has no momentum/
+  // deceleration after release the way native scrolling does, since it's just
+  // following the finger, not a real touch-scroll gesture.
+  const handleTouchStart = useLongPressTouch({
+    delay: 500,
+    tolerance: 5,
+    onActivate: resizeHandler,
+    onScroll: (deltaX) => {
+      const scrollContainer = handleRef.current?.closest<HTMLElement>('[data-slot="table-container"]')
+      scrollContainer?.scrollBy({ left: deltaX })
+    },
+  })
 
   return (
     <table.Subscribe selector={(state) => ({ columnResizing: state.columnResizing })}>
@@ -77,6 +45,7 @@ export function ColumnResizeHandle({ table, header }: { table: TableInstance; he
 
         return (
           <div
+            ref={handleRef}
             onMouseDown={isCoarsePointer ? undefined : resizeHandler}
             onTouchStart={isCoarsePointer ? handleTouchStart : resizeHandler}
             // touch-none unconditionally (not just on a fine pointer) - unlike the
