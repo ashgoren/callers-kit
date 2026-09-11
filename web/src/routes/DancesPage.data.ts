@@ -30,6 +30,7 @@ const DANCES_QUERY = `
     ${tagListSubquery('dances_key_moves', 'key_moves', 'key_move_id')} AS key_moves,
     ${tagListSubquery('dances_vibes', 'vibes', 'vibe_id')} AS vibes
   FROM dances
+  ORDER BY dances.title
 `
 
 // The shape of a row as it comes back from DANCES_QUERY, before the

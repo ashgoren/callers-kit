@@ -100,6 +100,10 @@ describe('DancesPage', () => {
     for (const column of ['title', 'difficulty', 'formation', 'notes', 'created_at', 'updated_at']) {
       expect(query).toContain(`dances.${column}`)
     }
+    // Baseline order before any client-side sort is applied (and for any
+    // future reader of this query that doesn't go through the table's own
+    // sorting state, e.g. a print/export view).
+    expect(query).toContain('ORDER BY dances.title')
 
     const joins: [junction: string, owner: string, fk: string, alias: string][] = [
       ['dances_choreographers', 'choreographers', 'choreographer_id', 'choreographers'],
@@ -292,7 +296,7 @@ describe('DancesPage', () => {
   })
 
   describe('sorting', () => {
-    it('sorts ascending then descending then clears back to the original order on repeated clicks, showing a matching arrow each time', async () => {
+    it('defaults to sorting by title ascending, then cycles through descending and cleared back to the original (unsorted) order on repeated clicks', async () => {
       useQueryMock.mockReturnValue({
         data: [
           makeDance({ id: '1', title: 'Charlie' }),
@@ -305,14 +309,10 @@ describe('DancesPage', () => {
 
       const table = screen.getByRole('table')
       const titleHeader = screen.getByRole('button', { name: 'Title' })
-      expect(rowTitlesInOrder(table)).toEqual(['Charlie', 'Alpha', 'Bravo'])
-      expect(titleHeader.querySelector('svg')).not.toBeInTheDocument()
-
-      const user = userEvent.setup()
-
-      await user.click(titleHeader)
       expect(rowTitlesInOrder(table)).toEqual(['Alpha', 'Bravo', 'Charlie'])
       expect(titleHeader.querySelector('.lucide-arrow-up')).toBeInTheDocument()
+
+      const user = userEvent.setup()
 
       await user.click(titleHeader)
       expect(rowTitlesInOrder(table)).toEqual(['Charlie', 'Bravo', 'Alpha'])
@@ -321,6 +321,10 @@ describe('DancesPage', () => {
       await user.click(titleHeader)
       expect(rowTitlesInOrder(table)).toEqual(['Charlie', 'Alpha', 'Bravo'])
       expect(titleHeader.querySelector('svg')).not.toBeInTheDocument()
+
+      await user.click(titleHeader)
+      expect(rowTitlesInOrder(table)).toEqual(['Alpha', 'Bravo', 'Charlie'])
+      expect(titleHeader.querySelector('.lucide-arrow-up')).toBeInTheDocument()
     })
 
     it('sorts a row with a missing value to the end, regardless of ascending or descending', async () => {
@@ -425,7 +429,7 @@ describe('DancesPage', () => {
       return screen.getAllByRole('listitem').map((item) => item.querySelector('p')?.textContent ?? '')
     }
 
-    it('reorders both the card list and the table when a field is picked, and updates the trigger label to match', async () => {
+    it('defaults to sorting by title ascending, and reorders both the card list and the table when a different field is picked', async () => {
       useQueryMock.mockReturnValue({
         data: [
           makeDance({ id: '1', title: 'Charlie' }),
@@ -436,40 +440,35 @@ describe('DancesPage', () => {
       })
       render(<DancesPage />)
 
-      expect(cardTitlesInOrder()).toEqual(['Charlie', 'Alpha', 'Bravo'])
+      expect(cardTitlesInOrder()).toEqual(['Alpha', 'Bravo', 'Charlie'])
+      expect(screen.getByRole('button', { name: 'Sort: Title' })).toBeInTheDocument()
 
       const user = userEvent.setup()
-      await user.click(screen.getByRole('button', { name: 'Sort' }))
-      await user.click(await screen.findByRole('menuitemradio', { name: 'Title' }))
+      await user.click(screen.getByRole('button', { name: 'Sort: Title' }))
+      await user.click(await screen.findByRole('menuitemradio', { name: 'Difficulty' }))
 
       // Same table instance drives both renderings - picking a field here
       // reorders the (still-mounted-in-jsdom) desktop table too, not just
-      // the cards.
+      // the cards. All three rows share the default difficulty from
+      // makeDance, so this only proves the field switched, not the order -
+      // sort-by-other-fields is covered by the 'sorting' describe block above.
       const table = screen.getByRole('table')
-      expect(cardTitlesInOrder()).toEqual(['Alpha', 'Bravo', 'Charlie'])
-      expect(rowTitlesInOrder(table)).toEqual(['Alpha', 'Bravo', 'Charlie'])
-      expect(screen.getByRole('button', { name: 'Sort: Title' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Sort: Difficulty' })).toBeInTheDocument()
+      expect(cardTitlesInOrder()).toEqual(rowTitlesInOrder(table))
     })
 
-    it('flips direction with the toggle button, which stays disabled until a field is chosen', async () => {
+    it('flips direction with the toggle button, which starts enabled since a field (title) is sorted by default', async () => {
       useQueryMock.mockReturnValue({
         data: [makeDance({ id: '1', title: 'Charlie' }), makeDance({ id: '2', title: 'Alpha' })],
         isLoading: false,
       })
       render(<DancesPage />)
 
-      const toggleButton = screen.getByRole('button', { name: 'Sort ascending' })
-      expect(toggleButton).toBeDisabled()
-
-      const user = userEvent.setup()
-      await user.click(screen.getByRole('button', { name: 'Sort' }))
-      await user.click(await screen.findByRole('menuitemradio', { name: 'Title' }))
-
-      // Selecting a field always starts ascending, regardless of whatever
-      // direction it was left at last time it was sorted.
       expect(cardTitlesInOrder()).toEqual(['Alpha', 'Charlie'])
+      const toggleButton = screen.getByRole('button', { name: 'Sort ascending' })
       expect(toggleButton).toBeEnabled()
 
+      const user = userEvent.setup()
       await user.click(toggleButton)
 
       expect(cardTitlesInOrder()).toEqual(['Charlie', 'Alpha'])

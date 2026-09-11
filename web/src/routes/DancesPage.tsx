@@ -12,7 +12,7 @@ export function DancesPage() {
 
   // Controlled state, so eventually it can be synced to db.
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({})
-  const [sorting, setSorting] = useState<SortingState>([])
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'title', desc: false }])
   const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({ start: ['title'], end: [] })
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([]) // defaults to order columns were defined in
 
