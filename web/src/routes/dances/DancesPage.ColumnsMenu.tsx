@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch'
 import { useDragBodyClass } from '@/hooks/useDragBodyClass'
 import { getDanceField } from './DancesPage.columns'
 import type { TableInstance } from './DancesPage.columns'
-import { computeColumnReorder, makeSameGroupCollisionDetection } from './DancesPage.reorder'
+import { applyColumnReorder, makeSameGroupCollisionDetection } from './DancesPage.reorder'
 
 export function ColumnsMenu({ table }: { table: TableInstance }) {
   // Pinned and unpinned columns are two separate reorderable groups.
@@ -25,19 +25,13 @@ export function ColumnsMenu({ table }: { table: TableInstance }) {
     const { active, over } = event
     if (!over) return
 
-    const result = computeColumnReorder(
+    applyColumnReorder(
+      table,
       pinnedColumns.map((column) => column.id),
       unpinnedColumns.map((column) => column.id),
       active.id as string,
       over.id as string,
     )
-    if (!result) return
-
-    if ('pinnedIds' in result) {
-      table.setColumnPinning((old) => ({ ...old, start: result.pinnedIds }))
-    } else {
-      table.setColumnOrder(result.unpinnedIds)
-    }
   }
 
   return (

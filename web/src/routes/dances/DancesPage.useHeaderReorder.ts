@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { restrictToHorizontalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
 import { useDragBodyClass } from '@/hooks/useDragBodyClass'
-import { computeColumnReorder, makeSameGroupCollisionDetection } from './DancesPage.reorder'
+import { applyColumnReorder, makeSameGroupCollisionDetection } from './DancesPage.reorder'
 import type { DragEndEvent, Modifier } from '@dnd-kit/core'
 import type { TableInstance } from './DancesPage.columns'
 
@@ -49,19 +49,13 @@ export function useHeaderReorder(table: TableInstance) {
     const { active, over } = event
     if (!over) return
 
-    const result = computeColumnReorder(
+    applyColumnReorder(
+      table,
       pinnedHeaders.map((header) => header.column.id),
       unpinnedHeaders.map((header) => header.column.id),
       active.id as string,
       over.id as string,
     )
-    if (!result) return
-
-    if ('pinnedIds' in result) {
-      table.setColumnPinning((old) => ({ ...old, start: result.pinnedIds }))
-    } else {
-      table.setColumnOrder(result.unpinnedIds)
-    }
   }
 
   return {

@@ -1,14 +1,37 @@
 import { closestCenter } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import type { CollisionDetection } from '@dnd-kit/core'
+import type { TableInstance } from './DancesPage.columns'
 
-// Pure decision logic for a completed column-menu drag.
-// Only one of the two groups is ever affected by a given drag - a pinned
-// column can only be reordered among other pinned columns, and likewise for
-// unpinned columns, so callers should already be restricting which columns
-// can be dragged over which via their own collision detection.
-// Returns null when nothing to do: dropped back onto itself, dragged across the
-// pinned/unpinned boundary, or an id from neither list.
+// Column reordering is wired up on two separate drag surfaces - the table
+// header row's own columns, and the manage-columns menu's rows - and both
+// share the three functions below: collision detection during the drag,
+// deciding what a completed drag does, and applying that decision to table
+// state. Only one of the two groups (pinned/unpinned) is ever affected by a
+// given drag, so a pinned column can only be reordered among other pinned
+// columns, and likewise for unpinned columns.
+
+// Runs continuously during a drag (not just at drop) to keep a dragged
+// column from ever being reported "over" a container in the other group -
+// restricting valid drop targets to whichever group the dragged item
+// belongs to, so a drag can never cross that boundary mid-gesture.
+// computeColumnReorder below still decides what a completed drag actually
+// does; this only shapes what dnd-kit reports as `over`.
+export function makeSameGroupCollisionDetection(pinnedIds: Set<string>): CollisionDetection {
+  return (args) => {
+    const activeIsPinned = pinnedIds.has(args.active.id as string)
+    const sameGroupContainers = args.droppableContainers.filter(
+      (container) => pinnedIds.has(container.id as string) === activeIsPinned,
+    )
+    return closestCenter({ ...args, droppableContainers: sameGroupContainers })
+  }
+}
+
+// Pure decision logic for a completed drag: given the current pinned/
+// unpinned id lists and which item was dropped where, returns the new order -
+// or null when there's nothing to do (dropped back onto itself, dragged
+// across the pinned/unpinned boundary, or an id from neither list). Takes
+// plain id arrays rather than a TableInstance so testable in isolation.
 export function computeColumnReorder(
   pinnedIds: string[],
   unpinnedIds: string[],
@@ -26,19 +49,22 @@ export function computeColumnReorder(
   return null
 }
 
-// Shared by both places a pinned/unpinned column list can be dragged to
-// reorder (the manage-columns menu's rows, and the table header's own
-// columns) - restricts valid drop targets to whichever group (pinned or
-// unpinned) the dragged item belongs to, so a drag can never cross that
-// boundary mid-gesture. computeColumnReorder above still has the final say
-// on what a completed drag actually does; this only shapes collision
-// detection during the drag itself.
-export function makeSameGroupCollisionDetection(pinnedIds: Set<string>): CollisionDetection {
-  return (args) => {
-    const activeIsPinned = pinnedIds.has(args.active.id as string)
-    const sameGroupContainers = args.droppableContainers.filter(
-      (container) => pinnedIds.has(container.id as string) === activeIsPinned,
-    )
-    return closestCenter({ ...args, droppableContainers: sameGroupContainers })
+// Runs computeColumnReorder on a completed drag and writes the result to
+// table state - the function each drag surface's onDragEnd actually calls,
+// so neither has to re-implement the same pinnedIds/unpinnedIds if/else.
+export function applyColumnReorder(
+  table: TableInstance,
+  pinnedIds: string[],
+  unpinnedIds: string[],
+  activeId: string,
+  overId: string,
+): void {
+  const result = computeColumnReorder(pinnedIds, unpinnedIds, activeId, overId)
+  if (!result) return
+
+  if ('pinnedIds' in result) {
+    table.setColumnPinning((old) => ({ ...old, start: result.pinnedIds }))
+  } else {
+    table.setColumnOrder(result.unpinnedIds)
   }
 }

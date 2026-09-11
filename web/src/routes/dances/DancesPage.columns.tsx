@@ -13,7 +13,7 @@ import {
 } from '@tanstack/react-table'
 import { format } from 'date-fns'
 import type { ReactNode } from 'react'
-import type { useTable } from '@tanstack/react-table'
+import type { SortFn, useTable } from '@tanstack/react-table'
 import type { Dance } from '@/lib/powersync/schema'
 
 export interface DanceWithJoins extends Dance {
@@ -51,8 +51,7 @@ interface DanceField<K extends keyof DanceWithJoins = keyof DanceWithJoins> {
   cardRender?: (value: DanceWithJoins[K]) => ReactNode
   enableHiding?: boolean
   sortValue?: (value: DanceWithJoins[K]) => string | number | null
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sortFn?: (rowA: any, rowB: any, columnId: string) => number
+  sortFn?: SortFn<typeof features, DanceWithJoins>
   size?: number
   minSize?: number
   maxSize?: number
