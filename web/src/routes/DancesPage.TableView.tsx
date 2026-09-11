@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp } from 'lucide-react'
-import { closestCenter, DndContext, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { DndContext, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { restrictToHorizontalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
 import { horizontalListSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -9,9 +9,9 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } 
 import { useCoarsePointer } from '@/hooks/useCoarsePointer'
 import { ColumnResizeHandle } from './DancesPage.ColumnResizeHandle'
 import { ColumnsMenu } from './DancesPage.ColumnsMenu'
-import { computeColumnReorder } from './DancesPage.reorder'
+import { computeColumnReorder, makeSameGroupCollisionDetection } from './DancesPage.reorder'
 import type { Ref } from 'react'
-import type { CollisionDetection, DragEndEvent, Modifier } from '@dnd-kit/core'
+import type { DragEndEvent, Modifier } from '@dnd-kit/core'
 import type { LeafHeader, TableInstance } from './DancesPage.columns'
 
 // TanStack's pinning feature only computes which columns are pinned & px offset.
@@ -61,14 +61,7 @@ export function TableView({ table }: { table: TableInstance }) {
   const pinnedHeaders = leafHeaders.filter((header) => header.column.getIsPinned() === 'start')
   const unpinnedHeaders = leafHeaders.filter((header) => header.column.getIsPinned() !== 'start')
   const pinnedIds = new Set(pinnedHeaders.map((header) => header.column.id))
-
-  const sameGroupCollisionDetection: CollisionDetection = (args) => {
-    const activeIsPinned = pinnedIds.has(args.active.id as string)
-    const sameGroupContainers = args.droppableContainers.filter(
-      (container) => pinnedIds.has(container.id as string) === activeIsPinned,
-    )
-    return closestCenter({ ...args, droppableContainers: sameGroupContainers })
-  }
+  const sameGroupCollisionDetection = makeSameGroupCollisionDetection(pinnedIds)
 
   const pinBoundaryDividerRef = useRef<HTMLDivElement | null>(null)
   const [pinBoundaryX, setPinBoundaryX] = useState<number | null>(null)

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { closestCenter, DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
-import type { CollisionDetection, DragEndEvent } from '@dnd-kit/core'
+import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import type { DragEndEvent } from '@dnd-kit/core'
 import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -9,22 +9,14 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuSeparator, DropdownMenuT
 import { Switch } from '@/components/ui/switch'
 import { danceFields } from './DancesPage.columns'
 import type { TableInstance } from './DancesPage.columns'
-import { computeColumnReorder } from './DancesPage.reorder'
+import { computeColumnReorder, makeSameGroupCollisionDetection } from './DancesPage.reorder'
 
 export function ColumnsMenu({ table }: { table: TableInstance }) {
   // Pinned and unpinned columns are two separate reorderable groups.
   const pinnedColumns = table.getPinnedLeafColumns('start') // left pinned columns
   const unpinnedColumns = table.getPinnedLeafColumns('center') // unpinned columns
   const pinnedIds = new Set(pinnedColumns.map((column) => column.id))
-
-  // Restricts valid drop targets to whichever group (pinned/unpinned).
-  const sameGroupCollisionDetection: CollisionDetection = (args) => {
-    const activeIsPinned = pinnedIds.has(args.active.id as string)
-    const sameGroupContainers = args.droppableContainers.filter(
-      (container) => pinnedIds.has(container.id as string) === activeIsPinned,
-    )
-    return closestCenter({ ...args, droppableContainers: sameGroupContainers })
-  }
+  const sameGroupCollisionDetection = makeSameGroupCollisionDetection(pinnedIds)
 
   // Force grip pointer anywhere on screen while dragging.
   const [isDraggingAnyRow, setIsDraggingAnyRow] = useState(false)
