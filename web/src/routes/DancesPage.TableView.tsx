@@ -1,19 +1,15 @@
-import { useRef, useState } from 'react'
 import { ArrowDown, ArrowUp } from 'lucide-react'
-import { DndContext, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
-import { restrictToHorizontalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
+import { DndContext } from '@dnd-kit/core'
 import { horizontalListSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { useCoarsePointer } from '@/hooks/useCoarsePointer'
-import { useDragBodyClass } from '@/hooks/useDragBodyClass'
 import { ColumnResizeHandle } from './DancesPage.ColumnResizeHandle'
 import { ColumnsMenu } from './DancesPage.ColumnsMenu'
 import { pinnedCellStyle, PinBoundaryDivider } from './DancesPage.pinning'
-import { computeColumnReorder, makeSameGroupCollisionDetection } from './DancesPage.reorder'
+import { useHeaderReorder } from './DancesPage.useHeaderReorder'
 import type { ReactNode, Ref } from 'react'
-import type { DragEndEvent, Modifier } from '@dnd-kit/core'
 import type { LeafHeader, TableInstance } from './DancesPage.columns'
 
 function HeaderContextMenuItems({ table, header, isPinned }: {
@@ -69,52 +65,7 @@ function HeaderContextMenuWrapper({ table, header, isPinned, children }: {
 }
 
 export function TableView({ table }: { table: TableInstance }) {
-  // Pinned and unpinned columns are two separate reorderable groups here.
-  const leafHeaders = table.getLeafHeaders()
-  const pinnedHeaders = leafHeaders.filter((header) => header.column.getIsPinned() === 'start')
-  const unpinnedHeaders = leafHeaders.filter((header) => header.column.getIsPinned() !== 'start')
-  const pinnedIds = new Set(pinnedHeaders.map((header) => header.column.id))
-  const sameGroupCollisionDetection = makeSameGroupCollisionDetection(pinnedIds)
-
-  const pinBoundaryDividerRef = useRef<HTMLDivElement | null>(null)
-  const [pinBoundaryX, setPinBoundaryX] = useState<number | null>(null)
-
-  const restrictToOwnPinGroup: Modifier = ({ transform, active, draggingNodeRect }) => {
-    if (!active || !draggingNodeRect || pinBoundaryX === null) return transform
-
-    const center = draggingNodeRect.left + draggingNodeRect.width / 2 + transform.x
-
-    if (pinnedIds.has(active.id as string)) {
-      if (center > pinBoundaryX) {
-        return { ...transform, x: transform.x - (center - pinBoundaryX) }
-      }
-    } else if (center < pinBoundaryX) {
-      return { ...transform, x: transform.x + (pinBoundaryX - center) }
-    }
-    return transform
-  }
-
-  const [, setIsDraggingAnyHeader] = useDragBodyClass()
-
-  function handleDragEnd(event: DragEndEvent) {
-    setIsDraggingAnyHeader(false)
-    const { active, over } = event
-    if (!over) return
-
-    const result = computeColumnReorder(
-      pinnedHeaders.map((header) => header.column.id),
-      unpinnedHeaders.map((header) => header.column.id),
-      active.id as string,
-      over.id as string,
-    )
-    if (!result) return
-
-    if ('pinnedIds' in result) {
-      table.setColumnPinning((old) => ({ ...old, start: result.pinnedIds }))
-    } else {
-      table.setColumnOrder(result.unpinnedIds)
-    }
-  }
+  const { leafHeaders, pinnedHeaders, unpinnedHeaders, pinBoundaryDividerRef, dndContextProps } = useHeaderReorder(table)
 
   return (
     <>
@@ -130,31 +81,24 @@ export function TableView({ table }: { table: TableInstance }) {
             the header row below renders from, so a <colgroup>'s <col>
             elements - which apply to table columns purely by position, not
             by id - always land on the column the header row actually put
-            in that position. */}
-        <colgroup>
-          {leafHeaders.map((header) => (
-            <col key={header.column.id} style={{ width: header.column.getSize() }} />
-          ))}
-        </colgroup>
-        {/* activationConstraint: plain click on sort button doesn't cross threshold, so dnd-kit
-            doesn't intercept it, and the click's own onClick (sort) fires normally.
-            Only a real drag past 8px starts a reorder. */}
-        <DndContext
-          sensors={useSensors(
-            useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
-            useSensor(TouchSensor, { activationConstraint: { delay: 500, tolerance: 5 } }),
+            in that position.
+
+            Wrapped in table.Subscribe (selecting columnSizing) for the same
+            React Compiler staleness reason documented on SortableTableHead's
+            own table.Subscribe below - header.column.getSize() hides its real
+            dependency behind the stable header object, so without this the
+            compiler can memoize this <col> away and never re-read a live
+            resize's updated width. */}
+        <table.Subscribe selector={(state) => ({ columnSizing: state.columnSizing })}>
+          {() => (
+            <colgroup>
+              {leafHeaders.map((header) => (
+                <col key={header.column.id} style={{ width: header.column.getSize() }} />
+              ))}
+            </colgroup>
           )}
-          collisionDetection={sameGroupCollisionDetection}
-          onDragStart={() => {
-            setIsDraggingAnyHeader(true)
-            setPinBoundaryX(pinBoundaryDividerRef.current?.getBoundingClientRect().right ?? null)
-          }}
-          onDragCancel={() => setIsDraggingAnyHeader(false)}
-          onDragEnd={handleDragEnd}
-          modifiers={[restrictToHorizontalAxis, restrictToParentElement, restrictToOwnPinGroup]}
-          autoScroll={false}
-          accessibility={{ container: document.body }}
-        >
+        </table.Subscribe>
+        <DndContext {...dndContextProps}>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
