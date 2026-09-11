@@ -13,8 +13,8 @@ import { SupabaseConnector } from './connector'
 // initialized. vi.hoisted() hoists this block too, so the mocks exist by
 // the time vi.mock()'s factory runs.
 const { fromMock, upsertMock, updateMock, deleteMock, eqMock, getSessionMock } = vi.hoisted(() => {
-  const eqMock = vi.fn(() => ({ error: null as { message: string } | null }))
-  const upsertMock = vi.fn(() => ({ error: null as { message: string } | null }))
+  const eqMock = vi.fn(() => ({ error: null as { message: string; code?: string } | null }))
+  const upsertMock = vi.fn(() => ({ error: null as { message: string; code?: string } | null }))
   const updateMock = vi.fn(() => ({ eq: eqMock }))
   const deleteMock = vi.fn(() => ({ eq: eqMock }))
   const fromMock = vi.fn(() => ({
@@ -86,6 +86,46 @@ describe('SupabaseConnector.uploadData', () => {
     expect(fromMock).toHaveBeenCalledWith('dances')
     expect(upsertMock).toHaveBeenCalledWith({ id: '1', title: 'New Dance' })
     expect(complete).toHaveBeenCalled()
+  })
+
+  it('treats a unique-violation (23505) on PUT as already applied, not a failure', async () => {
+    // Guards against a permanently-stuck retry loop: PowerSync retries a
+    // failed upload forever, so a PUT that can never succeed (the row
+    // already exists) must complete the transaction rather than throw.
+    const complete = vi.fn(() => Promise.resolve())
+    const transaction = new CrudTransaction(
+      [
+        makeCrudEntry({
+          op: UpdateType.PUT,
+          table: 'user_table_preferences',
+          id: '1',
+          opData: { table_name: 'dances', column_state: '{}' },
+        }),
+      ],
+      complete,
+    )
+    upsertMock.mockResolvedValueOnce({
+      error: { code: '23505', message: 'duplicate key value violates unique constraint' },
+    })
+
+    await connector.uploadData(makeDatabase(transaction))
+
+    expect(complete).toHaveBeenCalled()
+  })
+
+  it('still throws on a PUT error that is not a unique violation', async () => {
+    const complete = vi.fn(() => Promise.resolve())
+    const transaction = new CrudTransaction(
+      [makeCrudEntry({ op: UpdateType.PUT, table: 'dances', id: '1', opData: { title: 'X' } })],
+      complete,
+    )
+    upsertMock.mockResolvedValueOnce({ error: { code: '23503', message: 'foreign key violation' } })
+
+    await expect(connector.uploadData(makeDatabase(transaction))).rejects.toEqual({
+      code: '23503',
+      message: 'foreign key violation',
+    })
+    expect(complete).not.toHaveBeenCalled()
   })
 
   it('updates on PATCH', async () => {

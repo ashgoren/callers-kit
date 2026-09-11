@@ -42,7 +42,19 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
       switch (op.op) {
         case UpdateType.PUT: {
           const { error } = await supabase.from(op.table).upsert({ id: op.id, ...op.opData })
-          if (error) throw error
+          // 23505 = Postgres unique_violation: a row with this natural key
+          // already exists. Nothing in this app's current write paths
+          // creates rows client-side without knowing whether one already
+          // exists, but a stale queued PUT from an earlier version of the
+          // client (or a genuine same-moment race between two devices) can
+          // still be sitting in a device's local upload queue. PowerSync
+          // retries a failed upload indefinitely, so throwing here would
+          // leave that device stuck retrying a write that can never
+          // succeed - hammering the same conflict forever - instead of
+          // recognizing the row it wanted to create already exists and
+          // moving on.
+          if (error && error.code !== '23505') throw error
+          if (error) console.warn(`uploadData: ignoring unique-violation PUT on ${op.table} (row already exists)`, error)
           break
         }
         case UpdateType.PATCH: {
