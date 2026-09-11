@@ -296,7 +296,7 @@ describe('DancesPage', () => {
   })
 
   describe('sorting', () => {
-    it('defaults to sorting by title ascending, then cycles through descending and cleared back to the original (unsorted) order on repeated clicks', async () => {
+    it('defaults to sorting by title ascending, then toggles between ascending and descending on repeated clicks (no unsorted state, since multi-sort is disabled)', async () => {
       useQueryMock.mockReturnValue({
         data: [
           makeDance({ id: '1', title: 'Charlie' }),
@@ -319,12 +319,12 @@ describe('DancesPage', () => {
       expect(titleHeader.querySelector('.lucide-arrow-down')).toBeInTheDocument()
 
       await user.click(titleHeader)
-      expect(rowTitlesInOrder(table)).toEqual(['Charlie', 'Alpha', 'Bravo'])
-      expect(titleHeader.querySelector('svg')).not.toBeInTheDocument()
-
-      await user.click(titleHeader)
       expect(rowTitlesInOrder(table)).toEqual(['Alpha', 'Bravo', 'Charlie'])
       expect(titleHeader.querySelector('.lucide-arrow-up')).toBeInTheDocument()
+
+      await user.click(titleHeader)
+      expect(rowTitlesInOrder(table)).toEqual(['Charlie', 'Bravo', 'Alpha'])
+      expect(titleHeader.querySelector('.lucide-arrow-down')).toBeInTheDocument()
     })
 
     it('sorts a row with a missing value to the end, regardless of ascending or descending', async () => {

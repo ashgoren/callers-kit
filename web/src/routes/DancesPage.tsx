@@ -27,7 +27,7 @@ export function DancesPage() {
     onColumnPinningChange: setColumnPinning,
     onColumnOrderChange: setColumnOrder,
     enableMultiSort: false, // single-column sort only
-    enableSortingRemoval: true, // third click clears sort
+    enableSortingRemoval: false, // no unsorted state - clicking a header just toggles asc/desc
     sortDescFirst: false, // first click sorts ascending
     defaultColumn: { size: 150, minSize: 80, maxSize: 400 },
     columnResizeMode: 'onChange', // live width updates while dragging
