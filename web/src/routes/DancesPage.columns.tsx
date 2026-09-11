@@ -158,10 +158,8 @@ export const features = tableFeatures({
   columnOrderingFeature,
 })
 
-// Shared across DancesPage.tsx and its extracted pieces (ColumnsMenu, Mobile)
-// so every one of them types its `table` prop against the same instance
-// shape, instead of each re-deriving it from useTable's own generics.
 export type TableInstance = ReturnType<typeof useTable<typeof features, DanceWithJoins>>
+export type LeafHeader = ReturnType<TableInstance['getLeafHeaders']>[number]
 
 const columnHelper = createColumnHelper<typeof features, DanceWithJoins>()
 

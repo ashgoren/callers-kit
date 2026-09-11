@@ -6,27 +6,13 @@ import { horizontalListSortingStrategy, SortableContext, useSortable } from '@dn
 import { CSS } from '@dnd-kit/utilities'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
+import { useCoarsePointer } from '@/hooks/useCoarsePointer'
+import { ColumnResizeHandle } from './DancesPage.ColumnResizeHandle'
 import { ColumnsMenu } from './DancesPage.ColumnsMenu'
 import { computeColumnReorder } from './DancesPage.reorder'
-import type { Ref, TouchEvent as ReactTouchEvent } from 'react'
+import type { Ref } from 'react'
 import type { CollisionDetection, DragEndEvent, Modifier } from '@dnd-kit/core'
-import type { TableInstance } from './DancesPage.columns'
-
-type LeafHeader = ReturnType<TableInstance['getLeafHeaders']>[number]
-
-// Hide column header context menu on touch devices so it doesn't race with column reorder.
-function useCoarsePointer(): boolean {
-  const [isCoarse, setIsCoarse] = useState(() => window.matchMedia('(pointer: coarse)').matches)
-
-  useEffect(() => {
-    const media = window.matchMedia('(pointer: coarse)')
-    const onChange = () => setIsCoarse(media.matches)
-    media.addEventListener('change', onChange)
-    return () => media.removeEventListener('change', onChange)
-  }, [])
-
-  return isCoarse
-}
+import type { LeafHeader, TableInstance } from './DancesPage.columns'
 
 // TanStack's pinning feature only computes which columns are pinned & px offset.
 // The sticky CSS that actually keeps a pinned column in place is applied here.
@@ -43,58 +29,6 @@ function pinnedCellStyle(isPinned: false | 'start' | 'end', start: number) {
 
 function PinBoundaryDivider({ ref }: { ref?: Ref<HTMLDivElement> }) {
   return <div ref={ref} data-testid="pin-boundary-divider" className="pointer-events-none absolute inset-y-0 right-0 w-0.5 bg-border" />
-}
-
-function ColumnResizeHandle({ header }: { header: LeafHeader }) {
-  const isCoarsePointer = useCoarsePointer()
-  const resizeHandler = header.getResizeHandler()
-
-  // Require an actual long press before a resize starts on touch.
-  // TanStack's resize handler has no delay concept of its own,
-  // so this hand-rolls a delay/tolerance/cancel pattern.
-  function handleTouchStart(event: ReactTouchEvent<HTMLDivElement>) {
-    const touch = event.touches[0]
-    if (!touch) return
-    const startX = touch.clientX
-    const startY = touch.clientY
-    const nativeEvent = event.nativeEvent
-
-    function onTouchMove(moveEvent: TouchEvent) {
-      const moveTouch = moveEvent.touches[0]
-      if (!moveTouch) return
-      if (Math.abs(moveTouch.clientX - startX) > 5 || Math.abs(moveTouch.clientY - startY) > 5) {
-        cancelPending()
-      }
-    }
-
-    function cancelPending() {
-      window.clearTimeout(timeoutId)
-      document.removeEventListener('touchmove', onTouchMove)
-      document.removeEventListener('touchend', cancelPending)
-      document.removeEventListener('touchcancel', cancelPending)
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      cancelPending()
-      resizeHandler(nativeEvent)
-    }, 500)
-
-    document.addEventListener('touchmove', onTouchMove, { passive: true })
-    document.addEventListener('touchend', cancelPending)
-    document.addEventListener('touchcancel', cancelPending)
-  }
-
-  return (
-    <div
-      onMouseDown={resizeHandler}
-      onTouchStart={isCoarsePointer ? handleTouchStart : resizeHandler}
-      className={`absolute top-0 right-0 h-full cursor-col-resize select-none active:bg-primary/50 ${
-        isCoarsePointer ? 'w-4 bg-border/40' : 'w-1.5 touch-none hover:bg-primary/50'
-      }`}
-    >
-      <div className={`mx-auto h-full bg-border ${isCoarsePointer ? 'w-0.5' : 'w-px'}`} />
-    </div>
-  )
 }
 
 function HeaderContextMenuItems({ table, header, isPinned }: {
@@ -220,6 +154,7 @@ export function TableView({ table }: { table: TableInstance }) {
           onDragEnd={handleDragEnd}
           modifiers={[restrictToHorizontalAxis, restrictToParentElement, restrictToOwnPinGroup]}
           autoScroll={false}
+          accessibility={{ container: document.body }}
         >
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -326,7 +261,7 @@ function SortableTableHead({
                 onContextMenu={(event) => event.preventDefault()}
               >
                 {sortButton}
-                {header.column.getCanResize() && <ColumnResizeHandle header={header} />}
+                {header.column.getCanResize() && <ColumnResizeHandle table={table} header={header} />}
               </div>
             ) : (
               <ContextMenu>
@@ -334,7 +269,7 @@ function SortableTableHead({
                   {/* Click for sort, drag (past a small threshold) to reorder */}
                   {sortButton}
                   {/* Drag to resize */}
-                  {header.column.getCanResize() && <ColumnResizeHandle header={header} />}
+                  {header.column.getCanResize() && <ColumnResizeHandle table={table} header={header} />}
                 </ContextMenuTrigger>
                 {/* Right-click context menu for hide & pin */}
                 <ContextMenuContent>
