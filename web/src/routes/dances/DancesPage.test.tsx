@@ -1,9 +1,11 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { CollisionDetection } from '@dnd-kit/core'
 import type { Dance } from '@/lib/powersync/schema'
 import { DancesPage } from './DancesPage'
-import { computeColumnReorder } from './DancesPage.reorder'
+import { applyColumnReorder, computeColumnReorder, makeSameGroupCollisionDetection } from './DancesPage.reorder'
+import type { TableInstance } from './DancesPage.columns'
 
 const { useQueryMock } = vi.hoisted(() => ({ useQueryMock: vi.fn() }))
 
@@ -212,6 +214,18 @@ describe('DancesPage', () => {
     expect(screen.getAllByText('Becket')).toHaveLength(2)
   })
 
+  it('truncates Notes in the card list via cardRender, unlike the table cell\'s untruncated render', () => {
+    useQueryMock.mockReturnValue({ data: [makeDance({ notes: 'A classic.' })], isLoading: false })
+    render(<DancesPage />)
+
+    const tableNotesCell = within(screen.getByRole('table')).getByText('A classic.')
+    expect(tableNotesCell.className).not.toMatch(/\btruncate\b/)
+
+    const cardNotes = within(screen.getByRole('list')).getByText('A classic.')
+    expect(cardNotes.className).toMatch(/\btruncate\b/)
+    expect(cardNotes).toHaveAttribute('title', 'A classic.')
+  })
+
   it('shortens a "Duple Minor - X" formation to just X, but leaves a bare "Duple Minor" unchanged', () => {
     useQueryMock.mockReturnValue({
       data: [
@@ -417,6 +431,81 @@ describe('DancesPage', () => {
 
       expect(rowTitlesInOrder(table)).toEqual(['Amy and Zeb', 'Just Ben'])
     })
+
+    it('sorts Key Moves by its first name alphabetically, matching the alphabetical order it displays in', async () => {
+      // Same shape of check as the Choreographers test above, but for a
+      // different tag-list field - each field wires its own sortValue/sortFn,
+      // so this doesn't follow automatically from Choreographers' own test.
+      useQueryMock.mockReturnValue({
+        data: [
+          makeDance({ id: '1', title: 'Zeb and Amy', key_moves: '["Zeb","Amy"]' }),
+          makeDance({ id: '2', title: 'Just Ben', key_moves: '["Ben"]' }),
+        ],
+        isLoading: false,
+      })
+      render(<DancesPage />)
+
+      const table = screen.getByRole('table')
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Key Moves' }))
+
+      expect(rowTitlesInOrder(table)).toEqual(['Zeb and Amy', 'Just Ben'])
+    })
+
+    it('sorts Vibes by its first name alphabetically, matching the alphabetical order it displays in', async () => {
+      useQueryMock.mockReturnValue({
+        data: [
+          makeDance({ id: '1', title: 'Zeb and Amy', vibes: '["Zeb","Amy"]' }),
+          makeDance({ id: '2', title: 'Just Ben', vibes: '["Ben"]' }),
+        ],
+        isLoading: false,
+      })
+      render(<DancesPage />)
+
+      const table = screen.getByRole('table')
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Vibes' }))
+
+      expect(rowTitlesInOrder(table)).toEqual(['Zeb and Amy', 'Just Ben'])
+    })
+
+    it('sorts Created by raw timestamp, ascending then descending', async () => {
+      useQueryMock.mockReturnValue({
+        data: [
+          makeDance({ id: '1', title: 'Newer', created_at: '2026-03-20T12:00:00.000Z' }),
+          makeDance({ id: '2', title: 'Older', created_at: '2026-01-15T12:00:00.000Z' }),
+        ],
+        isLoading: false,
+      })
+      render(<DancesPage />)
+
+      const table = screen.getByRole('table')
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Created' }))
+      expect(rowTitlesInOrder(table)).toEqual(['Older', 'Newer'])
+
+      await user.click(screen.getByRole('button', { name: 'Created' }))
+      expect(rowTitlesInOrder(table)).toEqual(['Newer', 'Older'])
+    })
+
+    it('sorts Updated by raw timestamp, ascending then descending', async () => {
+      useQueryMock.mockReturnValue({
+        data: [
+          makeDance({ id: '1', title: 'Newer', updated_at: '2026-03-20T12:00:00.000Z' }),
+          makeDance({ id: '2', title: 'Older', updated_at: '2026-01-15T12:00:00.000Z' }),
+        ],
+        isLoading: false,
+      })
+      render(<DancesPage />)
+
+      const table = screen.getByRole('table')
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Updated' }))
+      expect(rowTitlesInOrder(table)).toEqual(['Older', 'Newer'])
+
+      await user.click(screen.getByRole('button', { name: 'Updated' }))
+      expect(rowTitlesInOrder(table)).toEqual(['Newer', 'Older'])
+    })
   })
 
   describe('mobile sort menu', () => {
@@ -611,6 +700,23 @@ describe('DancesPage', () => {
 
       // Re-queried - see the previous test's comment on why.
       expect(screen.getByRole('columnheader', { name: 'Difficulty' }).style.position).toBe('sticky')
+    })
+
+    it('pins then unpins the same column via two Pin/Unpin clicks in a row on the same menu row', async () => {
+      // Guards SortableColumnRow's own "2nd click bug" fix (see its comment
+      // in ColumnsMenu.tsx): clicking Pin/Unpin on the same rendered row
+      // twice in a row, without re-querying or reopening the menu in between.
+      useQueryMock.mockReturnValue({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Columns' }))
+
+      await user.click(await screen.findByRole('button', { name: 'Pin Difficulty' }))
+      expect(screen.getByRole('columnheader', { name: 'Difficulty' }).style.position).toBe('sticky')
+
+      await user.click(await screen.findByRole('button', { name: 'Unpin Difficulty' }))
+      expect(screen.getByRole('columnheader', { name: 'Difficulty' }).style.position).not.toBe('sticky')
     })
 
     it('offsets a second pinned column past the first one\'s width, rather than stacking them at the same position', async () => {
@@ -847,6 +953,87 @@ describe('DancesPage', () => {
       expect(computeColumnReorder(pinnedIds, unpinnedIds, 'unknown', 'title')).toBeNull()
       expect(computeColumnReorder(pinnedIds, unpinnedIds, 'title', 'unknown')).toBeNull()
       expect(computeColumnReorder(pinnedIds, unpinnedIds, 'unknown', 'also-unknown')).toBeNull()
+    })
+  })
+
+  describe('applyColumnReorder', () => {
+    // Only the two methods this function actually calls are faked - the rest
+    // of TableInstance's huge interface is irrelevant to what's being tested.
+    function makeFakeTable() {
+      return { setColumnPinning: vi.fn(), setColumnOrder: vi.fn() } as unknown as TableInstance & {
+        setColumnPinning: ReturnType<typeof vi.fn>
+        setColumnOrder: ReturnType<typeof vi.fn>
+      }
+    }
+
+    it('merges the new pinned order into existing pinning state via setColumnPinning, preserving other pinning state', () => {
+      const table = makeFakeTable()
+
+      applyColumnReorder(table, ['a', 'b'], ['c', 'd'], 'b', 'a')
+
+      expect(table.setColumnOrder).not.toHaveBeenCalled()
+      const updater = table.setColumnPinning.mock.calls[0][0] as (old: { start: string[]; end: string[] }) => unknown
+      expect(updater({ start: ['a', 'b'], end: ['z'] })).toEqual({ start: ['b', 'a'], end: ['z'] })
+    })
+
+    it('replaces the order outright via setColumnOrder for an unpinned reorder', () => {
+      const table = makeFakeTable()
+
+      applyColumnReorder(table, ['a', 'b'], ['c', 'd'], 'd', 'c')
+
+      expect(table.setColumnPinning).not.toHaveBeenCalled()
+      expect(table.setColumnOrder).toHaveBeenCalledWith(['d', 'c'])
+    })
+
+    it('writes nothing to table state when computeColumnReorder is a no-op', () => {
+      const table = makeFakeTable()
+
+      applyColumnReorder(table, ['a', 'b'], ['c', 'd'], 'a', 'a')
+
+      expect(table.setColumnPinning).not.toHaveBeenCalled()
+      expect(table.setColumnOrder).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('makeSameGroupCollisionDetection', () => {
+    // Plain numeric rects, not real DOM elements - closestCenter (the
+    // algorithm this wraps) only ever reads the rect/id data passed in here,
+    // never real getBoundingClientRect values, so this exercises the actual
+    // production collision-detection function directly, unlike the real-drag
+    // e2e tests this same group restriction is also proven through.
+    function makeArgs(activeId: string, rectsByContainerId: Record<string, number>): Parameters<CollisionDetection>[0] {
+      return {
+        active: { id: activeId },
+        collisionRect: { left: 0, top: 0, width: 10, height: 10, bottom: 10, right: 10 },
+        droppableRects: new Map(
+          Object.entries(rectsByContainerId).map(([id, left]) => [
+            id,
+            { left, top: 0, width: 10, height: 10, bottom: 10, right: left + 10 },
+          ]),
+        ),
+        droppableContainers: Object.keys(rectsByContainerId).map((id) => ({ id })),
+        pointerCoordinates: null,
+      } as unknown as Parameters<CollisionDetection>[0]
+    }
+
+    it('only considers containers in the dragged item\'s own group, even when a container in the other group is physically closer', () => {
+      const detection = makeSameGroupCollisionDetection(new Set(['a', 'b']))
+
+      // 'x' (not in the pinned set, so "unpinned") sits right next to the drag
+      // origin; 'b' (in the pinned set, same group as active 'a') sits much
+      // further away. Plain closestCenter would put 'x' first - this should
+      // exclude it entirely since 'a' is pinned and 'x' isn't.
+      const result = detection(makeArgs('a', { x: 5, b: 100 }))
+
+      expect(result.map((collision) => collision.id)).toEqual(['b'])
+    })
+
+    it('returns no collisions when nothing in the dragged item\'s group is present', () => {
+      const detection = makeSameGroupCollisionDetection(new Set(['a']))
+
+      const result = detection(makeArgs('a', { x: 5, y: 10 }))
+
+      expect(result).toEqual([])
     })
   })
 

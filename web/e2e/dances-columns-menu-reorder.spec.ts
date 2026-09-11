@@ -58,6 +58,40 @@ test('dragging a row in the Columns menu with the mouse reorders both the menu a
   expect(headers.indexOf('Key Moves')).toBeLessThan(headers.indexOf('Choreographers'))
 })
 
+test('dragging a row across the pinned/unpinned boundary in the Columns menu is a no-op', async ({ page }) => {
+  await signIn(page)
+  await page.getByRole('button', { name: 'Columns' }).click()
+
+  // Title is pinned by default and Choreographers is the first unpinned row
+  // (same boundary dances-table-reorder.spec.ts's header-row version of this
+  // test drags across) - makeSameGroupCollisionDetection should keep Title
+  // out of the candidate drop targets the whole way.
+  const titleHandle = page.getByRole('button', { name: 'Reorder Title' })
+  const choreographersHandle = page.getByRole('button', { name: 'Reorder Choreographers' })
+  // boundingBox() auto-waits for the row to actually be attached, unlike
+  // gripButtons.all() below - so the "before" snapshot is taken only once the
+  // dropdown has genuinely rendered its rows, not on whatever partial DOM
+  // happens to exist right after click() returns.
+  const sourceBox = await choreographersHandle.boundingBox()
+  const targetBox = await titleHandle.boundingBox()
+  if (!sourceBox || !targetBox) throw new Error('expected both rows to have a bounding box')
+
+  const gripButtons = page.locator('button[aria-label^="Reorder "]')
+  const labelsBefore = await Promise.all((await gripButtons.all()).map((button) => button.getAttribute('aria-label')))
+
+  await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(sourceBox.x + sourceBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 10 })
+  await page.mouse.up()
+
+  const labelsAfter = await Promise.all((await gripButtons.all()).map((button) => button.getAttribute('aria-label')))
+  expect(labelsAfter).toEqual(labelsBefore)
+
+  // Title should still be pinned (sticky), not just first by coincidence of
+  // an unchanged order.
+  await expect(page.getByRole('columnheader', { name: 'Title' })).toHaveCSS('position', 'sticky')
+})
+
 test('dragging a row in the Columns menu with touch reorders both the menu and the table headers', async ({ page }) => {
   await signIn(page)
   await page.getByRole('button', { name: 'Columns' }).click()
