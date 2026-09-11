@@ -13,37 +13,57 @@ export function ColumnResizeHandle({ table, header }: { table: TableInstance; he
   // on the very first touchmove. TanStack's resize handler has no delay
   // concept of its own (unlike dnd-kit's TouchSensor), so this hand-rolls the
   // same delay/tolerance/cancel pattern by hand.
+  //
+  // Since touch-action is unconditionally none below (see that comment), native
+  // scrolling can never take over here no matter how quickly you swipe past the
+  // tolerance - so once a swipe is detected, this takes over scrolling itself
+  // (a direct scrollLeft adjustment per move, tracking the finger 1:1) rather
+  // than leaving the divider a dead zone. That's the trade-off: this has no
+  // momentum/deceleration after release the way native scrolling does, since
+  // it's just following the finger, not a real touch-scroll gesture.
   function handleTouchStart(event: ReactTouchEvent<HTMLDivElement>) {
     const touch = event.touches[0]
     if (!touch) return
     if (event.cancelable) event.preventDefault()
+    const scrollContainer = event.currentTarget.closest<HTMLElement>('[data-slot="table-container"]')
     const startX = touch.clientX
     const startY = touch.clientY
     const nativeEvent = event.nativeEvent
+    let isScrolling = false
+    let lastX = startX
 
     function onTouchMove(moveEvent: TouchEvent) {
       const moveTouch = moveEvent.touches[0]
       if (!moveTouch) return
+
+      if (isScrolling) {
+        scrollContainer?.scrollBy({ left: lastX - moveTouch.clientX })
+        lastX = moveTouch.clientX
+        return
+      }
+
       if (Math.abs(moveTouch.clientX - startX) > 5 || Math.abs(moveTouch.clientY - startY) > 5) {
-        cancelPending()
+        window.clearTimeout(timeoutId)
+        isScrolling = true
+        lastX = moveTouch.clientX
       }
     }
 
-    function cancelPending() {
+    function endGesture() {
       window.clearTimeout(timeoutId)
       document.removeEventListener('touchmove', onTouchMove)
-      document.removeEventListener('touchend', cancelPending)
-      document.removeEventListener('touchcancel', cancelPending)
+      document.removeEventListener('touchend', endGesture)
+      document.removeEventListener('touchcancel', endGesture)
     }
 
     const timeoutId = window.setTimeout(() => {
-      cancelPending()
+      endGesture()
       resizeHandler(nativeEvent)
     }, 500)
 
     document.addEventListener('touchmove', onTouchMove, { passive: true })
-    document.addEventListener('touchend', cancelPending)
-    document.addEventListener('touchcancel', cancelPending)
+    document.addEventListener('touchend', endGesture)
+    document.addEventListener('touchcancel', endGesture)
   }
 
   return (
