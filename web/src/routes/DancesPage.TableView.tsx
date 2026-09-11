@@ -11,7 +11,7 @@ import { useDragBodyClass } from '@/hooks/useDragBodyClass'
 import { ColumnResizeHandle } from './DancesPage.ColumnResizeHandle'
 import { ColumnsMenu } from './DancesPage.ColumnsMenu'
 import { computeColumnReorder, makeSameGroupCollisionDetection } from './DancesPage.reorder'
-import type { Ref } from 'react'
+import type { ReactNode, Ref } from 'react'
 import type { DragEndEvent, Modifier } from '@dnd-kit/core'
 import type { LeafHeader, TableInstance } from './DancesPage.columns'
 
@@ -53,6 +53,34 @@ function HeaderContextMenuItems({ table, header, isPinned }: {
         </ContextMenuItem>
       )}
     </>
+  )
+}
+
+// Hosts the header's right-click menu around whatever's passed as children (sort button & resize handle).
+// On coarse pointer it's skipped entirely rather than raced against dnd-kit's own long-press.
+function HeaderContextMenuWrapper({ table, header, isPinned, children }: {
+  table: TableInstance
+  header: LeafHeader
+  isPinned: false | 'start' | 'end'
+  children: ReactNode
+}) {
+  const isCoarsePointer = useCoarsePointer()
+
+  if (isCoarsePointer) {
+    return (
+      <div className="contents select-none" style={{ WebkitTouchCallout: 'none' }} onContextMenu={(event) => event.preventDefault()}>
+        {children}
+      </div>
+    )
+  }
+
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger className="contents">{children}</ContextMenuTrigger>
+      <ContextMenuContent>
+        <HeaderContextMenuItems table={table} header={header} isPinned={isPinned} />
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }
 
@@ -233,37 +261,10 @@ function SortableTableHead({
               ...(isDragging && { zIndex: 10 }),
             }}
           >
-            {isCoarsePointer ? (
-              // Tap for sort, long-press to reorder. No context menu here - its own
-              // long-press would race dnd-kit's (see useCoarsePointer above); hide/pin
-              // remain reachable via the Columns menu instead. ContextMenuTrigger (used
-              // on the non-coarse branch below) normally suppresses the platform's own
-              // long-press menu as a side effect of existing - preventDefault on the
-              // native contextmenu event (fired by Android/desktop browsers) plus
-              // WebkitTouchCallout: none (iOS Safari's separate copy/look-up callout,
-              // which isn't a contextmenu event at all) reproduce that here.
-              <div
-                className="contents select-none"
-                style={{ WebkitTouchCallout: 'none' }}
-                onContextMenu={(event) => event.preventDefault()}
-              >
-                {sortButton}
-                {header.column.getCanResize() && <ColumnResizeHandle table={table} header={header} />}
-              </div>
-            ) : (
-              <ContextMenu>
-                <ContextMenuTrigger className="contents">
-                  {/* Click for sort, drag (past a small threshold) to reorder */}
-                  {sortButton}
-                  {/* Drag to resize */}
-                  {header.column.getCanResize() && <ColumnResizeHandle table={table} header={header} />}
-                </ContextMenuTrigger>
-                {/* Right-click context menu for hide & pin */}
-                <ContextMenuContent>
-                  <HeaderContextMenuItems table={table} header={header} isPinned={isPinned} />
-                </ContextMenuContent>
-              </ContextMenu>
-            )}
+            <HeaderContextMenuWrapper table={table} header={header} isPinned={isPinned}>
+              {sortButton}
+              {header.column.getCanResize() && <ColumnResizeHandle table={table} header={header} />}
+            </HeaderContextMenuWrapper>
             {header.column.getIsLastColumn('start') && <PinBoundaryDivider ref={pinBoundaryDividerRef} />}
           </TableHead>
         )
