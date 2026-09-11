@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import { cn } from 'cn'
 import { useCoarsePointer } from '@/hooks/useCoarsePointer'
 import { useLongPressTouch } from '@/hooks/useLongPressTouch'
 import type { LeafHeader, TableInstance } from './DancesPage.columns'
@@ -60,13 +61,13 @@ export function ColumnResizeHandle({ table, header }: { table: TableInstance; he
             // still is sometimes enough for the browser to commit to scrolling -
             // a commitment no later preventDefault() (including TanStack's own,
             // once resize activates) can undo.
-            className={`absolute top-0 right-0 h-full cursor-col-resize touch-none select-none ${
-              isCoarsePointer
-                ? `w-4 ${isResizing ? 'bg-primary/50' : 'bg-border/40'}`
-                : 'w-1.5 hover:bg-primary/50 active:bg-primary/50'
-            }`}
+            className={cn(
+              'absolute top-0 right-0 h-full cursor-col-resize touch-none select-none',
+              isCoarsePointer ? 'w-4' : 'w-1.5 hover:bg-primary/50 active:bg-primary/50',
+              isCoarsePointer && (isResizing ? 'bg-primary/50' : 'bg-border/40'),
+            )}
           >
-            <div className={`mx-auto h-full bg-border ${isCoarsePointer ? 'w-0.5' : 'w-px'}`} />
+            <div className={cn('mx-auto h-full bg-border', isCoarsePointer ? 'w-0.5' : 'w-px')} />
           </div>
         )
       }}

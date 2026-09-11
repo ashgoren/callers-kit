@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { cn } from 'cn'
 import { TableHead } from '@/components/ui/table'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { useCoarsePointer } from '@/hooks/useCoarsePointer'
@@ -52,9 +53,13 @@ export function TableHeaderCell({ table, header, pinBoundaryDividerRef }: {
         const sortButton = header.isPlaceholder ? null : (
           <button
             type="button"
-            // touch-none only on mouse/pointer devices allows mouse drag claim the gesture immediately
-            // On a touch it's deliberately omitted so a quick swipe still scrolls natively.
-            className={`flex w-full items-center gap-1 text-left enabled:cursor-pointer disabled:cursor-default ${isCoarsePointer ? '' : 'touch-none'} ${isDragging ? 'cursor-grabbing' : ''}`}
+            className={cn(
+              'flex w-full items-center gap-1 text-left enabled:cursor-pointer disabled:cursor-default',
+              // touch-none only on mouse/pointer devices allows mouse drag claim the gesture immediately.
+              // On a touch it's deliberately omitted so a quick swipe still scrolls natively.
+              !isCoarsePointer && 'touch-none',
+              isDragging && 'cursor-grabbing',
+            )}
             onClick={header.column.getToggleSortingHandler()}
             disabled={!header.column.getCanSort()}
             {...attributes}
@@ -76,7 +81,7 @@ export function TableHeaderCell({ table, header, pinBoundaryDividerRef }: {
         return (
           <TableHead
             ref={setNodeRef}
-            className={`relative ${isDragging ? 'bg-accent' : isPinned ? 'bg-background' : ''}`}
+            className={cn('relative', isDragging ? 'bg-accent' : isPinned && 'bg-background')}
             style={{
               ...pinnedCellStyle(isPinned, header.column.getStart('start')),
               transform: CSS.Translate.toString(transform),

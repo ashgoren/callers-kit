@@ -3,6 +3,7 @@ import type { DragEndEvent } from '@dnd-kit/core'
 import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { cn } from 'cn'
 import { GripVertical, Pin } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Switch } from '@/components/ui/switch'
@@ -108,7 +109,10 @@ function SortableColumnRow({ table, columnId }: { table: TableInstance; columnId
             <button
               type="button"
               aria-label={`Reorder ${label}`}
-              className={`shrink-0 touch-none rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+              className={cn(
+                'shrink-0 touch-none rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                isDragging ? 'cursor-grabbing' : 'cursor-grab',
+              )}
               {...attributes}
               {...listeners}
             >
@@ -122,7 +126,7 @@ function SortableColumnRow({ table, columnId }: { table: TableInstance; columnId
                 onClick={() => column.pin(isPinned ? false : 'start')}
                 className="shrink-0 rounded p-1.5 hover:bg-accent hover:text-accent-foreground"
               >
-                <Pin className={`size-4 transition-transform ${isPinned ? '' : 'rotate-90'}`} />
+                <Pin className={cn('size-4 transition-transform', !isPinned && 'rotate-90')} />
               </button>
             )}
             <span id={`${columnId}-label`} className="flex-1 truncate py-1.5 pl-2 text-sm">
