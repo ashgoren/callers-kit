@@ -1,6 +1,6 @@
 import { Fragment } from 'react'
 import { ArrowDown, ArrowUp } from 'lucide-react'
-import { danceFields } from './DancesPage.columns'
+import { danceFields, getDanceField } from './DancesPage.columns'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import type { DanceWithJoins, TableInstance } from './DancesPage.columns'
 
@@ -23,7 +23,7 @@ export function CardList({ table }: { table: TableInstance }) {
 function CardListSortMenu({ table }: { table: TableInstance }) {
   const sortableColumns = table.getAllLeafColumns().filter((column) => column.getCanSort())
   const currentSort = table.state.sorting[0]
-  const currentField = currentSort ? danceFields.find((field) => field.key === currentSort.id) : undefined
+  const currentField = currentSort ? getDanceField(currentSort.id) : undefined
 
   return (
     <div className="mb-2 flex items-center justify-end gap-1">
@@ -38,7 +38,7 @@ function CardListSortMenu({ table }: { table: TableInstance }) {
             onValueChange={(value: string) => table.setSorting([{ id: value, desc: false }])}
           >
             {sortableColumns.map((column) => {
-              const field = danceFields.find((danceField) => danceField.key === column.id)
+              const field = getDanceField(column.id)
 
               return (
                 <DropdownMenuRadioItem key={column.id} value={column.id}>
@@ -67,7 +67,7 @@ function CardListSortMenu({ table }: { table: TableInstance }) {
 
 // Derives its fields from the same danceFields array the table columns use.
 function DanceCard({ dance }: { dance: DanceWithJoins }) {
-  const titleField = danceFields.find((field) => field.key === 'title')!
+  const titleField = getDanceField('title')!
 
   return (
     <div className="rounded-lg border p-3">
