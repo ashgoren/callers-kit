@@ -4,7 +4,7 @@ import { ResetPasswordPage } from '@/routes/auth/ResetPasswordPage'
 import { SignInPage } from '@/routes/auth/SignInPage'
 import { SignUpPage } from '@/routes/auth/SignUpPage'
 import { AppShell } from '@/routes/AppShell'
-import { DancesPage } from '@/routes/DancesPage'
+import { DancesPage } from '@/routes/dances/DancesPage'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 
 const router = createBrowserRouter([
