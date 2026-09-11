@@ -39,6 +39,12 @@ const dances_vibes = new Table({
   vibe_id: column.text,
 })
 
+const user_table_preferences = new Table({
+  table_name: column.text,
+  // JSON-encoded {columnVisibility, sorting, columnPinning, columnOrder, columnSizing}
+  column_state: column.text,
+})
+
 export const AppSchema = new Schema({
   dances,
   choreographers,
@@ -47,6 +53,7 @@ export const AppSchema = new Schema({
   vibes,
   dances_key_moves,
   dances_vibes,
+  user_table_preferences,
 })
 
 export type Database = (typeof AppSchema)['types']

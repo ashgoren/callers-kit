@@ -59,3 +59,10 @@ streams:
       SELECT dances_vibes.* FROM dances_vibes
       JOIN dances ON dances.id = dances_vibes.dance_id
       WHERE dances.user_id = auth.user_id()
+
+  user_table_preferences:
+    # Per-user table column layout (visibility, sorting, pinning, order,
+    # column widths). Has its own user_id column, same pattern as
+    # choreographers above - one row per (user_id, table_name).
+    auto_subscribe: true
+    query: SELECT * FROM user_table_preferences WHERE user_table_preferences.user_id = auth.user_id()
