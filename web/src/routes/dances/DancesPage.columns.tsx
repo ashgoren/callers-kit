@@ -159,7 +159,7 @@ export const DEFAULT_COLUMN_STATE: TableColumnState = {
   sorting: [{ id: 'title', desc: false }],
   columnPinning: { start: ['title'], end: [] },
   columnOrder: [], // defaults to the order columns were defined in
-  columnSizing: {}, // not wired up yet
+  columnSizing: {},
 }
 
 // Tanstack Table features this table actually uses are registered.

@@ -680,6 +680,57 @@ describe('DancesPage', () => {
       const notesColWidth = table.querySelectorAll('col')[notesIndex].style.width
       expect(notesColWidth).toBe('500px')
     })
+
+    it('persists the settled width once the drag ends, not on every intermediate move', async () => {
+      mockDances({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      const difficultyHeader = screen.getByRole('columnheader', { name: 'Difficulty' })
+      const handle = difficultyHeader.querySelector('.cursor-col-resize')!
+
+      fireEvent.mouseDown(handle, { clientX: 300 })
+      fireEvent.mouseMove(document, { clientX: 400 })
+
+      const { db } = await import('@/lib/powersync/database')
+      // Still mid-drag: only the live, uncontrolled table state has moved so
+      // far - ColumnSizingSync only commits once the drag actually ends.
+      expect(db.execute).not.toHaveBeenCalled()
+
+      fireEvent.mouseUp(document, { clientX: 400 })
+
+      expect(db.execute).toHaveBeenCalledWith('UPDATE user_table_preferences SET column_state = ? WHERE id = ?', [
+        expect.any(String),
+        'prefs-1',
+      ])
+      const [, params] = vi.mocked(db.execute).mock.calls[0]
+      const savedState = JSON.parse((params as [string, string])[0]) as { columnSizing: Record<string, number> }
+      // 105px starting size + 100px drag, same math as the plain drag test above.
+      expect(savedState.columnSizing).toEqual({ difficulty: 205 })
+    })
+
+    it('keeps showing the live dragged width even if the component re-renders for an unrelated reason mid-drag', () => {
+      mockDances({ data: [makeDance()], isLoading: false })
+      const { rerender } = render(<DancesPage />)
+
+      const difficultyHeader = screen.getByRole('columnheader', { name: 'Difficulty' })
+      const handle = difficultyHeader.querySelector('.cursor-col-resize')!
+
+      fireEvent.mouseDown(handle, { clientX: 300 })
+      fireEvent.mouseMove(document, { clientX: 400 })
+
+      // Something entirely unrelated to resizing (e.g. the dances query
+      // itself ticking) causes DancesPage to re-render mid-drag - this
+      // shouldn't snap the live drag back to the last-committed width via
+      // ColumnSizingSync's inbound sync.
+      rerender(<DancesPage />)
+
+      const table = screen.getByRole('table')
+      const headers = within(table).getAllByRole('columnheader')
+      const difficultyIndex = headers.indexOf(difficultyHeader)
+      expect(table.querySelectorAll('col')[difficultyIndex].style.width).toBe('205px')
+
+      fireEvent.mouseUp(document, { clientX: 400 })
+    })
   })
 
   describe('column pinning', () => {
@@ -1132,6 +1183,39 @@ describe('DancesPage', () => {
       const [, params] = vi.mocked(db.execute).mock.calls[0]
       const savedState = JSON.parse((params as [string, string])[0]) as { columnVisibility: unknown }
       expect(savedState.columnVisibility).toEqual({ notes: false })
+    })
+
+    it('restores a previously saved column width instead of the field\'s built-in default', () => {
+      mockDances({ data: [makeDance()], isLoading: false }, { columnSizing: { difficulty: 205 } })
+      render(<DancesPage />)
+
+      const table = screen.getByRole('table')
+      const headers = within(table).getAllByRole('columnheader')
+      const difficultyHeader = screen.getByRole('columnheader', { name: 'Difficulty' })
+      const difficultyIndex = headers.indexOf(difficultyHeader)
+      expect(table.querySelectorAll('col')[difficultyIndex].style.width).toBe('205px')
+    })
+
+    it('picks up a remote column-width change without needing a reload', () => {
+      mockDances({ data: [makeDance()], isLoading: false }, {})
+      const { rerender } = render(<DancesPage />)
+
+      const colWidth = () => {
+        const table = screen.getByRole('table')
+        const headers = within(table).getAllByRole('columnheader')
+        const difficultyHeader = screen.getByRole('columnheader', { name: 'Difficulty' })
+        return table.querySelectorAll('col')[headers.indexOf(difficultyHeader)].style.width
+      }
+
+      expect(colWidth()).toBe('105px') // Difficulty's built-in default
+
+      // Simulates another device's resize syncing in while this tab stays
+      // open - same reactive-query mechanism the other four preference
+      // fields already rely on for this (see useTableColumnState.test.tsx).
+      mockDances({ data: [makeDance()], isLoading: false }, { columnSizing: { difficulty: 205 } })
+      rerender(<DancesPage />)
+
+      expect(colWidth()).toBe('205px')
     })
   })
 })
