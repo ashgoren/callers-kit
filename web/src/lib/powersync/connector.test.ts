@@ -128,6 +128,94 @@ describe('SupabaseConnector.uploadData', () => {
     expect(complete).not.toHaveBeenCalled()
   })
 
+  it('discards an oversized column_state on PUT instead of uploading it', async () => {
+    // Guards against a permanently-stuck retry loop: a device whose local
+    // queue holds a corrupted, huge column_state (from before
+    // parseColumnState narrowed to known fields) would otherwise retry the
+    // same doomed multi-MB upload forever, blocking every other queued
+    // write behind it.
+    const complete = vi.fn(() => Promise.resolve())
+    const transaction = new CrudTransaction(
+      [
+        makeCrudEntry({
+          op: UpdateType.PUT,
+          table: 'user_table_preferences',
+          id: '1',
+          opData: { table_name: 'dances', column_state: 'x'.repeat(10_001) },
+        }),
+      ],
+      complete,
+    )
+
+    await connector.uploadData(makeDatabase(transaction))
+
+    expect(upsertMock).toHaveBeenCalledWith({ id: '1', table_name: 'dances', column_state: {} })
+    expect(complete).toHaveBeenCalled()
+  })
+
+  it('parses a normal-sized column_state into an object before sending on PUT', async () => {
+    // column_state is jsonb in Postgres but text locally, so it always
+    // arrives here as a JSON-encoded string - sending it unparsed would
+    // store a jsonb string scalar instead of the object it represents (see
+    // preparePreferencesOpData's own comment for the round-trip bug this
+    // caused).
+    const complete = vi.fn(() => Promise.resolve())
+    const transaction = new CrudTransaction(
+      [
+        makeCrudEntry({
+          op: UpdateType.PUT,
+          table: 'user_table_preferences',
+          id: '1',
+          opData: { table_name: 'dances', column_state: '{"sorting":[]}' },
+        }),
+      ],
+      complete,
+    )
+
+    await connector.uploadData(makeDatabase(transaction))
+
+    expect(upsertMock).toHaveBeenCalledWith({ id: '1', table_name: 'dances', column_state: { sorting: [] } })
+  })
+
+  it('does not sanitize column_state-shaped data on an unrelated table', async () => {
+    const complete = vi.fn(() => Promise.resolve())
+    const transaction = new CrudTransaction(
+      [
+        makeCrudEntry({
+          op: UpdateType.PUT,
+          table: 'dances',
+          id: '1',
+          opData: { column_state: 'x'.repeat(10_001) },
+        }),
+      ],
+      complete,
+    )
+
+    await connector.uploadData(makeDatabase(transaction))
+
+    expect(upsertMock).toHaveBeenCalledWith({ id: '1', column_state: 'x'.repeat(10_001) })
+  })
+
+  it('discards an oversized column_state on PATCH instead of uploading it', async () => {
+    const complete = vi.fn(() => Promise.resolve())
+    const transaction = new CrudTransaction(
+      [
+        makeCrudEntry({
+          op: UpdateType.PATCH,
+          table: 'user_table_preferences',
+          id: '1',
+          opData: { column_state: 'x'.repeat(10_001) },
+        }),
+      ],
+      complete,
+    )
+
+    await connector.uploadData(makeDatabase(transaction))
+
+    expect(updateMock).toHaveBeenCalledWith({ column_state: {} })
+    expect(complete).toHaveBeenCalled()
+  })
+
   it('updates on PATCH', async () => {
     const complete = vi.fn(() => Promise.resolve())
     const transaction = new CrudTransaction(

@@ -27,7 +27,13 @@ export interface PreferencesRow {
 export function parseColumnState(row: PreferencesRow | undefined, defaults: TableColumnState): TableColumnState {
   if (!row) return defaults
   const stored = JSON.parse(row.column_state) as Partial<TableColumnState>
-  return { ...defaults, ...stored }
+  return {
+    columnVisibility: stored.columnVisibility ?? defaults.columnVisibility,
+    sorting: stored.sorting ?? defaults.sorting,
+    columnPinning: stored.columnPinning ?? defaults.columnPinning,
+    columnOrder: stored.columnOrder ?? defaults.columnOrder,
+    columnSizing: stored.columnSizing ?? defaults.columnSizing,
+  }
 }
 
 // Resolves TanStack's updater-or-value callback shape (the same shape every

@@ -38,6 +38,20 @@ describe('parseColumnState', () => {
 
     expect(parseColumnState(row, defaults)).toEqual({ ...defaults, columnOrder: ['title', 'notes'] })
   })
+
+  it('drops unrecognized keys instead of carrying them forward', () => {
+    // Regression guard: a row corrupted by a past bug held a huge unrelated
+    // blob under an unexpected key, and a blind `{ ...defaults, ...stored }`
+    // spread would have carried it into every future write via commit()'s
+    // own spread of this function's return value - permanently, since
+    // nothing else ever strips unknown keys back out.
+    const row = {
+      id: '1',
+      column_state: JSON.stringify({ columnOrder: ['title'], junk: 'x'.repeat(1000) }),
+    }
+
+    expect(parseColumnState(row, defaults)).toEqual({ ...defaults, columnOrder: ['title'] })
+  })
 })
 
 describe('resolveUpdater', () => {

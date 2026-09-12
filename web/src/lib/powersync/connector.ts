@@ -2,6 +2,30 @@ import { supabase } from '@/lib/supabase'
 import { UpdateType } from '@powersync/web'
 import type { CommonPowerSyncDatabase, PowerSyncBackendConnector, PowerSyncCredentials } from '@powersync/web'
 
+// A legitimate column_state (visibility flags, one sort key, a
+// pinning/order array, per-column widths) is a few hundred bytes at most,
+// so this is a generous ceiling meant only to catch corruption, not to
+// constrain real usage.
+const MAX_COLUMN_STATE_LENGTH = 10_000
+
+// column_state is jsonb in Postgres, but the local schema mirrors it as
+// plain text (see schema.ts), so op.opData.column_state here is always a
+// JSON-encoded string, never a parsed object. Sending that string as-is
+// would store it as a valid but wrong jsonb value - a JSON string scalar
+// wrapping the real JSON text, rather than the object itself - and the
+// next sync-down would re-stringify that scalar into local text, adding a
+// second layer of encoding on every upload/download round trip. Parsing it
+// here before sending is what makes Postgres store the actual object.
+function preparePreferencesOpData(opData: Record<string, unknown>): Record<string, unknown> {
+  const columnState = opData.column_state
+  if (typeof columnState !== 'string') return opData
+  if (columnState.length > MAX_COLUMN_STATE_LENGTH) {
+    console.warn(`uploadData: discarding oversized user_table_preferences.column_state (${columnState.length} chars)`)
+    return { ...opData, column_state: {} }
+  }
+  return { ...opData, column_state: JSON.parse(columnState) }
+}
+
 export class SupabaseConnector implements PowerSyncBackendConnector {
   // PowerSync calls this automatically whenever it needs to (re)authenticate
   // the sync connection - including periodically while already connected,
@@ -35,13 +59,16 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
     if (!transaction) return
 
     for (const op of transaction.crud) {
+      // opData is only undefined for DELETE ops (per CrudEntry), never PUT/PATCH.
+      const opData = op.table === 'user_table_preferences' ? preparePreferencesOpData(op.opData ?? {}) : (op.opData ?? {})
+
       // supabase-js does NOT throw on failure - it returns { data, error }.
       // Each branch below explicitly checks `error` and throws, so a failed
       // write actually surfaces to PowerSync (which then retries) instead of
       // silently completing successfully and losing the edit.
       switch (op.op) {
         case UpdateType.PUT: {
-          const { error } = await supabase.from(op.table).upsert({ id: op.id, ...op.opData })
+          const { error } = await supabase.from(op.table).upsert({ id: op.id, ...opData })
           // 23505 = Postgres unique_violation: a row with this natural key
           // already exists. Nothing in this app's current write paths
           // creates rows client-side without knowing whether one already
@@ -58,11 +85,7 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
           break
         }
         case UpdateType.PATCH: {
-          // opData is only undefined for DELETE ops (per CrudEntry), never PATCH
-          const { error } = await supabase
-            .from(op.table)
-            .update(op.opData ?? {})
-            .eq('id', op.id)
+          const { error } = await supabase.from(op.table).update(opData).eq('id', op.id)
           if (error) throw error
           break
         }
