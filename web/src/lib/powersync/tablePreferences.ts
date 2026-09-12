@@ -26,7 +26,13 @@ export interface PreferencesRow {
 // Merges a stored row's column_state JSON with the defaults for any unset rows.
 export function parseColumnState(row: PreferencesRow | undefined, defaults: TableColumnState): TableColumnState {
   if (!row) return defaults
-  const stored = JSON.parse(row.column_state) as Partial<TableColumnState>
+  let stored: Partial<TableColumnState>
+  try {
+    stored = JSON.parse(row.column_state) as Partial<TableColumnState>
+  } catch {
+    // A corrupt value arriving via sync-down shouldn't take the table down with it.
+    return defaults
+  }
   return {
     columnVisibility: stored.columnVisibility ?? defaults.columnVisibility,
     sorting: stored.sorting ?? defaults.sorting,

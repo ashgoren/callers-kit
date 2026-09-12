@@ -2,16 +2,8 @@ import { supabase } from '@/lib/supabase'
 import { UpdateType } from '@powersync/web'
 import type { CommonPowerSyncDatabase, PowerSyncBackendConnector, PowerSyncCredentials } from '@powersync/web'
 
-// A legitimate column_state (visibility flags, one sort key, a
-// pinning/order array, per-column widths) is a few hundred bytes at most,
-// so this is a generous ceiling meant only to catch corruption, not to
-// constrain real usage.
-const MAX_JSON_COLUMN_LENGTH = 10_000
-
 // Postgres jsonb has no SQLite equivalent, so schema.ts mirrors every
-// jsonb column as text and op.opData carries it as a JSON string. Sent
-// as-is, Postgres would store a string scalar wrapping the real JSON,
-// and every round trip would add another layer of encoding.
+// jsonb column as text and op.opData carries it as a JSON string.
 //
 // Every jsonb column in schema.ts belongs in this map.
 const JSON_COLUMNS: Record<string, readonly string[]> = {
@@ -27,11 +19,6 @@ function decodeJsonColumns(table: string, opData: Record<string, unknown>): Reco
     const value = decoded[name]
     // A PATCH carries only changed columns, so absent is normal.
     if (typeof value !== 'string') continue
-    if (value.length > MAX_JSON_COLUMN_LENGTH) {
-      console.warn(`uploadData: discarding oversized ${table}.${name} (${value.length} chars)`)
-      decoded[name] = {}
-      continue
-    }
     decoded[name] = JSON.parse(value)
   }
   return decoded
@@ -71,7 +58,20 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
 
     for (const op of transaction.crud) {
       // opData is only undefined for DELETE ops (per CrudEntry), never PUT/PATCH.
-      const opData = decodeJsonColumns(op.table, op.opData ?? {})
+      let opData: Record<string, unknown>
+      try {
+        opData = decodeJsonColumns(op.table, op.opData ?? {})
+      } catch (error) {
+        // A malformed column_state can never become valid JSON by
+        // retrying - same permanent-failure reasoning as the 23505 case
+        // below, just caught at the decode step instead of arriving as a
+        // Postgres response. Skipping this one op (instead of letting the
+        // throw escape uploadData(), which would stall the whole
+        // transaction retrying forever) drains the queue; a later real
+        // edit naturally overwrites whatever was corrupted.
+        console.warn(`uploadData: skipping ${op.table} op with unparseable JSON column`, error)
+        continue
+      }
 
       // supabase-js does NOT throw on failure - it returns { data, error }.
       // Each branch below explicitly checks `error` and throws, so a failed

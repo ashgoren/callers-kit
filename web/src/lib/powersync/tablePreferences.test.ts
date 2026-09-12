@@ -52,6 +52,12 @@ describe('parseColumnState', () => {
 
     expect(parseColumnState(row, defaults)).toEqual({ ...defaults, columnOrder: ['title'] })
   })
+
+  it('falls back to the defaults instead of throwing when column_state is not valid JSON', () => {
+    const row = { id: '1', column_state: 'not valid json' }
+
+    expect(parseColumnState(row, defaults)).toEqual(defaults)
+  })
 })
 
 describe('resolveUpdater', () => {

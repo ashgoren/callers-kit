@@ -128,32 +128,7 @@ describe('SupabaseConnector.uploadData', () => {
     expect(complete).not.toHaveBeenCalled()
   })
 
-  it('discards an oversized column_state on PUT instead of uploading it', async () => {
-    // Guards against a permanently-stuck retry loop: a device whose local
-    // queue holds a corrupted, huge column_state (from before
-    // parseColumnState narrowed to known fields) would otherwise retry the
-    // same doomed multi-MB upload forever, blocking every other queued
-    // write behind it.
-    const complete = vi.fn(() => Promise.resolve())
-    const transaction = new CrudTransaction(
-      [
-        makeCrudEntry({
-          op: UpdateType.PUT,
-          table: 'user_table_preferences',
-          id: '1',
-          opData: { table_name: 'dances', column_state: 'x'.repeat(10_001) },
-        }),
-      ],
-      complete,
-    )
-
-    await connector.uploadData(makeDatabase(transaction))
-
-    expect(upsertMock).toHaveBeenCalledWith({ id: '1', table_name: 'dances', column_state: {} })
-    expect(complete).toHaveBeenCalled()
-  })
-
-  it('parses a normal-sized column_state into an object before sending on PUT', async () => {
+  it('parses column_state into an object before sending on PUT', async () => {
     // column_state is jsonb in Postgres but text locally, so it always
     // arrives here as a JSON-encoded string - sending it unparsed would
     // store a jsonb string scalar instead of the object it represents (see
@@ -187,7 +162,7 @@ describe('SupabaseConnector.uploadData', () => {
           op: UpdateType.PUT,
           table: 'dances',
           id: '1',
-          opData: { column_state: 'x'.repeat(10_001) },
+          opData: { column_state: 'not json at all' },
         }),
       ],
       complete,
@@ -195,10 +170,14 @@ describe('SupabaseConnector.uploadData', () => {
 
     await connector.uploadData(makeDatabase(transaction))
 
-    expect(upsertMock).toHaveBeenCalledWith({ id: '1', column_state: 'x'.repeat(10_001) })
+    expect(upsertMock).toHaveBeenCalledWith({ id: '1', column_state: 'not json at all' })
   })
 
-  it('discards an oversized column_state on PATCH instead of uploading it', async () => {
+  it('skips an op whose json column fails to parse, instead of throwing and stalling the queue', async () => {
+    // A malformed column_state can never become valid JSON by retrying -
+    // same permanent-failure reasoning as the 23505 case, just caught at
+    // the decode step. Without this, PowerSync would retry the doomed
+    // upload forever, same as the pre-d051610 stuck-queue bug.
     const complete = vi.fn(() => Promise.resolve())
     const transaction = new CrudTransaction(
       [
@@ -206,7 +185,7 @@ describe('SupabaseConnector.uploadData', () => {
           op: UpdateType.PATCH,
           table: 'user_table_preferences',
           id: '1',
-          opData: { column_state: 'x'.repeat(10_001) },
+          opData: { column_state: 'not valid json' },
         }),
       ],
       complete,
@@ -214,7 +193,7 @@ describe('SupabaseConnector.uploadData', () => {
 
     await connector.uploadData(makeDatabase(transaction))
 
-    expect(updateMock).toHaveBeenCalledWith({ column_state: {} })
+    expect(updateMock).not.toHaveBeenCalled()
     expect(complete).toHaveBeenCalled()
   })
 
