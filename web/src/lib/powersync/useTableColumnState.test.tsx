@@ -137,4 +137,33 @@ describe('useTableColumnState', () => {
 
     expect(result.current.state.sorting).toEqual([{ id: 'difficulty', desc: true }])
   })
+
+  it('clears the override once the synced row catches up to match it, so a later remote change is picked up live', () => {
+    useQueryMock.mockReturnValue({ data: [{ id: '1', column_state: '{}' }], isLoading: false })
+    const { result, rerender } = renderHook(() => useTableColumnState('dances', defaults))
+
+    act(() => {
+      result.current.setSorting([{ id: 'difficulty', desc: true }])
+    })
+    expect(result.current.state.sorting).toEqual([{ id: 'difficulty', desc: true }])
+
+    // The local write echoes back through the reactive query - this is the
+    // signal that it's safe to stop overriding and go back to tracking the
+    // row directly.
+    useQueryMock.mockReturnValue({
+      data: [{ id: '1', column_state: JSON.stringify({ ...defaults, sorting: [{ id: 'difficulty', desc: true }] }) }],
+      isLoading: false,
+    })
+    rerender()
+
+    // A change from another device, arriving well after the override was
+    // released, should now show up without needing a reload.
+    useQueryMock.mockReturnValue({
+      data: [{ id: '1', column_state: JSON.stringify({ ...defaults, sorting: [{ id: 'title', desc: true }] }) }],
+      isLoading: false,
+    })
+    rerender()
+
+    expect(result.current.state.sorting).toEqual([{ id: 'title', desc: true }])
+  })
 })

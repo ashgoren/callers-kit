@@ -15,19 +15,28 @@ import type {
 // table, so sort/visibility/pinning/order survive a reload and follow the
 // user across devices instead of resetting to defaults every time.
 //
-// Before this session's first edit, `state` tracks the synced row directly.
-// Upon first edit, `override` takes over as a frozen local snapshot and stays
-// authoritative for the rest of the session. A remote change from another device
-// takes effect on this table's next full remount (e.g. a page reload), not live.
+// `override` gives an edit instant local feedback rather than waiting on
+// `useQuery`'s watched-query debounce to catch up - without it, rapid
+// changes (dragging to resize, clicking several visibility toggles) could
+// visibly lag. It's cleared again as soon as the synced row matches it (a
+// local SQLite read of our own write, so this happens almost immediately
+// regardless of network state), at which point `state` goes back to
+// tracking `row` live. Two devices editing at the exact same moment aren't
+// specially reconciled - only one write wins.
 export function useTableColumnState(tableName: string, defaults: TableColumnState) {
   const { data, isLoading } = useQuery<PreferencesRow>(
     'SELECT id, column_state FROM user_table_preferences WHERE table_name = ?',
     [tableName],
   )
   const row = data[0]
+  const rowState = parseColumnState(row, defaults)
 
   const [override, setOverride] = useState<TableColumnState | null>(null)
-  const state = override ?? parseColumnState(row, defaults)
+
+  // Clears the override as soon as the synced row matches it.
+  if (override && JSON.stringify(rowState) === JSON.stringify(override)) setOverride(null)
+
+  const state = override ?? rowState
 
   // Each setter merges its own field into the current full state and
   // writes the whole thing back - column_state is one JSON blob per row.
