@@ -17,6 +17,7 @@ export function DancesPage() {
     setColumnPinning,
     setColumnOrder,
     setColumnSizing,
+    resetToDefaults,
   } = useTableColumnState('dances', DEFAULT_COLUMN_STATE)
 
   const table = useTable({
@@ -59,7 +60,7 @@ export function DancesPage() {
 
       {/* Tablet and up (640px+): full table */}
       <div className="hidden sm:block">
-        <TableView table={table} />
+        <TableView table={table} resetColumns={resetToDefaults} />
       </div>
 
       {/* Phone (<640px): stacked cards */}

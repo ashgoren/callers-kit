@@ -1140,7 +1140,9 @@ describe('DancesPage', () => {
       const user = userEvent.setup()
       await user.click(screen.getByRole('button', { name: 'Columns' }))
 
-      const separator = await screen.findByRole('separator')
+      // The first separator is the pinned/unpinned divider - a second one
+      // now precedes the "Reset to default" item at the bottom of the menu.
+      const [separator] = await screen.findAllByRole('separator')
       // Title is pinned by default, so it belongs before the divider;
       // Difficulty isn't pinned, so it belongs after.
       const titleHandle = screen.getByRole('button', { name: 'Reorder Title' })
@@ -1216,6 +1218,45 @@ describe('DancesPage', () => {
       rerender(<DancesPage />)
 
       expect(colWidth()).toBe('205px')
+    })
+
+    it('resets sorting, visibility, pinning, order, and column widths back to the built-in defaults', async () => {
+      mockDances(
+        { data: [makeDance()], isLoading: false },
+        {
+          columnVisibility: { notes: false },
+          sorting: [{ id: 'difficulty', desc: true }],
+          columnSizing: { difficulty: 205 },
+        },
+      )
+      render(<DancesPage />)
+
+      // Confirms the saved (non-default) layout actually took effect first.
+      expect(screen.queryByRole('columnheader', { name: 'Notes' })).not.toBeInTheDocument()
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Columns' }))
+      await user.click(await screen.findByRole('menuitem', { name: 'Reset to default' }))
+
+      const { db } = await import('@/lib/powersync/database')
+      const [, params] = vi.mocked(db.execute).mock.calls.at(-1)!
+      const savedState = JSON.parse((params as [string, string])[0]) as object
+      expect(savedState).toEqual({
+        columnVisibility: {},
+        sorting: [{ id: 'title', desc: false }],
+        columnPinning: { start: ['title'], end: [] },
+        columnOrder: [],
+        columnSizing: {},
+      })
+
+      // Notes is visible again.
+      expect(screen.getByRole('columnheader', { name: 'Notes' })).toBeInTheDocument()
+      // Difficulty's column width reverted from its saved 205px back to its
+      // built-in 105px default.
+      const table = screen.getByRole('table')
+      const headers = within(table).getAllByRole('columnheader')
+      const difficultyHeader = screen.getByRole('columnheader', { name: 'Difficulty' })
+      expect(table.querySelectorAll('col')[headers.indexOf(difficultyHeader)].style.width).toBe('105px')
     })
   })
 })

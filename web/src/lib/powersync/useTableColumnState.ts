@@ -58,5 +58,6 @@ export function useTableColumnState(tableName: string, defaults: TableColumnStat
       commit({ columnOrder: resolveUpdater(updater, state.columnOrder) }),
     setColumnSizing: (updater: Updater<ColumnSizingState>) =>
       commit({ columnSizing: resolveUpdater(updater, state.columnSizing) }),
+    resetToDefaults: () => commit(defaults),
   }
 }

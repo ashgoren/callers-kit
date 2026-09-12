@@ -4,15 +4,15 @@ import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifi
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { cn } from 'cn'
-import { GripVertical, Pin } from 'lucide-react'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { GripVertical, Pin, RotateCcw } from 'lucide-react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Switch } from '@/components/ui/switch'
 import { useDragBodyClass } from '@/hooks/useDragBodyClass'
 import { getDanceField } from './DancesPage.columns'
 import type { TableInstance } from './DancesPage.columns'
 import { applyColumnReorder, makeSameGroupCollisionDetection } from './DancesPage.reorder'
 
-export function ColumnsMenu({ table }: { table: TableInstance }) {
+export function ColumnsMenu({ table, onReset }: { table: TableInstance; onReset: () => void }) {
   // Pinned and unpinned columns are two separate reorderable groups.
   const pinnedColumns = table.getPinnedLeafColumns('start') // left pinned columns
   const unpinnedColumns = table.getPinnedLeafColumns('center') // unpinned columns
@@ -65,6 +65,11 @@ export function ColumnsMenu({ table }: { table: TableInstance }) {
             </div>
           </SortableContext>
         </DndContext>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive" onClick={onReset}>
+          <RotateCcw />
+          Reset to default
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )

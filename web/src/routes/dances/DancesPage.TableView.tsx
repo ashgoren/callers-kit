@@ -7,13 +7,13 @@ import { TableHeaderCell } from './DancesPage.TableHeaderCell'
 import { useHeaderReorder } from './DancesPage.useHeaderReorder'
 import type { TableInstance } from './DancesPage.columns'
 
-export function TableView({ table }: { table: TableInstance }) {
+export function TableView({ table, resetColumns }: { table: TableInstance; resetColumns: () => void }) {
   const { leafHeaders, pinnedHeaders, unpinnedHeaders, pinBoundaryDividerRef, dndContextProps } = useHeaderReorder(table)
 
   return (
     <>
       <div className="mb-2 flex justify-end">
-        <ColumnsMenu table={table} />
+        <ColumnsMenu table={table} onReset={resetColumns} />
       </div>
       <Table>
         {/* Wrapped in table.Subscribe (selecting columnSizing) to address React Compiler staleness issue. */}
