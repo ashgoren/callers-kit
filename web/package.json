@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "difft": "git diff -- . ':!*.test.ts' ':!*.test.tsx' ':!*.spec.ts'"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
