@@ -157,8 +157,7 @@ describe('SupabaseConnector.uploadData', () => {
     // column_state is jsonb in Postgres but text locally, so it always
     // arrives here as a JSON-encoded string - sending it unparsed would
     // store a jsonb string scalar instead of the object it represents (see
-    // preparePreferencesOpData's own comment for the round-trip bug this
-    // caused).
+    // decodeJsonColumns's own comment for the round-trip bug this caused).
     const complete = vi.fn(() => Promise.resolve())
     const transaction = new CrudTransaction(
       [
@@ -177,7 +176,10 @@ describe('SupabaseConnector.uploadData', () => {
     expect(upsertMock).toHaveBeenCalledWith({ id: '1', table_name: 'dances', column_state: { sorting: [] } })
   })
 
-  it('does not sanitize column_state-shaped data on an unrelated table', async () => {
+  it('leaves a json-shaped column alone on a table with no json columns', async () => {
+    // Decoding is driven by JSON_COLUMNS, so a column that merely shares a
+    // name with a json column on another table must pass through as the
+    // plain text it is.
     const complete = vi.fn(() => Promise.resolve())
     const transaction = new CrudTransaction(
       [
@@ -214,6 +216,28 @@ describe('SupabaseConnector.uploadData', () => {
 
     expect(updateMock).toHaveBeenCalledWith({ column_state: {} })
     expect(complete).toHaveBeenCalled()
+  })
+
+  it('leaves a json column alone on a PATCH that does not include it', async () => {
+    // A PATCH carries only the columns that changed, so user_table_preferences
+    // ops without column_state are routine - decoding must not invent a value
+    // for an absent column or choke on its absence.
+    const complete = vi.fn(() => Promise.resolve())
+    const transaction = new CrudTransaction(
+      [
+        makeCrudEntry({
+          op: UpdateType.PATCH,
+          table: 'user_table_preferences',
+          id: '1',
+          opData: { table_name: 'programs' },
+        }),
+      ],
+      complete,
+    )
+
+    await connector.uploadData(makeDatabase(transaction))
+
+    expect(updateMock).toHaveBeenCalledWith({ table_name: 'programs' })
   })
 
   it('updates on PATCH', async () => {

@@ -6,24 +6,35 @@ import type { CommonPowerSyncDatabase, PowerSyncBackendConnector, PowerSyncCrede
 // pinning/order array, per-column widths) is a few hundred bytes at most,
 // so this is a generous ceiling meant only to catch corruption, not to
 // constrain real usage.
-const MAX_COLUMN_STATE_LENGTH = 10_000
+const MAX_JSON_COLUMN_LENGTH = 10_000
 
-// column_state is jsonb in Postgres, but the local schema mirrors it as
-// plain text (see schema.ts), so op.opData.column_state here is always a
-// JSON-encoded string, never a parsed object. Sending that string as-is
-// would store it as a valid but wrong jsonb value - a JSON string scalar
-// wrapping the real JSON text, rather than the object itself - and the
-// next sync-down would re-stringify that scalar into local text, adding a
-// second layer of encoding on every upload/download round trip. Parsing it
-// here before sending is what makes Postgres store the actual object.
-function preparePreferencesOpData(opData: Record<string, unknown>): Record<string, unknown> {
-  const columnState = opData.column_state
-  if (typeof columnState !== 'string') return opData
-  if (columnState.length > MAX_COLUMN_STATE_LENGTH) {
-    console.warn(`uploadData: discarding oversized user_table_preferences.column_state (${columnState.length} chars)`)
-    return { ...opData, column_state: {} }
+// Postgres jsonb has no SQLite equivalent, so schema.ts mirrors every
+// jsonb column as text and op.opData carries it as a JSON string. Sent
+// as-is, Postgres would store a string scalar wrapping the real JSON,
+// and every round trip would add another layer of encoding.
+//
+// Every jsonb column in schema.ts belongs in this map.
+const JSON_COLUMNS: Record<string, readonly string[]> = {
+  user_table_preferences: ['column_state'],
+}
+
+function decodeJsonColumns(table: string, opData: Record<string, unknown>): Record<string, unknown> {
+  const jsonColumns = JSON_COLUMNS[table]
+  if (!jsonColumns) return opData
+
+  const decoded = { ...opData }
+  for (const name of jsonColumns) {
+    const value = decoded[name]
+    // A PATCH carries only changed columns, so absent is normal.
+    if (typeof value !== 'string') continue
+    if (value.length > MAX_JSON_COLUMN_LENGTH) {
+      console.warn(`uploadData: discarding oversized ${table}.${name} (${value.length} chars)`)
+      decoded[name] = {}
+      continue
+    }
+    decoded[name] = JSON.parse(value)
   }
-  return { ...opData, column_state: JSON.parse(columnState) }
+  return decoded
 }
 
 export class SupabaseConnector implements PowerSyncBackendConnector {
@@ -60,7 +71,7 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
 
     for (const op of transaction.crud) {
       // opData is only undefined for DELETE ops (per CrudEntry), never PUT/PATCH.
-      const opData = op.table === 'user_table_preferences' ? preparePreferencesOpData(op.opData ?? {}) : (op.opData ?? {})
+      const opData = decodeJsonColumns(op.table, op.opData ?? {})
 
       // supabase-js does NOT throw on failure - it returns { data, error }.
       // Each branch below explicitly checks `error` and throws, so a failed
