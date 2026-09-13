@@ -13,8 +13,13 @@ test('the dances table shows a card list on phone width and the real table from 
   await expect(page).toHaveURL('/dances')
 
   // Phone width (well under the sm: 640px breakpoint) - card list, no table.
+  // .first(): CardList's own outer <ul> is always the first "list" role in
+  // document order - a dance's program-history list (see
+  // DancesPage.columns.tsx's cardRenderProgramList) renders its own nested
+  // <ul> further down inside each card, so plain getByRole('list') is
+  // ambiguous once a dance has program history.
   await page.setViewportSize({ width: 500, height: 800 })
-  await expect(page.getByRole('list')).toBeVisible()
+  await expect(page.getByRole('list').first()).toBeVisible()
   await expect(page.getByRole('table')).not.toBeVisible()
 
   // Tablet-and-up width (comfortably over 640px, e.g. iPad portrait) - the
@@ -27,5 +32,5 @@ test('the dances table shows a card list on phone width and the real table from 
   // because toBeVisible()/not.toBeVisible() check real computed visibility.
   await page.setViewportSize({ width: 700, height: 900 })
   await expect(page.getByRole('table')).toBeVisible()
-  await expect(page.getByRole('list')).not.toBeVisible()
+  await expect(page.getByRole('list').first()).not.toBeVisible()
 })

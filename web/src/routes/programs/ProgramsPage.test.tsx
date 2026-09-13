@@ -180,6 +180,24 @@ describe('ProgramsPage', () => {
     expect(within(cardList).getByText('2. Reel of Four')).toBeInTheDocument()
   })
 
+  it('shows "date @ location" combined as the card\'s title line, not as separate rows', () => {
+    mockPrograms({ data: [makeProgram({ date: '2026-09-13', location: 'Grange Hall' })], isLoading: false })
+    render(<ProgramsPage />)
+
+    const [cardList] = screen.getAllByRole('list')
+    expect(within(cardList).getByText('9/13/26 @ Grange Hall')).toBeInTheDocument()
+    // Location no longer appears as its own labeled row below the title.
+    expect(within(cardList).queryByText('Location')).not.toBeInTheDocument()
+  })
+
+  it('falls back to just the date on the card title line when a program has no location', () => {
+    mockPrograms({ data: [makeProgram({ date: '2026-09-13', location: null })], isLoading: false })
+    render(<ProgramsPage />)
+
+    const [cardList] = screen.getAllByRole('list')
+    expect(within(cardList).getByText('9/13/26')).toBeInTheDocument()
+  })
+
   it('leaves Created/Updated off the card, even though the table (once toggled on) shows them', () => {
     mockPrograms({ data: [makeProgram()], isLoading: false })
     render(<ProgramsPage />)

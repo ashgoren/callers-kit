@@ -78,8 +78,8 @@ beforeEach(() => {
 // (matching json_group_array's real output), not real arrays - all default
 // to an empty array so tests that don't care about them still see '-'.
 function makeDance(
-  overrides: Partial<Dance> & { choreographers?: string; key_moves?: string; vibes?: string } = {},
-): Dance & { choreographers: string; key_moves: string; vibes: string } {
+  overrides: Partial<Dance> & { choreographers?: string; key_moves?: string; vibes?: string; programs?: string } = {},
+): Dance & { choreographers: string; key_moves: string; vibes: string; programs: string } {
   return {
     id: '1',
     title: 'Chorus Jig',
@@ -95,6 +95,7 @@ function makeDance(
     choreographers: '[]',
     key_moves: '[]',
     vibes: '[]',
+    programs: '[]',
     ...overrides,
   }
 }
@@ -142,6 +143,26 @@ describe('DancesPage', () => {
     }
   })
 
+  it('queries a dance\'s program history via programs_dances, most-recent-first, aliased as programs', () => {
+    // Its own test, not folded into the tag-style joins loop above - this
+    // join goes through an extra hop (programs_dances -> programs) and
+    // aggregates {date, location} objects instead of a plain name, so it
+    // doesn't fit that loop's shape.
+    mockDances({ data: [], isLoading: false })
+    render(<DancesPage />)
+
+    const query = useQueryMock.mock.calls[0][0] as string
+
+    expect(query).toContain('FROM programs_dances')
+    expect(query).toContain('JOIN programs ON programs.id = programs_dances.program_id')
+    expect(query).toContain('WHERE programs_dances.dance_id = dances.id')
+    expect(query).toContain('ORDER BY programs.date DESC')
+    expect(query).toContain('AS programs')
+    // Selects the program's own id too, not just date/location - used as a
+    // stable React key, since date+location alone isn't guaranteed unique.
+    expect(query).toContain('programs.id AS id')
+  })
+
   it('shows a loading state while the query is in flight', () => {
     mockDances({ data: [], isLoading: true })
     render(<DancesPage />)
@@ -178,9 +199,9 @@ describe('DancesPage', () => {
     // so it can't be used to locate the row anymore.
     const row = within(table).getByRole('row', { name: /1\/15\/26/ })
     // title, difficulty, formation, and notes are all null/empty, plus the
-    // default empty choreographers/key_moves/vibes lists from makeDance() -
-    // seven '—' cells
-    expect(within(row).getAllByText('—')).toHaveLength(7)
+    // default empty choreographers/key_moves/vibes/programs lists from
+    // makeDance() - eight '—' cells
+    expect(within(row).getAllByText('—')).toHaveLength(8)
   })
 
   it('joins multiple choreographer names with ", ", and shows a placeholder when there are none', () => {
@@ -198,9 +219,10 @@ describe('DancesPage', () => {
     expect(rowA).toHaveTextContent('Alice, Bob')
 
     const rowB = within(table).getByText('Dance B').closest('tr')!
-    // Three '—' cells: empty choreographers, plus the default empty
-    // key_moves/vibes lists from makeDance() that this test doesn't override.
-    expect(within(rowB).getAllByText('—')).toHaveLength(3)
+    // Four '—' cells: empty choreographers, plus the default empty
+    // key_moves/vibes/programs lists from makeDance() that this test doesn't
+    // override.
+    expect(within(rowB).getAllByText('—')).toHaveLength(4)
   })
 
   it('joins multiple key_move and vibe names with ", ", and shows a placeholder when there are none', () => {
@@ -219,9 +241,63 @@ describe('DancesPage', () => {
     expect(rowA).toHaveTextContent('Playful')
 
     const rowB = within(table).getByText('Dance B').closest('tr')!
-    // Three '—' cells: empty key_moves and vibes, plus the default empty
-    // choreographers list from makeDance() that this test doesn't override.
-    expect(within(rowB).getAllByText('—')).toHaveLength(3)
+    // Four '—' cells: empty key_moves and vibes, plus the default empty
+    // choreographers/programs lists from makeDance() that this test doesn't
+    // override.
+    expect(within(rowB).getAllByText('—')).toHaveLength(4)
+  })
+
+  it('renders a dance\'s program history in the table as compact dates only, in the recency order the query already provides, with the full "date @ location" labels available via a hover tooltip', () => {
+    mockDances({
+      data: [
+        makeDance({
+          title: 'Dance A',
+          programs: JSON.stringify([
+            { id: 'p1', date: '2026-10-02', location: 'VFW Hall' },
+            { id: 'p2', date: '2026-01-01', location: 'Grange Hall' },
+          ]),
+        }),
+      ],
+      isLoading: false,
+    })
+    render(<DancesPage />)
+
+    const cell = within(screen.getByRole('table')).getByText('10/2/26, 1/1/26')
+    expect(cell).toHaveAttribute('title', '10/2/26 @ VFW Hall\n1/1/26 @ Grange Hall')
+  })
+
+  it('omits "@ location" from the tooltip line for a program in a dance\'s history with no location', () => {
+    mockDances({
+      data: [makeDance({ title: 'Dance A', programs: JSON.stringify([{ id: 'p1', date: '2026-01-01', location: null }]) })],
+      isLoading: false,
+    })
+    render(<DancesPage />)
+
+    const cell = within(screen.getByRole('table')).getByText('1/1/26')
+    expect(cell).toHaveAttribute('title', '1/1/26')
+  })
+
+  it('shows the full "date @ location" labels, one per line, in the card list layout - not just the compact dates the table cell shows', () => {
+    mockDances({
+      data: [
+        makeDance({
+          title: 'Dance A',
+          programs: JSON.stringify([
+            { id: 'p1', date: '2026-10-02', location: 'VFW Hall' },
+            { id: 'p2', date: '2026-01-01', location: 'Grange Hall' },
+          ]),
+        }),
+      ],
+      isLoading: false,
+    })
+    render(<DancesPage />)
+
+    // CardList's outer <ul> is the first "list" role in document order - the
+    // program history's own <ul> (see cardRenderProgramList) is nested
+    // inside it, further down the tree, so it comes after.
+    const [cardList] = screen.getAllByRole('list')
+    expect(within(cardList).getByText('10/2/26 @ VFW Hall')).toBeInTheDocument()
+    expect(within(cardList).getByText('1/1/26 @ Grange Hall')).toBeInTheDocument()
   })
 
   it('also renders the same dance in the card list layout', () => {
@@ -280,6 +356,7 @@ describe('DancesPage', () => {
         'Key Moves',
         'Vibes',
         'Notes',
+        'Programs',
         'Created',
         'Updated',
       ]) {
@@ -316,7 +393,7 @@ describe('DancesPage', () => {
       await user.click(screen.getByRole('button', { name: 'Columns' }))
 
       // Hide every column except Title, one at a time.
-      for (const label of ['Difficulty', 'Formation', 'Choreographers', 'Key Moves', 'Vibes', 'Notes', 'Created', 'Updated']) {
+      for (const label of ['Difficulty', 'Formation', 'Choreographers', 'Key Moves', 'Vibes', 'Notes', 'Programs', 'Created', 'Updated']) {
         await user.click(await screen.findByRole('switch', { name: label }))
       }
 
@@ -361,6 +438,29 @@ describe('DancesPage', () => {
       await user.click(titleHeader)
       expect(rowTitlesInOrder(table)).toEqual(['Charlie', 'Bravo', 'Alpha'])
       expect(titleHeader.querySelector('.lucide-arrow-down')).toBeInTheDocument()
+    })
+
+    it('sorts the Programs column descending on the first click, showing the most-recently-called dance first - the opposite of every other column\'s ascending-first default', async () => {
+      mockDances({
+        data: [
+          makeDance({ id: '1', title: 'Called Long Ago', programs: JSON.stringify([{ id: 'p1', date: '2025-01-01', location: null }]) }),
+          makeDance({ id: '2', title: 'Called Recently', programs: JSON.stringify([{ id: 'p2', date: '2026-06-01', location: null }]) }),
+          makeDance({ id: '3', title: 'Never Called', programs: '[]' }),
+        ],
+        isLoading: false,
+      })
+      render(<DancesPage />)
+
+      const table = screen.getByRole('table')
+      const programsHeader = screen.getByRole('button', { name: 'Programs' })
+
+      const user = userEvent.setup()
+      await user.click(programsHeader)
+
+      // Descending first click: most recent date first, missing-history dance
+      // still sorts last regardless of direction (see sortUndefined: 'last').
+      expect(rowTitlesInOrder(table)).toEqual(['Called Recently', 'Called Long Ago', 'Never Called'])
+      expect(programsHeader.querySelector('.lucide-arrow-down')).toBeInTheDocument()
     })
 
     it('sorts a row with a missing value to the end, regardless of ascending or descending', async () => {
@@ -891,7 +991,7 @@ describe('DancesPage', () => {
       // Hide every column except Title via the manage-columns menu first.
       const user = userEvent.setup()
       await user.click(screen.getByRole('button', { name: 'Columns' }))
-      for (const label of ['Difficulty', 'Formation', 'Choreographers', 'Key Moves', 'Vibes', 'Notes', 'Created', 'Updated']) {
+      for (const label of ['Difficulty', 'Formation', 'Choreographers', 'Key Moves', 'Vibes', 'Notes', 'Programs', 'Created', 'Updated']) {
         await user.click(await screen.findByRole('switch', { name: label }))
       }
       await user.keyboard('{Escape}')
@@ -927,7 +1027,7 @@ describe('DancesPage', () => {
       mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
-      for (const label of ['Title', 'Difficulty', 'Formation', 'Choreographers', 'Key Moves', 'Vibes', 'Notes', 'Created', 'Updated']) {
+      for (const label of ['Title', 'Difficulty', 'Formation', 'Choreographers', 'Key Moves', 'Vibes', 'Notes', 'Programs', 'Created', 'Updated']) {
         const sortButton = within(screen.getByRole('columnheader', { name: label })).getByRole('button')
         expect(sortButton).toHaveAttribute('aria-roledescription', 'sortable')
       }
@@ -1002,7 +1102,7 @@ describe('DancesPage', () => {
       const user = userEvent.setup()
       await user.click(screen.getByRole('button', { name: 'Columns' }))
 
-      for (const label of ['Title', 'Choreographers', 'Key Moves', 'Vibes', 'Difficulty', 'Formation', 'Notes', 'Created', 'Updated']) {
+      for (const label of ['Title', 'Choreographers', 'Key Moves', 'Vibes', 'Difficulty', 'Formation', 'Notes', 'Programs', 'Created', 'Updated']) {
         expect(await screen.findByRole('button', { name: `Reorder ${label}` })).toBeInTheDocument()
       }
     })

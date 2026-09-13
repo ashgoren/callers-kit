@@ -1,16 +1,19 @@
 import { sortFn_alphanumeric, sortFn_basic } from '@tanstack/react-table'
 import { buildColumns, makeFieldDefiner } from '@/components/table/fieldColumns'
 import { formatDate, mutedPlaceholder, sortAlphabetically } from '@/lib/format'
+import { formatProgramLabel } from '@/routes/programs/ProgramsPage.columns'
 import type { ReactNode } from 'react'
 import type { Field } from '@/components/table/fieldColumns'
 import type { LeafHeader as GenericLeafHeader, TableInstance as GenericTableInstance } from '@/components/table/tableInstance'
 import type { Dance } from '@/lib/powersync/schema'
 import type { TableColumnState } from '@/lib/powersync/tablePreferences'
+import type { ProgramSummary } from '@/routes/programs/ProgramsPage.columns'
 
 export interface DanceWithJoins extends Dance {
   choreographers: string[]
   key_moves: string[]
   vibes: string[]
+  programs: ProgramSummary[]
 }
 
 export function formatFormation(value: string | null): string {
@@ -19,6 +22,25 @@ export function formatFormation(value: string | null): string {
 
 function renderTagList(value: string[]): ReactNode {
   return value.length > 0 ? sortAlphabetically(value).join(', ') : mutedPlaceholder
+}
+
+// Table view: compact dates only with full "date @ location" labels via hover.
+function renderProgramList(value: ProgramSummary[]): ReactNode {
+  if (value.length === 0) return mutedPlaceholder
+  const tooltip = value.map(formatProgramLabel).join('\n')
+  return <span title={tooltip}>{value.map((program) => formatDate(program.date)).join(', ')}</span>
+}
+
+// Card view: full "date @ location" labels, one per line.
+function cardRenderProgramList(value: ProgramSummary[]): ReactNode {
+  if (value.length === 0) return mutedPlaceholder
+  return (
+    <ul className="space-y-0.5">
+      {value.map((program) => (
+        <li key={program.id}>{formatProgramLabel(program)}</li>
+      ))}
+    </ul>
+  )
 }
 
 const defineField = makeFieldDefiner<DanceWithJoins>()
@@ -80,6 +102,18 @@ export const danceFields: Field<DanceWithJoins>[] = [
     sortFn: sortFn_alphanumeric,
     size: 250,
     maxSize: 500,
+  }),
+  defineField({
+    key: 'programs',
+    label: 'Programs',
+    render: renderProgramList,
+    cardRender: cardRenderProgramList,
+    // Sorts by the dance's most recently called program - the array is
+    // already date-descending from the query, so the first entry is it.
+    sortValue: (value) => value[0]?.date ?? null,
+    sortFn: sortFn_basic,
+    sortDescFirst: true,
+    size: 150,
   }),
   defineField({
     key: 'created_at',

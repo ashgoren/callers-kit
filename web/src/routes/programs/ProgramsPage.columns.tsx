@@ -7,15 +7,24 @@ import type { Program } from '@/lib/powersync/schema'
 import type { TableColumnState } from '@/lib/powersync/tablePreferences'
 
 export interface ProgramDance {
-  // The programs_dances junction row's own id - not dances.id. Named
-  // distinctly from `id` so it can't be misread as the dance's own identity.
-  programDanceId: string
+  programDanceId: string // the programs_dances junction row's own id
   order: number
   title: string
 }
 
 export interface ProgramWithJoins extends Program {
   dances: ProgramDance[]
+}
+
+export interface ProgramSummary {
+  id: string
+  date: string | null
+  location: string | null
+}
+
+export function formatProgramLabel(program: ProgramSummary): string {
+  const dateLabel = formatDate(program.date)
+  return program.location ? `${dateLabel} @ ${program.location}` : dateLabel
 }
 
 // Table view: a compact, wrapping row of numbered chips

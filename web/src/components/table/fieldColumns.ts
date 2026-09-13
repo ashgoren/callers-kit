@@ -15,6 +15,7 @@ export interface Field<TRow extends RowData, K extends keyof TRow = keyof TRow> 
   enableHiding?: boolean
   sortValue?: (value: TRow[K]) => string | number | null
   sortFn?: SortFn<typeof dataTableFeatures, TRow>
+  sortDescFirst?: boolean
   size?: number
   minSize?: number
   maxSize?: number
@@ -64,6 +65,7 @@ export function buildColumns<TRow extends RowData>(fields: Field<TRow>[]) {
           ...(field.minSize !== undefined && { minSize: field.minSize }),
           ...(field.maxSize !== undefined && { maxSize: field.maxSize }),
           sortFn: field.sortFn,
+          ...(field.sortDescFirst !== undefined && { sortDescFirst: field.sortDescFirst }),
           // Missing values (now undefined, see above) always sort last,
           // regardless of ascending vs. descending - blank cells staying put
           // at the bottom rather than jumping to the top when you flip

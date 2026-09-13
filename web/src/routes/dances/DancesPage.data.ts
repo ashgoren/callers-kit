@@ -1,5 +1,6 @@
 import { useQuery } from '@powersync/react'
 import type { Dance } from '@/lib/powersync/schema'
+import type { ProgramSummary } from '@/routes/programs/ProgramsPage.columns'
 import type { DanceWithJoins } from './DancesPage.columns'
 
 // Builds correlated subquery for a dance's tag-style join (e.g. choreographers).
@@ -22,25 +23,47 @@ function tagListSubquery(junctionTable: string, ownerTable: string, foreignKeyCo
   `
 }
 
+// Builds correlated subquery for a dance's program history, via programs_dances.
+// Aggregated as {id, date, location} objects, most-recent-first, since
+// that's the order the Programs column itself sorts by. id (the program's
+// own row id) is included so each entry has a stable React key - date+
+// location alone isn't guaranteed unique (e.g. two different programs at
+// the same hall on the same date).
+function dancesProgramsSubquery(): string {
+  return `
+    (
+      SELECT json_group_array(json_object('id', id, 'date', date, 'location', location))
+      FROM (
+        SELECT programs.id AS id, programs.date AS date, programs.location AS location
+        FROM programs_dances
+        JOIN programs ON programs.id = programs_dances.program_id
+        WHERE programs_dances.dance_id = dances.id
+        ORDER BY programs.date DESC
+      )
+    )
+  `
+}
+
 const DANCES_QUERY = `
   SELECT
     dances.id, dances.title, dances.difficulty, dances.formation, dances.notes,
     dances.created_at, dances.updated_at,
     ${tagListSubquery('dances_choreographers', 'choreographers', 'choreographer_id')} AS choreographers,
     ${tagListSubquery('dances_key_moves', 'key_moves', 'key_move_id')} AS key_moves,
-    ${tagListSubquery('dances_vibes', 'vibes', 'vibe_id')} AS vibes
+    ${tagListSubquery('dances_vibes', 'vibes', 'vibe_id')} AS vibes,
+    ${dancesProgramsSubquery()} AS programs
   FROM dances
   ORDER BY dances.title
 `
 
 // The shape of a row as it comes back from DANCES_QUERY, before the
-// tag-list columns are JSON.parse'd into real arrays below.
-type DanceQueryRow = Dance & { choreographers: string; key_moves: string; vibes: string }
+// tag-list/program-history columns are JSON.parse'd into real arrays below.
+type DanceQueryRow = Dance & { choreographers: string; key_moves: string; vibes: string; programs: string }
 
 export function useDances(): { dances: DanceWithJoins[]; isLoading: boolean } {
   // Reactive: auto re-runs & re-renders whenever local SQLite `dances`,
   // `dances_choreographers`/`choreographers`, `dances_key_moves`/`key_moves`,
-  // or `dances_vibes`/`vibes` tables change.
+  // `dances_vibes`/`vibes`, or `programs_dances`/`programs` tables change.
   const { data: rawDances, isLoading } = useQuery<DanceQueryRow>(DANCES_QUERY)
 
   // Parsed once here rather than in each cell renderer. No useMemo needed -
@@ -50,6 +73,7 @@ export function useDances(): { dances: DanceWithJoins[]; isLoading: boolean } {
     choreographers: JSON.parse(d.choreographers) as string[],
     key_moves: JSON.parse(d.key_moves) as string[],
     vibes: JSON.parse(d.vibes) as string[],
+    programs: JSON.parse(d.programs) as ProgramSummary[],
   }))
 
   return { dances, isLoading }
