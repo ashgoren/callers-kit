@@ -15,7 +15,7 @@ interface LongPressTouchOptions {
 // A touch that has to hold still before it "activates", rather than
 // activating immediately - for a target where an immediate touch action
 // would otherwise conflict with an ordinary scroll swipe starting on the same
-// spot. Currently used only by DancesPage.ColumnResizeHandle.tsx, for its
+// spot. Currently used only by components/table/ColumnResizeHandle.tsx, for its
 // resize handles: TanStack's resize handler has no delay concept of its own,
 // so this stands in for what dnd-kit's TouchSensor delay/tolerance
 // activationConstraint does for the header's own drag-to-reorder (which goes

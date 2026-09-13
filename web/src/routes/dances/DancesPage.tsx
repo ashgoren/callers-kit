@@ -1,11 +1,12 @@
 import { useTable } from '@tanstack/react-table'
+import { ColumnSizingSync } from '@/components/table/ColumnSizingSync'
+import { dataTableFeatures } from '@/components/table/tableInstance'
+import { TableView } from '@/components/table/TableView'
 import { Spinner } from '@/components/ui/spinner'
 import { useTableColumnState } from '@/lib/powersync/useTableColumnState'
 import { useDances } from './DancesPage.data'
-import { columns, DEFAULT_COLUMN_STATE, features } from './DancesPage.columns'
-import { TableView } from './DancesPage.TableView'
+import { columns, DEFAULT_COLUMN_STATE } from './DancesPage.columns'
 import { CardList } from './DancesPage.CardList'
-import { ColumnSizingSync } from './DancesPage.ColumnSizingSync'
 
 export function DancesPage() {
   const { dances, isLoading: dancesLoading } = useDances()
@@ -21,19 +22,16 @@ export function DancesPage() {
   } = useTableColumnState('dances', DEFAULT_COLUMN_STATE)
 
   const table = useTable({
-    features,
+    features: dataTableFeatures,
     columns,
     data: dances,
     getRowId: (row) => row.id,
-    // columnSizing is deliberately left out here - including it would make
-    // TanStack treat it as controlled, committing to the local db on every
-    // pixel of drag movement instead of once a drag finishes. ColumnSizingSync
-    // below bridges it to the synced value separately - see that file.
     state: {
       columnVisibility: state.columnVisibility,
       sorting: state.sorting,
       columnPinning: state.columnPinning,
       columnOrder: state.columnOrder,
+      // columnSizing is handled elsewhere to avoid triggering local db updates on every drag
     },
     onColumnVisibilityChange: setColumnVisibility,
     onSortingChange: setSorting,

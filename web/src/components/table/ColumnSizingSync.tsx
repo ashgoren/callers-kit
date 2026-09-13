@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react'
-import type { ColumnSizingState, Updater } from '@tanstack/react-table'
-import type { TableInstance } from './DancesPage.columns'
+import type { ColumnSizingState, RowData, Updater } from '@tanstack/react-table'
+import type { TableInstance } from './tableInstance'
 
-// Bridges the table's own uncontrolled columnSizing (see DancesPage.tsx for
-// why it's deliberately left out of the table's controlled state) with the
-// synced value from useTableColumnState. Two independent directions, kept
-// separate on purpose:
+// Bridges the table's own uncontrolled columnSizing (see each page's own
+// useTable call for why it's deliberately left out of the table's controlled
+// state) with the synced value from useTableColumnState. Two independent
+// directions, kept separate on purpose:
 //
 // - Inbound: apply the synced width map whenever it changes - on first load,
 //   or because another device committed a resize while this tab was idle.
@@ -16,8 +16,8 @@ import type { TableInstance } from './DancesPage.columns'
 //   committing on every onChange frame would mean dozens of local db writes
 //   over a single drag, the same class of problem that caused the Safari
 //   initial-sync slowdown documented in the rebuild plan.
-export function ColumnSizingSync({ table, savedColumnSizing, setColumnSizing }: {
-  table: TableInstance
+export function ColumnSizingSync<TRow extends RowData>({ table, savedColumnSizing, setColumnSizing }: {
+  table: TableInstance<TRow>
   savedColumnSizing: ColumnSizingState
   setColumnSizing: (updater: Updater<ColumnSizingState>) => void
 }) {
@@ -41,8 +41,8 @@ export function ColumnSizingSync({ table, savedColumnSizing, setColumnSizing }: 
 }
 
 // Outbound: persist the table's own widths once a resize drag actually finishes.
-function CommitOnResizeEnd({ table, isResizingColumn, setColumnSizing }: {
-  table: TableInstance
+function CommitOnResizeEnd<TRow extends RowData>({ table, isResizingColumn, setColumnSizing }: {
+  table: TableInstance<TRow>
   isResizingColumn: false | string
   setColumnSizing: (updater: Updater<ColumnSizingState>) => void
 }) {

@@ -2,16 +2,17 @@ import { useRef, useState } from 'react'
 import { MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { restrictToHorizontalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
 import { useDragBodyClass } from '@/hooks/useDragBodyClass'
-import { applyColumnReorder, makeSameGroupCollisionDetection } from './DancesPage.reorder'
+import { applyColumnReorder, makeSameGroupCollisionDetection } from './reorder'
 import type { DragEndEvent, Modifier } from '@dnd-kit/core'
-import type { TableInstance } from './DancesPage.columns'
+import type { RowData } from '@tanstack/react-table'
+import type { TableInstance } from './tableInstance'
 
 // Everything needed to let the table header's own row support drag-to-reorder,
 // with pinned and unpinned columns as two separate reorderable groups that a
 // drag can never cross. Returns the derived header lists (both the DndContext
 // wiring and the row-rendering in TableView.tsx need these) plus a
 // dndContextProps object meant to be spread directly onto <DndContext>.
-export function useHeaderReorder(table: TableInstance) {
+export function useHeaderReorder<TRow extends RowData>(table: TableInstance<TRow>) {
   const leafHeaders = table.getLeafHeaders()
   const pinnedHeaders = table.getStartLeafHeaders()
   const unpinnedHeaders = table.getCenterLeafHeaders()

@@ -1,19 +1,9 @@
-import {
-  columnOrderingFeature,
-  columnPinningFeature,
-  columnResizingFeature,
-  columnSizingFeature,
-  columnVisibilityFeature,
-  createColumnHelper,
-  createSortedRowModel,
-  rowSortingFeature,
-  sortFn_alphanumeric,
-  sortFn_basic,
-  tableFeatures,
-} from '@tanstack/react-table'
+import { createColumnHelper, sortFn_alphanumeric, sortFn_basic } from '@tanstack/react-table'
 import { format } from 'date-fns'
+import { dataTableFeatures } from '@/components/table/tableInstance'
 import type { ReactNode } from 'react'
-import type { SortFn, useTable } from '@tanstack/react-table'
+import type { SortFn } from '@tanstack/react-table'
+import type { LeafHeader as GenericLeafHeader, TableInstance as GenericTableInstance } from '@/components/table/tableInstance'
 import type { Dance } from '@/lib/powersync/schema'
 import type { TableColumnState } from '@/lib/powersync/tablePreferences'
 
@@ -52,7 +42,7 @@ interface DanceField<K extends keyof DanceWithJoins = keyof DanceWithJoins> {
   cardRender?: (value: DanceWithJoins[K]) => ReactNode
   enableHiding?: boolean
   sortValue?: (value: DanceWithJoins[K]) => string | number | null
-  sortFn?: SortFn<typeof features, DanceWithJoins>
+  sortFn?: SortFn<typeof dataTableFeatures, DanceWithJoins>
   size?: number
   minSize?: number
   maxSize?: number
@@ -153,21 +143,10 @@ export const DEFAULT_COLUMN_STATE: TableColumnState = {
   columnSizing: {},
 }
 
-// Tanstack Table features this table actually uses are registered.
-export const features = tableFeatures({
-  columnVisibilityFeature,
-  rowSortingFeature,
-  sortedRowModel: createSortedRowModel(),
-  columnSizingFeature,
-  columnResizingFeature,
-  columnPinningFeature,
-  columnOrderingFeature,
-})
+export type TableInstance = GenericTableInstance<DanceWithJoins>
+export type LeafHeader = GenericLeafHeader<DanceWithJoins>
 
-export type TableInstance = ReturnType<typeof useTable<typeof features, DanceWithJoins>>
-export type LeafHeader = ReturnType<TableInstance['getLeafHeaders']>[number]
-
-const columnHelper = createColumnHelper<typeof features, DanceWithJoins>()
+const columnHelper = createColumnHelper<typeof dataTableFeatures, DanceWithJoins>()
 
 export const columns = columnHelper.columns(
   danceFields.map((field) =>

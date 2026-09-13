@@ -1,7 +1,8 @@
 import { closestCenter } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import type { CollisionDetection } from '@dnd-kit/core'
-import type { TableInstance } from './DancesPage.columns'
+import type { RowData } from '@tanstack/react-table'
+import type { TableInstance } from './tableInstance'
 
 // Column reordering is wired up on two separate drag surfaces - the table
 // header row's own columns, and the manage-columns menu's rows - and both
@@ -52,8 +53,8 @@ export function computeColumnReorder(
 // Runs computeColumnReorder on a completed drag and writes the result to
 // table state - the function each drag surface's onDragEnd actually calls,
 // so neither has to re-implement the same pinnedIds/unpinnedIds if/else.
-export function applyColumnReorder(
-  table: TableInstance,
+export function applyColumnReorder<TRow extends RowData>(
+  table: TableInstance<TRow>,
   pinnedIds: string[],
   unpinnedIds: string[],
   activeId: string,

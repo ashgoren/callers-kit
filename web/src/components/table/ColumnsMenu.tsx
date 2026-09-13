@@ -8,10 +8,11 @@ import { GripVertical, Pin, RotateCcw } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Switch } from '@/components/ui/switch'
 import { useDragBodyClass } from '@/hooks/useDragBodyClass'
-import type { TableInstance } from './DancesPage.columns'
-import { applyColumnReorder, makeSameGroupCollisionDetection } from './DancesPage.reorder'
+import type { RowData } from '@tanstack/react-table'
+import type { TableInstance } from './tableInstance'
+import { applyColumnReorder, makeSameGroupCollisionDetection } from './reorder'
 
-export function ColumnsMenu({ table, onReset }: { table: TableInstance; onReset: () => void }) {
+export function ColumnsMenu<TRow extends RowData>({ table, onReset }: { table: TableInstance<TRow>; onReset: () => void }) {
   // Pinned and unpinned columns are two separate reorderable groups.
   const pinnedColumns = table.getPinnedLeafColumns('start') // left pinned columns
   const unpinnedColumns = table.getPinnedLeafColumns('center') // unpinned columns
@@ -75,12 +76,15 @@ export function ColumnsMenu({ table, onReset }: { table: TableInstance; onReset:
 }
 
 // Takes table + columnId rather than column object to fix a 2nd click bug.
-function SortableColumnRow({ table, columnId }: { table: TableInstance; columnId: string }) {
+function SortableColumnRow<TRow extends RowData>({ table, columnId }: { table: TableInstance<TRow>; columnId: string }) {
   const column = table.getColumn(columnId)
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: columnId })
 
   if (!column) return null
 
+  // header is typed as string | ((context) => ReactNode); every column here
+  // sets it to a plain label string, so fall back to the column id only if
+  // that assumption is ever broken by a template header.
   const headerDef = column.columnDef.header
   const label = typeof headerDef === 'string' ? headerDef : columnId
 

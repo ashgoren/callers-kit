@@ -5,15 +5,16 @@ import { cn } from 'cn'
 import { TableHead } from '@/components/ui/table'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { useCoarsePointer } from '@/hooks/useCoarsePointer'
-import { ColumnResizeHandle } from './DancesPage.ColumnResizeHandle'
-import { pinnedCellStyle, PinBoundaryDivider } from './DancesPage.pinning'
+import { ColumnResizeHandle } from './ColumnResizeHandle'
+import { pinnedCellStyle, PinBoundaryDivider } from './pinning'
 import type { Ref } from 'react'
-import type { LeafHeader, TableInstance } from './DancesPage.columns'
+import type { RowData } from '@tanstack/react-table'
+import type { LeafHeader, TableInstance } from './tableInstance'
 
 // Mouse (non-touch) devices only: The header's right-click menu.
-function ContextMenuPopup({ table, header, isPinned }: {
-  table: TableInstance
-  header: LeafHeader
+function ContextMenuPopup<TRow extends RowData>({ table, header, isPinned }: {
+  table: TableInstance<TRow>
+  header: LeafHeader<TRow>
   isPinned: false | 'start' | 'end'
 }) {
   return (
@@ -36,9 +37,9 @@ function ContextMenuPopup({ table, header, isPinned }: {
 }
 
 // table.Subscribe fixes React Compiler caching stale results for getIsPinned/getIsVisible/getIsSorted
-export function TableHeaderCell({ table, header, pinBoundaryDividerRef }: {
-  table: TableInstance
-  header: LeafHeader
+export function TableHeaderCell<TRow extends RowData>({ table, header, pinBoundaryDividerRef }: {
+  table: TableInstance<TRow>
+  header: LeafHeader<TRow>
   pinBoundaryDividerRef: Ref<HTMLDivElement | null>
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: header.column.id })

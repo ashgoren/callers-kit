@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CollisionDetection } from '@dnd-kit/core'
 import type { Dance } from '@/lib/powersync/schema'
 import { DancesPage } from './DancesPage'
-import { applyColumnReorder, computeColumnReorder, makeSameGroupCollisionDetection } from './DancesPage.reorder'
+import { applyColumnReorder, computeColumnReorder, makeSameGroupCollisionDetection } from '@/components/table/reorder'
 import type { TableInstance } from './DancesPage.columns'
 
 const { useQueryMock } = vi.hoisted(() => ({ useQueryMock: vi.fn() }))

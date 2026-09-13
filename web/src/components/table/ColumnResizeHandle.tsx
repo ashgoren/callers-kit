@@ -2,9 +2,10 @@ import { useRef } from 'react'
 import { cn } from 'cn'
 import { useCoarsePointer } from '@/hooks/useCoarsePointer'
 import { useLongPressTouch } from '@/hooks/useLongPressTouch'
-import type { LeafHeader, TableInstance } from './DancesPage.columns'
+import type { RowData } from '@tanstack/react-table'
+import type { LeafHeader, TableInstance } from './tableInstance'
 
-export function ColumnResizeHandle({ table, header }: { table: TableInstance; header: LeafHeader }) {
+export function ColumnResizeHandle<TRow extends RowData>({ table, header }: { table: TableInstance<TRow>; header: LeafHeader<TRow> }) {
   const isCoarsePointer = useCoarsePointer()
   const resizeHandler = header.getResizeHandler()
   const handleRef = useRef<HTMLDivElement>(null)

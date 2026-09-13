@@ -1,13 +1,14 @@
 import { DndContext } from '@dnd-kit/core'
 import { horizontalListSortingStrategy, SortableContext } from '@dnd-kit/sortable'
 import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table'
-import { ColumnsMenu } from './DancesPage.ColumnsMenu'
-import { pinnedCellStyle, PinBoundaryDivider } from './DancesPage.pinning'
-import { TableHeaderCell } from './DancesPage.TableHeaderCell'
-import { useHeaderReorder } from './DancesPage.useHeaderReorder'
-import type { TableInstance } from './DancesPage.columns'
+import { ColumnsMenu } from './ColumnsMenu'
+import { pinnedCellStyle, PinBoundaryDivider } from './pinning'
+import { TableHeaderCell } from './TableHeaderCell'
+import { useHeaderReorder } from './useHeaderReorder'
+import type { RowData } from '@tanstack/react-table'
+import type { TableInstance } from './tableInstance'
 
-export function TableView({ table, resetColumns }: { table: TableInstance; resetColumns: () => void }) {
+export function TableView<TRow extends RowData>({ table, resetColumns }: { table: TableInstance<TRow>; resetColumns: () => void }) {
   const { leafHeaders, pinnedHeaders, unpinnedHeaders, pinBoundaryDividerRef, dndContextProps } = useHeaderReorder(table)
 
   return (
