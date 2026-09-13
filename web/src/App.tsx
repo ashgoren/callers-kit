@@ -5,6 +5,7 @@ import { SignInPage } from '@/routes/auth/SignInPage'
 import { SignUpPage } from '@/routes/auth/SignUpPage'
 import { AppShell } from '@/routes/AppShell'
 import { DancesPage } from '@/routes/dances/DancesPage'
+import { ProgramsPage } from '@/routes/programs/ProgramsPage'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 
 const router = createBrowserRouter([
@@ -20,6 +21,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <Navigate to="/dances" replace /> },
           { path: 'dances', element: <DancesPage /> },
+          { path: 'programs', element: <ProgramsPage /> },
         ],
       },
     ],

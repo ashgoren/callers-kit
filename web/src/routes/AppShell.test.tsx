@@ -95,6 +95,13 @@ describe('AppShell', () => {
     expect(await screen.findByRole('menuitem', { name: 'Sign out' })).toBeInTheDocument()
   })
 
+  it('shows Dances/Programs nav links', () => {
+    renderAppShell()
+
+    expect(screen.getByRole('link', { name: 'Dances' })).toHaveAttribute('href', '/dances')
+    expect(screen.getByRole('link', { name: 'Programs' })).toHaveAttribute('href', '/programs')
+  })
+
   it('shows the signed-in user email in the menu trigger', () => {
     renderAppShell()
 

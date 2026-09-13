@@ -1,4 +1,4 @@
-import { Link, Outlet } from 'react-router'
+import { Link, NavLink, Outlet } from 'react-router'
 import { useStatus } from '@powersync/react'
 import { useEffect, useState } from 'react'
 import {
@@ -19,6 +19,10 @@ import { useTheme } from '@/contexts/ThemeContext'
 import type { Theme } from '@/contexts/ThemeContext'
 
 const THEMES: Theme[] = ['light', 'dark', 'system']
+const NAV_LINKS = [
+  { to: '/dances', label: 'Dances' },
+  { to: '/programs', label: 'Programs' },
+]
 
 function capitalize(word: string): string {
   return word.charAt(0).toUpperCase() + word.slice(1)
@@ -63,16 +67,28 @@ export function AppShell() {
 
   return (
     <div className="flex min-h-svh flex-col">
-      <header className="flex items-center justify-between border-b px-4 py-2">
+      <header className="grid grid-cols-3 items-center border-b px-4 py-2">
         <Link to="/" className="text-sm font-semibold">
           Caller's Kit
         </Link>
+
+        <nav className="flex items-center justify-center gap-3">
+          {NAV_LINKS.map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              className={({ isActive }) => `text-sm ${isActive ? 'font-medium' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              {link.label}
+            </NavLink>
+          ))}
+        </nav>
 
         <DropdownMenu>
           {/* user?.email is the placeholder identity display until real user
               profiles exist — swap for e.g. user?.displayName ?? user?.email
               here once one does. */}
-          <DropdownMenuTrigger className="rounded-md px-2 py-1 text-sm hover:bg-muted">
+          <DropdownMenuTrigger className="justify-self-end rounded-md px-2 py-1 text-sm hover:bg-muted">
             {user?.email}
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
