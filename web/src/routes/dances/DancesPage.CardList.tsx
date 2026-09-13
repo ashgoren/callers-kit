@@ -1,8 +1,13 @@
 import { Fragment } from 'react'
 import { ArrowDown, ArrowUp } from 'lucide-react'
-import { danceFields, getDanceField } from './DancesPage.columns'
+import { danceFields } from './DancesPage.columns'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import type { DanceWithJoins, TableInstance } from './DancesPage.columns'
+
+// Helper for the mobile sort menu below and DanceCard to look up a field's label/render given column id.
+function getDanceField(key: string) {
+  return danceFields.find((field) => field.key === key)
+}
 
 export function CardList({ table }: { table: TableInstance }) {
   return (

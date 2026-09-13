@@ -98,13 +98,6 @@ export const danceFields: Field<DanceWithJoins>[] = [
   }),
 ]
 
-// Shared by every place that needs a field's label/render given a column id
-// (the manage-columns menu, the mobile sort menu, the card list) rather than
-// each re-implementing the same find().
-export function getDanceField(key: string) {
-  return danceFields.find((field) => field.key === key)
-}
-
 export const DEFAULT_COLUMN_STATE: TableColumnState = {
   columnVisibility: {},
   sorting: [{ id: 'title', desc: false }],
