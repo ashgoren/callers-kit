@@ -182,8 +182,10 @@ describe('DancesPage', () => {
     expect(row).toHaveTextContent('1/15/26')
     expect(row).toHaveTextContent('3/20/26')
 
-    const notesCell = within(row).getByText('A classic.')
-    expect(notesCell).toHaveAttribute('title', 'A classic.')
+    // Notes' full text is behind a hover tooltip now (see
+    // DancesPage.columns.tsx) - confirming it renders as a real, focusable
+    // trigger, not just plain text.
+    expect(within(row).getByRole('button', { name: 'A classic.' })).toBeInTheDocument()
   })
 
   it('shows placeholders for null/empty title, difficulty, formation, and notes', () => {
@@ -247,7 +249,15 @@ describe('DancesPage', () => {
     expect(within(rowB).getAllByText('—')).toHaveLength(4)
   })
 
-  it('renders a dance\'s program history in the table as compact dates only, in the recency order the query already provides, with the full "date @ location" labels available via a hover tooltip', () => {
+  it('renders a dance\'s program history in the table as compact dates only, in the recency order the query already provides', () => {
+    // The full "date @ location" labels are only available via a real hover
+    // tooltip now (Tooltip/TooltipContent, see DancesPage.columns.tsx) -
+    // Base UI doesn't mount the tooltip's content into the DOM until it's
+    // actually opened (Tooltip.Portal's keepMounted defaults to false), so
+    // that part isn't reliably assertable here; see
+    // e2e/dances-table.spec.ts for a real-hover check, and
+    // ProgramsPage.test.tsx's formatProgramLabel tests for the label-text
+    // formatting logic itself (including the no-location fallback).
     mockDances({
       data: [
         makeDance({
@@ -262,19 +272,7 @@ describe('DancesPage', () => {
     })
     render(<DancesPage />)
 
-    const cell = within(screen.getByRole('table')).getByText('10/2/26, 1/1/26')
-    expect(cell).toHaveAttribute('title', '10/2/26 @ VFW Hall\n1/1/26 @ Grange Hall')
-  })
-
-  it('omits "@ location" from the tooltip line for a program in a dance\'s history with no location', () => {
-    mockDances({
-      data: [makeDance({ title: 'Dance A', programs: JSON.stringify([{ id: 'p1', date: '2026-01-01', location: null }]) })],
-      isLoading: false,
-    })
-    render(<DancesPage />)
-
-    const cell = within(screen.getByRole('table')).getByText('1/1/26')
-    expect(cell).toHaveAttribute('title', '1/1/26')
+    expect(within(screen.getByRole('table')).getByText('10/2/26, 1/1/26')).toBeInTheDocument()
   })
 
   it('shows the full "date @ location" labels, one per line, in the card list layout - not just the compact dates the table cell shows', () => {
@@ -312,16 +310,17 @@ describe('DancesPage', () => {
     expect(screen.getAllByText('Becket')).toHaveLength(2)
   })
 
-  it('renders Notes untruncated in both the table cell and the card list - no cardRender override, since the card list has no hover to reveal a truncated title tooltip', () => {
+  it('renders Notes as a hover-tooltip trigger in the table, but as plain untruncated text in the card list - there\'s no hover to reveal a tooltip on touch', () => {
     mockDances({ data: [makeDance({ notes: 'A classic.' })], isLoading: false })
     render(<DancesPage />)
 
-    const tableNotesCell = within(screen.getByRole('table')).getByText('A classic.')
-    expect(tableNotesCell.className).not.toMatch(/\btruncate\b/)
+    expect(within(screen.getByRole('table')).getByRole('button', { name: 'A classic.' })).toBeInTheDocument()
 
     const cardNotes = within(screen.getByRole('list')).getByText('A classic.')
     expect(cardNotes.className).not.toMatch(/\btruncate\b/)
-    expect(cardNotes).toHaveAttribute('title', 'A classic.')
+    // Plain text, not a tooltip trigger - nothing to reveal, everything's
+    // already visible.
+    expect(cardNotes.tagName).toBe('SPAN')
   })
 
   it('shortens a "Duple Minor - X" formation to just X, but leaves a bare "Duple Minor" unchanged', () => {

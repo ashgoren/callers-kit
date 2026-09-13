@@ -4,6 +4,7 @@ import { ResetPasswordPage } from '@/routes/auth/ResetPasswordPage'
 import { SignInPage } from '@/routes/auth/SignInPage'
 import { SignUpPage } from '@/routes/auth/SignUpPage'
 import { AppShell } from '@/routes/AppShell'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { DancesPage } from '@/routes/dances/DancesPage'
 import { ProgramsPage } from '@/routes/programs/ProgramsPage'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
@@ -29,7 +30,11 @@ const router = createBrowserRouter([
 ])
 
 function App() {
-  return <RouterProvider router={router} />
+  return (
+    <TooltipProvider>
+      <RouterProvider router={router} />
+    </TooltipProvider>
+  )
 }
 
 export default App

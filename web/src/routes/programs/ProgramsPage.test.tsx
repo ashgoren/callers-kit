@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import type { Program } from '@/lib/powersync/schema'
+import { formatProgramLabel } from './ProgramsPage.columns'
 import { ProgramsPage } from './ProgramsPage'
 
 const { useQueryMock } = vi.hoisted(() => ({ useQueryMock: vi.fn() }))
@@ -63,6 +64,17 @@ function makeProgram(overrides: Partial<Program> & { dances?: string } = {}): Pr
     ...overrides,
   }
 }
+
+describe('formatProgramLabel', () => {
+  it('combines a formatted date and location with " @ "', () => {
+    expect(formatProgramLabel({ id: 'p1', date: '2026-09-13', location: 'Grange Hall' })).toBe('9/13/26 @ Grange Hall')
+  })
+
+  it('falls back to just the formatted date when location is missing', () => {
+    expect(formatProgramLabel({ id: 'p1', date: '2026-09-13', location: null })).not.toContain('@')
+    expect(formatProgramLabel({ id: 'p1', date: '2026-09-13', location: null })).toBe('9/13/26')
+  })
+})
 
 describe('ProgramsPage', () => {
   it('queries the ordered dance-lineup join with the expected tables, order column, and output alias', () => {

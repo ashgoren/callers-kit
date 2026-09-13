@@ -27,3 +27,27 @@ test('the programs table renders real data, including its ordered dance lineup',
   // not just that the location column works.
   await expect(row).toContainText(`1. ${danceTitle}`)
 })
+
+test('hovering the Notes cell reveals its full text via a real tooltip, not the browser\'s native title attribute', async ({ page }) => {
+  const email = process.env.E2E_TEST_EMAIL!
+  const password = process.env.E2E_TEST_PASSWORD!
+  const programNotes = process.env.E2E_TEST_PROGRAM_NOTES!
+
+  await page.goto('/signin')
+  await page.getByLabel('Email').fill(email)
+  await page.getByLabel('Password').fill(password)
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await page.getByRole('link', { name: 'Programs' }).click()
+  await expect(page).toHaveURL('/programs')
+
+  const notesTrigger = page.getByRole('button', { name: programNotes })
+  // A real tooltip, not the native title attribute - jsdom can't mount/open
+  // it (Tooltip.Portal only mounts its content once actually opened), so
+  // this is the one place that behavior is verified at all.
+  await expect(notesTrigger).not.toHaveAttribute('title')
+  await notesTrigger.hover()
+  // Scoped to the tooltip's own data-slot (see components/ui/tooltip.tsx),
+  // not just any matching text - the trigger itself already contains this
+  // same text, so an unscoped getByText would match both.
+  await expect(page.locator('[data-slot="tooltip-content"]')).toHaveText(programNotes)
+})

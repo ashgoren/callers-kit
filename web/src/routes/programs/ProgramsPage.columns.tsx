@@ -1,5 +1,6 @@
 import { sortFn_alphanumeric, sortFn_basic } from '@tanstack/react-table'
 import { buildColumns, makeFieldDefiner } from '@/components/table/fieldColumns'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { formatDate, mutedPlaceholder } from '@/lib/format'
 import type { ReactNode } from 'react'
 import type { LeafHeader as GenericLeafHeader, TableInstance as GenericTableInstance } from '@/components/table/tableInstance'
@@ -86,7 +87,18 @@ export const programFields = [
   defineField({
     key: 'notes',
     label: 'Notes',
-    render: (value) => value ? <span title={value}>{value}</span> : mutedPlaceholder,
+    render: (value) =>
+      value ? (
+        <Tooltip>
+          <TooltipTrigger>{value}</TooltipTrigger>
+          <TooltipContent>{value}</TooltipContent>
+        </Tooltip>
+      ) : (
+        mutedPlaceholder
+      ),
+    // Plain text, not the table's hover-tooltip trigger - the card list is
+    // the touch layout, where there's no hover to reveal it.
+    cardRender: (value) => value ? <span>{value}</span> : mutedPlaceholder,
     sortValue: (value) => value || null, // sorts to the end if missing or empty
     sortFn: sortFn_alphanumeric,
     size: 250,
