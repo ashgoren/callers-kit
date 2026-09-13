@@ -68,8 +68,15 @@ describe('DanceDetailPage', () => {
     expect(screen.getByText('Single')).toBeInTheDocument()
     expect(screen.getByText('A classic.')).toBeInTheDocument()
     expect(screen.getByText('1/1/26 @ Grange Hall')).toBeInTheDocument() // program history
-    expect(screen.getByText('1/15/26')).toBeInTheDocument() // created_at
-    expect(screen.getByText('3/20/26')).toBeInTheDocument() // updated_at
+    // created_at/updated_at ("Added"/"Edited") are covered by the dedicated test below.
+  })
+
+  it('renders Added and Edited as compact "Label: value" lines, not through the standard field list', () => {
+    useQueryMock.mockReturnValue({ data: [makeDanceRow()], isLoading: false })
+    renderDanceDetailPage()
+
+    expect(screen.getByText('Added 1/15/26')).toBeInTheDocument()
+    expect(screen.getByText('Edited 3/20/26')).toBeInTheDocument()
   })
 
   it('omits the "by ..." header line entirely when there are no choreographers, rather than showing a placeholder', () => {

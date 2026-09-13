@@ -1,24 +1,24 @@
 import type { DetailField } from './DetailField'
 
+function FieldBlock<TRow>({ field, row }: { field: DetailField<TRow>; row: TRow }) {
+  return (
+    <div>
+      <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{field.label}</dt>
+      <dd className="mt-1 text-sm">{field.render(row[field.key])}</dd>
+    </div>
+  )
+}
+
 // Renders a list of DetailFields as label-above/value-below blocks - the one
-// rendering treatment every DetailField shares, regardless of which column
-// (or how many columns) a particular detail page lays them out into.
-export function FieldList<TRow>({
-  fields,
-  row,
-  className,
-}: {
-  fields: DetailField<TRow>[]
-  row: TRow
-  className?: string
-}) {
+// rendering treatment every DetailField shares. A field that needs different
+// treatment (e.g. a compact "Label: value" line, a visual separator from the
+// rest of the list) is rendered as bespoke JSX in the page itself rather than
+// through this shared component.
+export function FieldList<TRow>({ fields, row, className }: { fields: DetailField<TRow>[]; row: TRow; className?: string }) {
   return (
     <dl className={className}>
       {fields.map((field) => (
-        <div key={String(field.key)}>
-          <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{field.label}</dt>
-          <dd className="mt-1 text-sm">{field.render(row[field.key])}</dd>
-        </div>
+        <FieldBlock key={String(field.key)} field={field} row={row} />
       ))}
     </dl>
   )

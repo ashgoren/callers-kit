@@ -1,7 +1,7 @@
 import { Link, useParams } from 'react-router'
 import { PageSpinner } from '@/components/PageSpinner'
 import { FieldList } from '@/components/fields/FieldList'
-import { mutedPlaceholder, sortAlphabetically } from '@/lib/format'
+import { formatDate, mutedPlaceholder, sortAlphabetically } from '@/lib/format'
 import { useDance } from './DanceDetailPage.data'
 import { danceMetadataFields, danceWideFields } from './DanceDetailPage.fields'
 
@@ -29,7 +29,13 @@ export function DanceDetailPage() {
           </div>
           <div className="mt-6 grid grid-cols-1 gap-8 sm:grid-cols-[1fr_20rem]">
             <FieldList fields={danceWideFields} row={dance} className="order-2 space-y-4 sm:order-1" />
-            <FieldList fields={danceMetadataFields} row={dance} className="order-1 space-y-4 sm:order-2" />
+            <div className="order-1 space-y-4 sm:order-2">
+              <FieldList fields={danceMetadataFields} row={dance} className="space-y-4" />
+              <div className="space-y-1 border-t pt-4 text-sm text-muted-foreground">
+                <p>Added {formatDate(dance.created_at)}</p>
+                <p>Edited {formatDate(dance.updated_at)}</p>
+              </div>
+            </div>
           </div>
         </>
       )}
