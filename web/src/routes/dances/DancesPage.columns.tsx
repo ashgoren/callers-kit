@@ -93,11 +93,27 @@ export const danceFields: Field<DanceWithJoins>[] = [
     size: 105,
   }),
   defineField({
+    key: 'dance_type',
+    label: 'Dance Type',
+    render: (value) => (value === null ? mutedPlaceholder : value),
+    sortValue: (value) => value || null,
+    sortFn: sortFn_alphanumeric,
+    size: 105,
+  }),
+  defineField({
     key: 'formation',
     label: 'Formation',
     render: (value) => (value === null ? mutedPlaceholder : formatFormation(value)),
     // Sorts by the same stripped-prefix string it displays, not raw enum value.
     sortValue: (value) => (value === null ? null : formatFormation(value)),
+    sortFn: sortFn_alphanumeric,
+    size: 105,
+  }),
+  defineField({
+    key: 'progression',
+    label: 'Progression',
+    render: (value) => (value === null ? mutedPlaceholder : value),
+    sortValue: (value) => value || null,
     sortFn: sortFn_alphanumeric,
     size: 105,
   }),
@@ -142,7 +158,7 @@ export const danceFields: Field<DanceWithJoins>[] = [
 ]
 
 export const DEFAULT_COLUMN_STATE: TableColumnState = {
-  columnVisibility: {},
+  columnVisibility: { dance_type: false },
   sorting: [{ id: 'title', desc: false }],
   columnPinning: { start: ['title'], end: [] },
   columnOrder: [], // defaults to the order columns were defined in

@@ -122,7 +122,7 @@ describe('DancesPage', () => {
     const query = useQueryMock.mock.calls[0][0] as string
 
     expect(query).toContain('FROM dances')
-    for (const column of ['title', 'difficulty', 'formation', 'notes', 'created_at', 'updated_at']) {
+    for (const column of ['title', 'difficulty', 'dance_type', 'formation', 'progression', 'notes', 'created_at', 'updated_at']) {
       expect(query).toContain(`dances.${column}`)
     }
     // Baseline order before any client-side sort is applied (and for any
@@ -179,8 +179,12 @@ describe('DancesPage', () => {
     const row = within(table).getByText('Chorus Jig').closest('tr')!
     expect(row).toHaveTextContent('Chorus Jig')
     expect(row).toHaveTextContent('Becket')
+    expect(row).toHaveTextContent('Single') // progression
     expect(row).toHaveTextContent('1/15/26')
     expect(row).toHaveTextContent('3/20/26')
+    // Dance Type is hidden by default (see DEFAULT_COLUMN_STATE) - its value
+    // is covered separately, once toggled on, below.
+    expect(within(table).queryByText('Contra')).not.toBeInTheDocument()
 
     // Notes' full text is behind a hover tooltip now (see
     // DancesPage.columns.tsx) - confirming it renders as a real, focusable
@@ -340,7 +344,7 @@ describe('DancesPage', () => {
   })
 
   describe('column visibility', () => {
-    it('lists every column, Title included, as a checked toggle in the Columns menu', async () => {
+    it('lists every column, Title included, as a checked toggle in the Columns menu - except Dance Type, hidden by default', async () => {
       mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
@@ -351,6 +355,7 @@ describe('DancesPage', () => {
         'Title',
         'Difficulty',
         'Formation',
+        'Progression',
         'Choreographers',
         'Key Moves',
         'Vibes',
@@ -361,6 +366,7 @@ describe('DancesPage', () => {
       ]) {
         expect(await screen.findByRole('switch', { name: label })).toHaveAttribute('aria-checked', 'true')
       }
+      expect(await screen.findByRole('switch', { name: 'Dance Type' })).toHaveAttribute('aria-checked', 'false')
     })
 
     it('hides a column from the table when its toggle is switched off, and restores it when switched back on', async () => {
@@ -384,6 +390,21 @@ describe('DancesPage', () => {
       expect(within(table).getByText('A classic.')).toBeInTheDocument()
     })
 
+    it('shows the Dance Type column and its value once toggled on', async () => {
+      mockDances({ data: [makeDance()], isLoading: false })
+      render(<DancesPage />)
+
+      const table = screen.getByRole('table')
+      expect(within(table).queryByRole('columnheader', { name: 'Dance Type' })).not.toBeInTheDocument()
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Columns' }))
+      await user.click(await screen.findByRole('switch', { name: 'Dance Type' }))
+
+      expect(within(table).getByRole('columnheader', { name: 'Dance Type' })).toBeInTheDocument()
+      expect(within(table).getByText('Contra')).toBeInTheDocument()
+    })
+
     it('disables the last remaining visible column\'s toggle, so the table can never end up with no columns shown', async () => {
       mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
@@ -392,7 +413,9 @@ describe('DancesPage', () => {
       await user.click(screen.getByRole('button', { name: 'Columns' }))
 
       // Hide every column except Title, one at a time.
-      for (const label of ['Difficulty', 'Formation', 'Choreographers', 'Key Moves', 'Vibes', 'Notes', 'Programs', 'Created', 'Updated']) {
+      // Dance Type is already hidden by default, so it's deliberately left
+      // out here - clicking it would show it, not hide it.
+      for (const label of ['Difficulty', 'Formation', 'Progression', 'Choreographers', 'Key Moves', 'Vibes', 'Notes', 'Programs', 'Created', 'Updated']) {
         await user.click(await screen.findByRole('switch', { name: label }))
       }
 
@@ -990,7 +1013,9 @@ describe('DancesPage', () => {
       // Hide every column except Title via the manage-columns menu first.
       const user = userEvent.setup()
       await user.click(screen.getByRole('button', { name: 'Columns' }))
-      for (const label of ['Difficulty', 'Formation', 'Choreographers', 'Key Moves', 'Vibes', 'Notes', 'Programs', 'Created', 'Updated']) {
+      // Dance Type is already hidden by default, so it's deliberately left
+      // out here - clicking it would show it, not hide it.
+      for (const label of ['Difficulty', 'Formation', 'Progression', 'Choreographers', 'Key Moves', 'Vibes', 'Notes', 'Programs', 'Created', 'Updated']) {
         await user.click(await screen.findByRole('switch', { name: label }))
       }
       await user.keyboard('{Escape}')
@@ -1026,7 +1051,9 @@ describe('DancesPage', () => {
       mockDances({ data: [makeDance()], isLoading: false })
       render(<DancesPage />)
 
-      for (const label of ['Title', 'Difficulty', 'Formation', 'Choreographers', 'Key Moves', 'Vibes', 'Notes', 'Programs', 'Created', 'Updated']) {
+      // Dance Type is hidden by default, so it renders no columnheader at
+      // all here - deliberately left out.
+      for (const label of ['Title', 'Difficulty', 'Formation', 'Progression', 'Choreographers', 'Key Moves', 'Vibes', 'Notes', 'Programs', 'Created', 'Updated']) {
         const sortButton = within(screen.getByRole('columnheader', { name: label })).getByRole('button')
         expect(sortButton).toHaveAttribute('aria-roledescription', 'sortable')
       }
@@ -1101,7 +1128,7 @@ describe('DancesPage', () => {
       const user = userEvent.setup()
       await user.click(screen.getByRole('button', { name: 'Columns' }))
 
-      for (const label of ['Title', 'Choreographers', 'Key Moves', 'Vibes', 'Difficulty', 'Formation', 'Notes', 'Programs', 'Created', 'Updated']) {
+      for (const label of ['Title', 'Choreographers', 'Key Moves', 'Vibes', 'Difficulty', 'Dance Type', 'Formation', 'Progression', 'Notes', 'Programs', 'Created', 'Updated']) {
         expect(await screen.findByRole('button', { name: `Reorder ${label}` })).toBeInTheDocument()
       }
     })
@@ -1157,7 +1184,9 @@ describe('DancesPage', () => {
       ])
       const [, params] = vi.mocked(db.execute).mock.calls[0]
       const savedState = JSON.parse((params as [string, string])[0]) as { columnVisibility: unknown }
-      expect(savedState.columnVisibility).toEqual({ notes: false })
+      // dance_type: false carries over from DEFAULT_COLUMN_STATE (hidden by
+      // default), alongside the Notes toggle this test just made.
+      expect(savedState.columnVisibility).toEqual({ dance_type: false, notes: false })
     })
 
     it('restores a previously saved column width instead of the field\'s built-in default', () => {
@@ -1215,7 +1244,7 @@ describe('DancesPage', () => {
       const [, params] = vi.mocked(db.execute).mock.calls.at(-1)!
       const savedState = JSON.parse((params as [string, string])[0]) as object
       expect(savedState).toEqual({
-        columnVisibility: {},
+        columnVisibility: { dance_type: false },
         sorting: [{ id: 'title', desc: false }],
         columnPinning: { start: ['title'], end: [] },
         columnOrder: [],

@@ -46,7 +46,7 @@ function dancesProgramsSubquery(): string {
 
 const DANCES_QUERY = `
   SELECT
-    dances.id, dances.title, dances.difficulty, dances.formation, dances.notes,
+    dances.id, dances.title, dances.difficulty, dances.dance_type, dances.formation, dances.progression, dances.notes,
     dances.created_at, dances.updated_at,
     ${tagListSubquery('dances_choreographers', 'choreographers', 'choreographer_id')} AS choreographers,
     ${tagListSubquery('dances_key_moves', 'key_moves', 'key_move_id')} AS key_moves,
