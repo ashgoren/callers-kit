@@ -1,10 +1,11 @@
 import { PageSpinner } from '@/components/PageSpinner'
+import { CardList } from '@/components/table/CardList'
 import { ColumnSizingSync } from '@/components/table/ColumnSizingSync'
 import { TableView } from '@/components/table/TableView'
 import { useDataTable } from '@/components/table/useDataTable'
 import { useDances } from './DancesPage.data'
 import { columns, DEFAULT_COLUMN_STATE } from './DancesPage.columns'
-import { CardList } from './DancesPage.CardList'
+import { DanceCard } from './DancesPage.DanceCard'
 
 export function DancesPage() {
   const { dances, isLoading: dancesLoading } = useDances()
@@ -28,7 +29,7 @@ export function DancesPage() {
 
       {/* Phone (<640px): stacked cards */}
       <div className="sm:hidden">
-        <CardList table={table} />
+        <CardList table={table} renderCard={(dance) => <DanceCard dance={dance} />} />
       </div>
     </div>
   )
