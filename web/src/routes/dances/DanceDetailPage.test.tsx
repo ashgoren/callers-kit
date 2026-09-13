@@ -65,7 +65,10 @@ describe('DanceDetailPage', () => {
     expect(screen.getByText('Playful')).toBeInTheDocument()
     expect(screen.getByText('3')).toBeInTheDocument() // difficulty
     expect(screen.getByText('Contra')).toBeInTheDocument()
-    expect(screen.getByText('Becket')).toBeInTheDocument() // "Duple Minor - " prefix stripped
+    // "Becket" appears twice - once as the Formation field's own value, once
+    // in the figures label above the choreography (see the dedicated tests
+    // below for that label's omission rules).
+    expect(screen.getAllByText('Becket')).toHaveLength(2)
     expect(screen.getByText('Single')).toBeInTheDocument()
     expect(screen.getByText('A classic.')).toBeInTheDocument()
     expect(screen.getByText('1/1/26 @ Grange Hall')).toBeInTheDocument() // program history
@@ -157,5 +160,72 @@ describe('DanceDetailPage', () => {
 
     expect(screen.queryByText('Circle left')).not.toBeInTheDocument()
     expect(screen.getByText('Call it slow')).toBeInTheDocument()
+  })
+
+  describe('figures label', () => {
+    it('renders no label at all when dance_type/formation/progression are all the common case', () => {
+      useQueryMock.mockReturnValue({
+        data: [makeDanceRow({ dance_type: 'Contra', formation: null, progression: 'Single' })],
+        isLoading: false,
+      })
+      renderDanceDetailPage()
+
+      // "Contra" and "Single" still appear once each, from their own
+      // metadata fields - this only confirms the label added nothing on top
+      // of that (no " · " separator, no second "Contra"/"Single" instance).
+      expect(screen.getAllByText('Contra')).toHaveLength(1)
+      expect(screen.getAllByText('Single')).toHaveLength(1)
+      expect(screen.queryByText(/·/)).not.toBeInTheDocument()
+    })
+
+    it('shows dance_type and progression when they differ from the common case, joined with the formation', () => {
+      useQueryMock.mockReturnValue({
+        data: [makeDanceRow({ dance_type: 'Square', formation: 'Duple Minor - Improper', progression: 'Double' })],
+        isLoading: false,
+      })
+      renderDanceDetailPage()
+
+      expect(screen.getByText('Square · Improper · Double progression')).toBeInTheDocument()
+    })
+
+    it('shows just the formation when only it differs from the common case', () => {
+      useQueryMock.mockReturnValue({
+        data: [makeDanceRow({ dance_type: 'Contra', formation: 'Duple Minor - Becket', progression: 'Single' })],
+        isLoading: false,
+      })
+      renderDanceDetailPage()
+
+      // Formation's own field value and the label both read "Becket" here -
+      // asserting there are exactly two confirms the label rendered at all.
+      expect(screen.getAllByText('Becket')).toHaveLength(2)
+    })
+
+    it('renders muted, not bold, when the label is just "Improper" - the standard formation', () => {
+      useQueryMock.mockReturnValue({
+        data: [makeDanceRow({ dance_type: 'Contra', formation: 'Duple Minor - Improper', progression: 'Single' })],
+        isLoading: false,
+      })
+      renderDanceDetailPage()
+
+      // Formation's own field value and the label both read "Improper" - the
+      // label is specifically the <p>, not the metadata field's <dd>.
+      const label = screen.getAllByText('Improper').find((el) => el.tagName === 'P')!
+      expect(label).toHaveClass('text-muted-foreground')
+      expect(label).not.toHaveClass('font-semibold')
+    })
+
+    it('renders bold, not muted, when the label is anything other than just "Improper"', () => {
+      useQueryMock.mockReturnValue({
+        data: [makeDanceRow({ dance_type: 'Contra', formation: 'Duple Minor - Becket', progression: 'Single' })],
+        isLoading: false,
+      })
+      renderDanceDetailPage()
+
+      // Formation's own field value and the label both read "Becket" - the
+      // label is specifically the <p>, not the metadata field's <dd>.
+      const label = screen.getAllByText('Becket').find((el) => el.tagName === 'P')!
+      expect(label).toHaveClass('font-semibold')
+      expect(label).not.toHaveClass('text-muted-foreground')
+    })
   })
 })

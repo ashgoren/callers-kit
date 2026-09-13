@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { PageSpinner } from '@/components/PageSpinner'
 import { FieldList } from '@/components/fields/FieldList'
 import { formatDate, mutedPlaceholder, sortAlphabetically } from '@/lib/format'
+import { formatFormation } from './DancesPage.columns'
 import { useDance } from './DanceDetailPage.data'
 import { danceMetadataFields, danceWideFields } from './DanceDetailPage.fields'
 import { FiguresList } from './FiguresList'
@@ -11,12 +12,30 @@ import type { DanceWithJoins } from './DancesPage.columns'
 
 type FigureMode = 'choreography' | 'calling'
 
+// Summarizes dance_type/formation/progression into one line above the
+// figures list - only this page needs it, so it isn't a shared helper the
+// way formatFormation is. Each part is left off when it's the common
+// default (Contra, any Duple Minor formation collapses to just its variant
+// name via formatFormation, Single progression) and shown otherwise, so the
+// label only calls out what's actually unusual about this dance.
+function makeFiguresLabel(dance: DanceWithJoins): string {
+  return [
+    dance.dance_type && dance.dance_type.toLowerCase() !== 'contra' ? dance.dance_type : null,
+    dance.formation ? formatFormation(dance.formation) : null,
+    dance.progression && dance.progression.toLowerCase() !== 'single' ? `${dance.progression} progression` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
 export function DanceDetailPage() {
   const { id } = useParams()
   const { dance, isLoading } = useDance(id ?? '')
   const [figureMode, setFigureMode] = useState<FigureMode>('choreography')
 
   if (isLoading) return <PageSpinner />
+
+  const figuresLabel = dance ? makeFiguresLabel(dance) : ''
 
   return (
     <div className="mx-auto max-w-4xl p-4">
@@ -52,6 +71,11 @@ export function DanceDetailPage() {
                       Calling
                     </Button>
                   </div>
+                )}
+                {figuresLabel && (
+                  <p className={figuresLabel === 'Improper' ? 'text-base text-muted-foreground' : 'text-base font-semibold'}>
+                    {figuresLabel}
+                  </p>
                 )}
                 <FiguresList items={figureMode === 'calling' ? (dance.calling_figures ?? []) : dance.figures} />
               </div>
