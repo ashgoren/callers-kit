@@ -236,7 +236,7 @@ describe('DancesPage', () => {
     expect(screen.getAllByText('Becket')).toHaveLength(2)
   })
 
-  it('truncates Notes in the card list via cardRender, unlike the table cell\'s untruncated render', () => {
+  it('renders Notes untruncated in both the table cell and the card list - no cardRender override, since the card list has no hover to reveal a truncated title tooltip', () => {
     mockDances({ data: [makeDance({ notes: 'A classic.' })], isLoading: false })
     render(<DancesPage />)
 
@@ -244,7 +244,7 @@ describe('DancesPage', () => {
     expect(tableNotesCell.className).not.toMatch(/\btruncate\b/)
 
     const cardNotes = within(screen.getByRole('list')).getByText('A classic.')
-    expect(cardNotes.className).toMatch(/\btruncate\b/)
+    expect(cardNotes.className).not.toMatch(/\btruncate\b/)
     expect(cardNotes).toHaveAttribute('title', 'A classic.')
   })
 

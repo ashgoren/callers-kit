@@ -16,7 +16,9 @@ export function ProgramCard({ program }: { program: ProgramWithJoins }) {
       <p className="text-sm font-medium">{dateField.render(program.date)}</p>
       <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
         {programFields
-          .filter((field) => field.key !== 'date')
+          // date is already shown above as the card's title;
+          // created_at/updated_at are left off the card.
+          .filter((field) => !['date', 'created_at', 'updated_at'].includes(field.key))
           .map((field) => (
             <Fragment key={field.key}>
               <dt className="text-muted-foreground">{field.label}</dt>

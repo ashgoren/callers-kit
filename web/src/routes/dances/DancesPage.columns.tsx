@@ -76,7 +76,6 @@ export const danceFields: Field<DanceWithJoins>[] = [
     key: 'notes',
     label: 'Notes',
     render: (value) => value ? <span title={value}>{value}</span> : mutedPlaceholder,
-    cardRender: (value) => value ? <span className="block truncate" title={value}>{value}</span> : mutedPlaceholder,
     sortValue: (value) => value || null, // sorts to the end if missing or empty
     sortFn: sortFn_alphanumeric,
     size: 250,

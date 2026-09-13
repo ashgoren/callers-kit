@@ -180,6 +180,17 @@ describe('ProgramsPage', () => {
     expect(within(cardList).getByText('2. Reel of Four')).toBeInTheDocument()
   })
 
+  it('leaves Created/Updated off the card, even though the table (once toggled on) shows them', () => {
+    mockPrograms({ data: [makeProgram()], isLoading: false })
+    render(<ProgramsPage />)
+
+    const [cardList] = screen.getAllByRole('list')
+    expect(within(cardList).queryByText('Created')).not.toBeInTheDocument()
+    expect(within(cardList).queryByText('Updated')).not.toBeInTheDocument()
+    expect(within(cardList).queryByText('1/15/26')).not.toBeInTheDocument()
+    expect(within(cardList).queryByText('3/20/26')).not.toBeInTheDocument()
+  })
+
   describe('column visibility', () => {
     it('starts with Created/Updated hidden, and every other column shown, in the Columns menu', async () => {
       mockPrograms({ data: [makeProgram()], isLoading: false })
