@@ -72,6 +72,7 @@ export const programFields = [
     label: 'Date',
     render: (value) => (value === null ? mutedPlaceholder : formatDate(value)),
     sortFn: sortFn_basic, // sorts by raw ISO date string
+    sortDescFirst: true,
     size: 105,
   }),
   defineField({
