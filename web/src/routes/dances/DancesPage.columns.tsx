@@ -1,4 +1,5 @@
 import { sortFn_alphanumeric, sortFn_basic } from '@tanstack/react-table'
+import { Link } from 'react-router'
 import { buildColumns, makeFieldDefiner } from '@/components/table/fieldColumns'
 import { TruncatedTooltipText } from '@/components/table/TruncatedTooltipText'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -44,7 +45,11 @@ function cardRenderProgramList(value: ProgramSummary[]): ReactNode {
   return (
     <ul className="space-y-0.5">
       {value.map((program) => (
-        <li key={program.id}>{formatProgramLabel(program)}</li>
+        <li key={program.id}>
+          <Link to={`/programs/${program.id}`} className="hover:underline">
+            {formatProgramLabel(program)}
+          </Link>
+        </li>
       ))}
     </ul>
   )

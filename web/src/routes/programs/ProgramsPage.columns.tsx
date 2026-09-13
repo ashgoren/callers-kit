@@ -1,4 +1,5 @@
 import { sortFn_alphanumeric, sortFn_basic } from '@tanstack/react-table'
+import { Link } from 'react-router'
 import { buildColumns, makeFieldDefiner } from '@/components/table/fieldColumns'
 import { TruncatedTooltipText } from '@/components/table/TruncatedTooltipText'
 import { formatDate, mutedPlaceholder } from '@/lib/format'
@@ -29,15 +30,19 @@ export function formatProgramLabel(program: ProgramSummary): string {
   return program.location ? `${dateLabel} @ ${program.location}` : dateLabel
 }
 
-// Table view: a compact, wrapping row of numbered chips
+// Table view: a compact, wrapping row of numbered chips, each linking to its dance
 function renderDanceChips(value: ProgramDance[]): ReactNode {
   if (value.length === 0) return mutedPlaceholder
   return (
     <div className="flex flex-wrap gap-1">
       {value.map((dance) => (
-        <span key={dance.programDanceId} className="rounded-full border bg-muted px-2 py-0.5 text-xs whitespace-nowrap">
+        <Link
+          key={dance.programDanceId}
+          to={`/dances/${dance.danceId}`}
+          className="rounded-full border bg-muted px-2 py-0.5 text-xs whitespace-nowrap hover:underline"
+        >
           {dance.order}. {dance.title}
-        </span>
+        </Link>
       ))}
     </div>
   )
@@ -50,7 +55,9 @@ export function cardRenderDanceList(value: ProgramDance[]): ReactNode {
     <ol className="space-y-0.5">
       {value.map((dance) => (
         <li key={dance.programDanceId}>
-          {dance.order}. {dance.title}
+          <Link to={`/dances/${dance.danceId}`} className="hover:underline">
+            {dance.order}. {dance.title}
+          </Link>
         </li>
       ))}
     </ol>

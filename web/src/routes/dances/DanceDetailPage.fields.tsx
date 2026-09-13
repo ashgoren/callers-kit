@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import { formatFormation } from './DancesPage.columns'
 import { makeDetailFieldDefiner } from '@/components/fields/DetailField'
 import { mutedPlaceholder, sortAlphabetically } from '@/lib/format'
@@ -24,7 +25,11 @@ function renderProgramHistory(value: DanceWithJoins['programs']): ReactNode {
   return (
     <ul className="space-y-0.5">
       {value.map((program) => (
-        <li key={program.id}>{formatProgramLabel(program)}</li>
+        <li key={program.id}>
+          <Link to={`/programs/${program.id}`} className="hover:underline">
+            {formatProgramLabel(program)}
+          </Link>
+        </li>
       ))}
     </ul>
   )
