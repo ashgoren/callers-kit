@@ -631,7 +631,7 @@ describe('DancesPage', () => {
       expect(rowTitlesInOrder(table)).toEqual(['Zeb and Amy', 'Just Ben'])
     })
 
-    it('sorts Added by raw timestamp, ascending then descending', async () => {
+    it('sorts Added by raw timestamp, descending first (most recently added first)', async () => {
       mockDances({
         data: [
           makeDance({ id: '1', title: 'Newer', created_at: '2026-03-20T12:00:00.000Z' }),
@@ -644,13 +644,13 @@ describe('DancesPage', () => {
       const table = screen.getByRole('table')
       const user = userEvent.setup()
       await user.click(screen.getByRole('button', { name: 'Added' }))
-      expect(rowTitlesInOrder(table)).toEqual(['Older', 'Newer'])
+      expect(rowTitlesInOrder(table)).toEqual(['Newer', 'Older'])
 
       await user.click(screen.getByRole('button', { name: 'Added' }))
-      expect(rowTitlesInOrder(table)).toEqual(['Newer', 'Older'])
+      expect(rowTitlesInOrder(table)).toEqual(['Older', 'Newer'])
     })
 
-    it('sorts Edited by raw timestamp, ascending then descending', async () => {
+    it('sorts Edited by raw timestamp, descending first (most recently edited first)', async () => {
       mockDances({
         data: [
           makeDance({ id: '1', title: 'Newer', updated_at: '2026-03-20T12:00:00.000Z' }),
@@ -663,10 +663,10 @@ describe('DancesPage', () => {
       const table = screen.getByRole('table')
       const user = userEvent.setup()
       await user.click(screen.getByRole('button', { name: 'Edited' }))
-      expect(rowTitlesInOrder(table)).toEqual(['Older', 'Newer'])
+      expect(rowTitlesInOrder(table)).toEqual(['Newer', 'Older'])
 
       await user.click(screen.getByRole('button', { name: 'Edited' }))
-      expect(rowTitlesInOrder(table)).toEqual(['Newer', 'Older'])
+      expect(rowTitlesInOrder(table)).toEqual(['Older', 'Newer'])
     })
   })
 

@@ -110,6 +110,7 @@ export const programFields = [
     label: 'Created',
     render: (value) => (value === null ? mutedPlaceholder : formatDate(value)),
     sortFn: sortFn_basic, // sorts by raw ISO timestamp
+    sortDescFirst: true,
     size: 90,
   }),
   defineField({
@@ -117,6 +118,7 @@ export const programFields = [
     label: 'Updated',
     render: (value) => (value === null ? mutedPlaceholder : formatDate(value)),
     sortFn: sortFn_basic, // sorts by raw ISO timestamp
+    sortDescFirst: true,
     size: 90,
   }),
 ]
