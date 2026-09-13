@@ -28,8 +28,8 @@ export function DanceDetailPage() {
             )}
           </div>
           <div className="mt-6 grid grid-cols-1 gap-8 sm:grid-cols-[1fr_20rem]">
-            <FieldList fields={danceWideFields} row={dance} className="order-2 space-y-4 sm:order-1" />
-            <div className="order-1 space-y-4 sm:order-2">
+            <FieldList fields={danceWideFields} row={dance} className="space-y-4" />
+            <div className="space-y-4">
               <FieldList fields={danceMetadataFields} row={dance} className="space-y-4" />
               <div className="space-y-1 border-t pt-4 text-sm text-muted-foreground">
                 <p>Added {formatDate(dance.created_at)}</p>
