@@ -1,7 +1,7 @@
+import { PageSpinner } from '@/components/PageSpinner'
 import { ColumnSizingSync } from '@/components/table/ColumnSizingSync'
 import { TableView } from '@/components/table/TableView'
 import { useDataTable } from '@/components/table/useDataTable'
-import { Spinner } from '@/components/ui/spinner'
 import { useDances } from './DancesPage.data'
 import { columns, DEFAULT_COLUMN_STATE } from './DancesPage.columns'
 import { CardList } from './DancesPage.CardList'
@@ -15,13 +15,7 @@ export function DancesPage() {
     defaultColumnState: DEFAULT_COLUMN_STATE,
   })
 
-  if (dancesLoading || preferencesLoading) {
-    return (
-      <div className="p-4 text-center">
-        <Spinner className="size-6 text-muted-foreground" />
-      </div>
-    )
-  }
+  if (dancesLoading || preferencesLoading) return <PageSpinner />
 
   return (
     <div className="p-4">
