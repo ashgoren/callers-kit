@@ -668,7 +668,7 @@ describe('DancesPage', () => {
       const notesHeader = screen.getByRole('columnheader', { name: 'Notes' })
       const handle = notesHeader.querySelector('.cursor-col-resize')!
 
-      // Notes starts at 260px with a maxSize of 500px - dragging 1000px
+      // Notes starts at 250px with a maxSize of 500px - dragging 1000px
       // right asks for a much wider column than that, which the resize
       // feature clamps to maxSize rather than letting it grow any further.
       fireEvent.mouseDown(handle, { clientX: 0 })
