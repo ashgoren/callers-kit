@@ -30,7 +30,7 @@ export function FiguresList({ items }: { items: FigureItem[] }) {
   if (items.length === 0) return mutedPlaceholder
 
   return (
-    <div className="grid grid-cols-[auto_auto_1fr] gap-x-3 gap-y-2 text-base">
+    <div className="grid grid-cols-[auto_auto_1fr] gap-x-6 gap-y-2 text-base">
       {withPhraseHeadings(items).map(({ item, showPhraseHeading }) => {
         if (!isFigureEntry(item)) {
           return (
@@ -40,7 +40,9 @@ export function FiguresList({ items }: { items: FigureItem[] }) {
 
         return (
           <Fragment key={item.id}>
-            <div className={showPhraseHeading ? 'pt-3 font-semibold' : ''}>{showPhraseHeading ? item.phrase : null}</div>
+            <div className={`text-muted-foreground ${showPhraseHeading ? 'pt-3 font-semibold' : ''}`}>
+              {showPhraseHeading ? item.phrase : null}
+            </div>
             <div className={`text-muted-foreground ${showPhraseHeading ? 'pt-3' : ''}`}>
               {item.beats !== null ? `(${item.beats})` : null}
             </div>
