@@ -1,3 +1,4 @@
+import { createClient } from '@supabase/supabase-js'
 import { expect, test } from '@playwright/test'
 
 // dnd-kit's collision detection (closestCenter) and the pin-boundary clamp in
@@ -5,6 +6,44 @@ import { expect, test } from '@playwright/test'
 // jsdom fakes as all-zero - so unlike the resize-handle drag (pure clientX
 // arithmetic, covered in DancesPage.test.tsx), a real pointer drag here can
 // only be proven correct in an actual browser.
+
+// Both tests below drag-reorder columns on the same shared e2e test account,
+// via the real synced user_table_preferences row - same "not specially
+// reconciled" concurrent-write tradeoff dances-table-resize.spec.ts's own
+// comment explains for its own resize drags. Serial mode plus the
+// capture/restore below (same pattern as that file) keeps this file from
+// permanently drifting the account's column order every time it runs -
+// previously the case, since neither test here undid its own drag.
+test.describe.configure({ mode: 'serial' })
+
+const verificationClient = createClient(process.env.VITE_SUPABASE_URL!, process.env.VITE_SUPABASE_PUBLISHABLE_KEY!)
+let userId: string
+let originalColumnState: unknown
+
+test.beforeAll(async () => {
+  const { data, error } = await verificationClient.auth.signInWithPassword({
+    email: process.env.E2E_TEST_EMAIL!,
+    password: process.env.E2E_TEST_PASSWORD!,
+  })
+  expect(error).toBeNull()
+  userId = data.user!.id
+
+  const { data: existingRow } = await verificationClient
+    .from('user_table_preferences')
+    .select('column_state')
+    .eq('user_id', userId)
+    .eq('table_name', 'dances')
+    .single()
+  originalColumnState = existingRow?.column_state
+})
+
+test.afterEach(async () => {
+  await verificationClient
+    .from('user_table_preferences')
+    .update({ column_state: originalColumnState })
+    .eq('user_id', userId)
+    .eq('table_name', 'dances')
+})
 
 test('dragging a column header past an adjacent one reorders both the headers and the row cells', async ({ page }) => {
   const email = process.env.E2E_TEST_EMAIL!

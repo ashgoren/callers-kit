@@ -1,3 +1,4 @@
+import { createClient } from '@supabase/supabase-js'
 import { expect, test } from '@playwright/test'
 import { getTouchClient, longPressDrag, quickTap } from './touch-helpers.js'
 
@@ -11,6 +12,43 @@ test.use({
   viewport: { width: 768, height: 1024 },
   hasTouch: true,
   isMobile: true,
+})
+
+// Both tests below persist to the same shared e2e test account's real synced
+// user_table_preferences row (a sort toggle and a column reorder,
+// respectively) - same capture/restore pattern as
+// dances-table-reorder.spec.ts and dances-table-resize.spec.ts, for the same
+// reason: without it, this file would permanently drift the account's
+// column/sort state every time it runs.
+test.describe.configure({ mode: 'serial' })
+
+const verificationClient = createClient(process.env.VITE_SUPABASE_URL!, process.env.VITE_SUPABASE_PUBLISHABLE_KEY!)
+let userId: string
+let originalColumnState: unknown
+
+test.beforeAll(async () => {
+  const { data, error } = await verificationClient.auth.signInWithPassword({
+    email: process.env.E2E_TEST_EMAIL!,
+    password: process.env.E2E_TEST_PASSWORD!,
+  })
+  expect(error).toBeNull()
+  userId = data.user!.id
+
+  const { data: existingRow } = await verificationClient
+    .from('user_table_preferences')
+    .select('column_state')
+    .eq('user_id', userId)
+    .eq('table_name', 'dances')
+    .single()
+  originalColumnState = existingRow?.column_state
+})
+
+test.afterEach(async () => {
+  await verificationClient
+    .from('user_table_preferences')
+    .update({ column_state: originalColumnState })
+    .eq('user_id', userId)
+    .eq('table_name', 'dances')
 })
 
 test('a quick tap on a header sorts instead of reordering', async ({ page }) => {
