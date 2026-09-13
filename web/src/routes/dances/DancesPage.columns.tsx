@@ -1,8 +1,8 @@
-import { createColumnHelper, sortFn_alphanumeric, sortFn_basic } from '@tanstack/react-table'
-import { format } from 'date-fns'
-import { dataTableFeatures } from '@/components/table/tableInstance'
+import { sortFn_alphanumeric, sortFn_basic } from '@tanstack/react-table'
+import { buildColumns, makeFieldDefiner } from '@/components/table/fieldColumns'
+import { formatDate, mutedPlaceholder, sortAlphabetically } from '@/lib/format'
 import type { ReactNode } from 'react'
-import type { SortFn } from '@tanstack/react-table'
+import type { Field } from '@/components/table/fieldColumns'
 import type { LeafHeader as GenericLeafHeader, TableInstance as GenericTableInstance } from '@/components/table/tableInstance'
 import type { Dance } from '@/lib/powersync/schema'
 import type { TableColumnState } from '@/lib/powersync/tablePreferences'
@@ -13,47 +13,17 @@ export interface DanceWithJoins extends Dance {
   vibes: string[]
 }
 
-const mutedPlaceholder = <span className="text-muted-foreground">—</span>
-
-export function formatDate(value: string | null): string {
-  return value ? format(new Date(value), 'M/d/yy') : '—'
-}
-
 export function formatFormation(value: string | null): string {
   return value ? value.replace(/^Duple Minor - /, '') : '—'
-}
-
-// Locale-aware, so accented names still land where a reader would expect.
-function sortAlphabetically(values: string[]): string[] {
-  return [...values].sort((a, b) => a.localeCompare(b))
 }
 
 function renderTagList(value: string[]): ReactNode {
   return value.length > 0 ? sortAlphabetically(value).join(', ') : mutedPlaceholder
 }
 
-// One source of truth for both the table columns and DanceCard's fields.
-// Each field's `render` drives both by default, but, when present,
-// `cardRender` overrides just the card's display for that field.
-interface DanceField<K extends keyof DanceWithJoins = keyof DanceWithJoins> {
-  key: K
-  label: string
-  render: (value: DanceWithJoins[K]) => ReactNode
-  cardRender?: (value: DanceWithJoins[K]) => ReactNode
-  enableHiding?: boolean
-  sortValue?: (value: DanceWithJoins[K]) => string | number | null
-  sortFn?: SortFn<typeof dataTableFeatures, DanceWithJoins>
-  size?: number
-  minSize?: number
-  maxSize?: number
-}
+const defineField = makeFieldDefiner<DanceWithJoins>()
 
-// This exists purely to help TypeScript infer the generic type parameter K from the field's key.
-function defineField<K extends keyof DanceWithJoins>(field: DanceField<K>): DanceField {
-  return field as unknown as DanceField
-}
-
-export const danceFields: DanceField[] = [
+export const danceFields: Field<DanceWithJoins>[] = [
   defineField({
     key: 'title',
     label: 'Title',
@@ -146,40 +116,4 @@ export const DEFAULT_COLUMN_STATE: TableColumnState = {
 export type TableInstance = GenericTableInstance<DanceWithJoins>
 export type LeafHeader = GenericLeafHeader<DanceWithJoins>
 
-const columnHelper = createColumnHelper<typeof dataTableFeatures, DanceWithJoins>()
-
-export const columns = columnHelper.columns(
-  danceFields.map((field) =>
-    columnHelper.accessor(
-      // A function accessor, not a plain key, so this can resolve to
-      // field.sortValue's result (falling back to the raw value) instead of
-      // always reading the row directly - the sort machinery needs this
-      // resolved value, but rendering below deliberately doesn't use it.
-      (row) => {
-        const raw = row[field.key]
-        const resolved = field.sortValue ? field.sortValue(raw) : raw
-        // Coalesces null (this app's "missing" sentinel) to undefined,
-        // which is what sortUndefined below actually checks for.
-        return resolved ?? undefined
-      },
-      {
-        id: field.key,
-        header: field.label,
-        // Reads the untouched original row, not this accessor's resolved
-        // value above - that value exists purely to feed the sort
-        // machinery, and shouldn't also change what's rendered.
-        cell: (info) => field.render(info.row.original[field.key]),
-        enableHiding: field.enableHiding,
-        size: field.size,
-        ...(field.minSize !== undefined && { minSize: field.minSize }),
-        ...(field.maxSize !== undefined && { maxSize: field.maxSize }),
-        sortFn: field.sortFn,
-        // Missing values (now undefined, see above) always sort last,
-        // regardless of ascending vs. descending - blank cells staying put
-        // at the bottom rather than jumping to the top when you flip
-        // direction, matching how spreadsheets handle this.
-        sortUndefined: 'last',
-      },
-    ),
-  ),
-)
+export const columns = buildColumns(danceFields)
