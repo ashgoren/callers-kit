@@ -94,6 +94,9 @@ describe('ProgramsPage', () => {
     expect(query).toContain('WHERE programs_dances.program_id = programs.id')
     expect(query).toContain('ORDER BY programs_dances."order"')
     expect(query).toContain('AS dances')
+    // Carried for the detail view's future reorder/remove, unused by the
+    // table itself.
+    expect(query).toContain("'danceId', dance_id")
   })
 
   it('shows a loading state while the query is in flight', () => {

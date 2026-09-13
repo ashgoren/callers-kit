@@ -9,6 +9,7 @@ import type { TableColumnState } from '@/lib/powersync/tablePreferences'
 
 export interface ProgramDance {
   programDanceId: string // the programs_dances junction row's own id
+  danceId: string // for the detail view's reorder/remove
   order: number
   title: string
 }

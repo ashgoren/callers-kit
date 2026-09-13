@@ -44,21 +44,40 @@ function dancesProgramsSubquery(): string {
   `
 }
 
-const DANCES_QUERY = `
-  SELECT
+// The SELECT column list shared by the dances list query and a single
+// dance's detail-page query - each caller supplies its own FROM/WHERE/ORDER
+// BY around this.
+export function danceSelectColumns(): string {
+  return `
     dances.id, dances.title, dances.difficulty, dances.dance_type, dances.formation, dances.progression, dances.notes,
     dances.created_at, dances.updated_at,
     ${tagListSubquery('dances_choreographers', 'choreographers', 'choreographer_id')} AS choreographers,
     ${tagListSubquery('dances_key_moves', 'key_moves', 'key_move_id')} AS key_moves,
     ${tagListSubquery('dances_vibes', 'vibes', 'vibe_id')} AS vibes,
     ${dancesProgramsSubquery()} AS programs
+  `
+}
+
+const DANCES_QUERY = `
+  SELECT ${danceSelectColumns()}
   FROM dances
   ORDER BY dances.title
 `
 
-// The shape of a row as it comes back from DANCES_QUERY, before the
+// The shape of a row as it comes back from either query above, before the
 // tag-list/program-history columns are JSON.parse'd into real arrays below.
-type DanceQueryRow = Dance & { choreographers: string; key_moves: string; vibes: string; programs: string }
+export type DanceQueryRow = Dance & { choreographers: string; key_moves: string; vibes: string; programs: string }
+
+// Shared by both the list and detail-page hooks, so they can't drift apart.
+export function parseDanceRow(d: DanceQueryRow): DanceWithJoins {
+  return {
+    ...d,
+    choreographers: JSON.parse(d.choreographers) as string[],
+    key_moves: JSON.parse(d.key_moves) as string[],
+    vibes: JSON.parse(d.vibes) as string[],
+    programs: JSON.parse(d.programs) as ProgramSummary[],
+  }
+}
 
 export function useDances(): { dances: DanceWithJoins[]; isLoading: boolean } {
   // Reactive: auto re-runs & re-renders whenever local SQLite `dances`,
@@ -68,13 +87,7 @@ export function useDances(): { dances: DanceWithJoins[]; isLoading: boolean } {
 
   // Parsed once here rather than in each cell renderer. No useMemo needed -
   // React Compiler auto-memoizes this the same way, keyed on rawDances.
-  const dances: DanceWithJoins[] = rawDances.map((d) => ({
-    ...d,
-    choreographers: JSON.parse(d.choreographers) as string[],
-    key_moves: JSON.parse(d.key_moves) as string[],
-    vibes: JSON.parse(d.vibes) as string[],
-    programs: JSON.parse(d.programs) as ProgramSummary[],
-  }))
+  const dances: DanceWithJoins[] = rawDances.map(parseDanceRow)
 
   return { dances, isLoading }
 }
