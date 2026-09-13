@@ -35,29 +35,33 @@ export function DanceDetailPage() {
             )}
           </div>
           <div className="mt-6 grid grid-cols-1 gap-8 sm:grid-cols-[1fr_20rem]">
-            <div className="space-y-4">
-              {dance.calling_figures !== null && (
-                <div className="flex gap-1">
-                  <Button
-                    variant={figureMode === 'choreography' ? 'secondary' : 'ghost'}
-                    size="sm"
-                    aria-pressed={figureMode === 'choreography'}
-                    onClick={() => setFigureMode('choreography')}
-                  >
-                    Choreography
-                  </Button>
-                  <Button
-                    variant={figureMode === 'calling' ? 'secondary' : 'ghost'}
-                    size="sm"
-                    aria-pressed={figureMode === 'calling'}
-                    onClick={() => setFigureMode('calling')}
-                  >
-                    Calling
-                  </Button>
-                </div>
-              )}
-              <FiguresList items={figureMode === 'calling' ? (dance.calling_figures ?? []) : dance.figures} />
-              <FieldList<DanceWithJoins> fields={danceWideFields} row={dance} className="space-y-4" />
+            <div>
+              <div className="space-y-4">
+                {dance.calling_figures !== null && (
+                  <div className="flex gap-1">
+                    <Button
+                      variant={figureMode === 'choreography' ? 'secondary' : 'ghost'}
+                      size="sm"
+                      aria-pressed={figureMode === 'choreography'}
+                      onClick={() => setFigureMode('choreography')}
+                    >
+                      Choreography
+                    </Button>
+                    <Button
+                      variant={figureMode === 'calling' ? 'secondary' : 'ghost'}
+                      size="sm"
+                      aria-pressed={figureMode === 'calling'}
+                      onClick={() => setFigureMode('calling')}
+                    >
+                      Calling
+                    </Button>
+                  </div>
+                )}
+                <FiguresList items={figureMode === 'calling' ? (dance.calling_figures ?? []) : dance.figures} />
+              </div>
+              <div className="mt-10">
+                <FieldList<DanceWithJoins> fields={danceWideFields} row={dance} className="space-y-4" />
+              </div>
             </div>
             <div className="space-y-4">
               <FieldList<DanceWithJoins> fields={danceMetadataFields} row={dance} className="space-y-4" />

@@ -30,7 +30,7 @@ export function FiguresList({ items }: { items: FigureItem[] }) {
   if (items.length === 0) return mutedPlaceholder
 
   return (
-    <div className="grid grid-cols-[auto_auto_1fr] gap-x-3 gap-y-1 text-sm">
+    <div className="grid grid-cols-[auto_auto_1fr] gap-x-3 gap-y-1 text-base">
       {withPhraseHeadings(items).map(({ item, showPhraseHeading }) => {
         if (!isFigureEntry(item)) {
           return (

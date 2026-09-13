@@ -3,7 +3,7 @@ import type { DetailField } from './DetailField'
 function FieldBlock<TRow>({ field, row }: { field: DetailField<TRow>; row: TRow }) {
   return (
     <div>
-      <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{field.label}</dt>
+      <dt className="text-[0.7rem] font-medium tracking-wide text-muted-foreground uppercase">{field.label}</dt>
       <dd className="mt-1 text-sm">{field.render(row[field.key])}</dd>
     </div>
   )
