@@ -647,9 +647,10 @@ describe('DancesPage', () => {
       const difficultyHeader = screen.getByRole('columnheader', { name: 'Difficulty' })
       const handle = difficultyHeader.querySelector('.cursor-col-resize')!
 
-      // Difficulty starts at 105px with a minSize of 80px - dragging 1000px
-      // left asks for a deeply negative width, which the resize feature
-      // clamps to minSize rather than letting it go any smaller.
+      // Difficulty starts at 105px with the table's defaultColumn minSize of
+      // 25px - dragging 1000px left asks for a deeply negative width, which
+      // the resize feature clamps to minSize rather than letting it go any
+      // smaller.
       fireEvent.mouseDown(handle, { clientX: 1000 })
       fireEvent.mouseMove(document, { clientX: 0 })
       fireEvent.mouseUp(document, { clientX: 0 })
@@ -657,7 +658,7 @@ describe('DancesPage', () => {
       const headers = within(table).getAllByRole('columnheader')
       const difficultyIndex = headers.indexOf(difficultyHeader)
       const difficultyColWidth = table.querySelectorAll('col')[difficultyIndex].style.width
-      expect(difficultyColWidth).toBe('80px')
+      expect(difficultyColWidth).toBe('25px')
     })
 
     it('stops growing a column at its maxSize, even when dragged well past it', () => {

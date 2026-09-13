@@ -2,7 +2,7 @@ import { useTable } from '@tanstack/react-table'
 import { Spinner } from '@/components/ui/spinner'
 import { useTableColumnState } from '@/lib/powersync/useTableColumnState'
 import { useDances } from './DancesPage.data'
-import { DEFAULT_COLUMN_STATE, features, makeColumns } from './DancesPage.columns'
+import { columns, DEFAULT_COLUMN_STATE, features } from './DancesPage.columns'
 import { TableView } from './DancesPage.TableView'
 import { CardList } from './DancesPage.CardList'
 import { ColumnSizingSync } from './DancesPage.ColumnSizingSync'
@@ -19,8 +19,6 @@ export function DancesPage() {
     setColumnSizing,
     resetToDefaults,
   } = useTableColumnState('dances', DEFAULT_COLUMN_STATE)
-
-  const columns = makeColumns({ isDesktopWidth: window.innerWidth >= 1024 })
 
   const table = useTable({
     features,
@@ -44,7 +42,7 @@ export function DancesPage() {
     enableMultiSort: false, // single-column sort only
     enableSortingRemoval: false, // no unsorted state - clicking a header just toggles asc/desc
     sortDescFirst: false, // first click sorts ascending
-    defaultColumn: { size: 150, minSize: 80, maxSize: 400 },
+    defaultColumn: { size: 150, minSize: 25, maxSize: 400 },
     columnResizeMode: 'onChange', // live width updates while dragging
   })
 
