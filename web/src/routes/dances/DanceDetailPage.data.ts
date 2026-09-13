@@ -1,4 +1,5 @@
 import { useQuery } from '@powersync/react'
+import { parseNullableJsonArray } from '@/lib/powersync/json'
 import { danceSelectColumns, parseDanceRow } from './DancesPage.data'
 import type { FigureItem } from '@/lib/figures'
 import type { DanceQueryRow } from './DancesPage.data'
@@ -20,19 +21,22 @@ export interface DanceDetail extends DanceWithJoins {
   calling_figures: FigureItem[] | null
 }
 
+// Shared by useDance's success and (once one exists) any other consumer of
+// a single dance's full row, so the figures/calling_figures parsing has one
+// definition rather than living inline in the hook body.
+function parseDanceDetailRow(row: DanceDetailQueryRow): DanceDetail {
+  return {
+    ...parseDanceRow(row),
+    figures: JSON.parse(row.figures) as FigureItem[],
+    calling_figures: parseNullableJsonArray<FigureItem>(row.calling_figures),
+  }
+}
+
 export function useDance(id: string): { dance: DanceDetail | null; isLoading: boolean } {
   // Reactive, same as useDances() - re-runs whenever this dance's own row,
   // or any of its joined choreographers/key_moves/vibes/programs, change.
   const { data: rows, isLoading } = useQuery<DanceDetailQueryRow>(DANCE_QUERY, [id])
   const row = rows[0]
 
-  const dance: DanceDetail | null = row
-    ? {
-        ...parseDanceRow(row),
-        figures: JSON.parse(row.figures) as FigureItem[],
-        calling_figures: row.calling_figures ? (JSON.parse(row.calling_figures) as FigureItem[]) : null,
-      }
-    : null
-
-  return { dance, isLoading }
+  return { dance: row ? parseDanceDetailRow(row) : null, isLoading }
 }
