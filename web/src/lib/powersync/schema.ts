@@ -10,6 +10,8 @@ const dances = new Table({
   formation: column.text, // enum (e.g. 'Duple Minor - Improper)
   progression: column.text, // enum (e.g. 'Single')
   notes: column.text,
+  figures: column.text, // JSON-encoded FigureItem[] (see lib/figures.ts) - never null, defaults to '[]'
+  calling_figures: column.text, // JSON-encoded FigureItem[], null if no separate calling script exists
 })
 
 const choreographers = new Table({

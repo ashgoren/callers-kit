@@ -2,8 +2,8 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Dance } from '@/lib/powersync/schema'
 import { DancesPage } from './DancesPage'
+import type { DanceQueryRow } from './DancesPage.data'
 
 const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
 
@@ -97,9 +97,7 @@ beforeEach(() => {
 // choreographers/key_moves/vibes here are the pre-parse JSON array *strings*
 // (matching json_group_array's real output), not real arrays - all default
 // to an empty array so tests that don't care about them still see '-'.
-function makeDance(
-  overrides: Partial<Dance> & { choreographers?: string; key_moves?: string; vibes?: string; programs?: string } = {},
-): Dance & { choreographers: string; key_moves: string; vibes: string; programs: string } {
+function makeDance(overrides: Partial<DanceQueryRow> = {}): DanceQueryRow {
   return {
     id: '1',
     title: 'Chorus Jig',

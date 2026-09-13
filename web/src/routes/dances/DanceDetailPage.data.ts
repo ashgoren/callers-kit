@@ -1,18 +1,38 @@
 import { useQuery } from '@powersync/react'
 import { danceSelectColumns, parseDanceRow } from './DancesPage.data'
+import type { FigureItem } from '@/lib/figures'
 import type { DanceQueryRow } from './DancesPage.data'
 import type { DanceWithJoins } from './DancesPage.columns'
 
+// figures/calling_figures are added on top of danceSelectColumns() rather
+// than folded into it, since the table/card list never renders them - only
+// this single-dance query needs them.
 const DANCE_QUERY = `
-  SELECT ${danceSelectColumns()}
+  SELECT ${danceSelectColumns()}, dances.figures, dances.calling_figures
   FROM dances
   WHERE dances.id = ?
 `
 
-export function useDance(id: string): { dance: DanceWithJoins | null; isLoading: boolean } {
+type DanceDetailQueryRow = DanceQueryRow & { figures: string; calling_figures: string | null }
+
+export interface DanceDetail extends DanceWithJoins {
+  figures: FigureItem[]
+  calling_figures: FigureItem[] | null
+}
+
+export function useDance(id: string): { dance: DanceDetail | null; isLoading: boolean } {
   // Reactive, same as useDances() - re-runs whenever this dance's own row,
   // or any of its joined choreographers/key_moves/vibes/programs, change.
-  const { data: rows, isLoading } = useQuery<DanceQueryRow>(DANCE_QUERY, [id])
+  const { data: rows, isLoading } = useQuery<DanceDetailQueryRow>(DANCE_QUERY, [id])
+  const row = rows[0]
 
-  return { dance: rows[0] ? parseDanceRow(rows[0]) : null, isLoading }
+  const dance: DanceDetail | null = row
+    ? {
+        ...parseDanceRow(row),
+        figures: JSON.parse(row.figures) as FigureItem[],
+        calling_figures: row.calling_figures ? (JSON.parse(row.calling_figures) as FigureItem[]) : null,
+      }
+    : null
+
+  return { dance, isLoading }
 }

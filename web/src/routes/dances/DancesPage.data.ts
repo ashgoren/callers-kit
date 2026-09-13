@@ -66,7 +66,13 @@ const DANCES_QUERY = `
 
 // The shape of a row as it comes back from either query above, before the
 // tag-list/program-history columns are JSON.parse'd into real arrays below.
-export type DanceQueryRow = Dance & { choreographers: string; key_moves: string; vibes: string; programs: string }
+// Omits figures/calling_figures - danceSelectColumns() doesn't select them.
+export type DanceQueryRow = Omit<Dance, 'figures' | 'calling_figures'> & {
+  choreographers: string
+  key_moves: string
+  vibes: string
+  programs: string
+}
 
 // Shared by both the list and detail-page hooks, so they can't drift apart.
 export function parseDanceRow(d: DanceQueryRow): DanceWithJoins {

@@ -1,13 +1,20 @@
+import { useState } from 'react'
 import { Link, useParams } from 'react-router'
+import { Button } from '@/components/ui/button'
 import { PageSpinner } from '@/components/PageSpinner'
 import { FieldList } from '@/components/fields/FieldList'
 import { formatDate, mutedPlaceholder, sortAlphabetically } from '@/lib/format'
 import { useDance } from './DanceDetailPage.data'
 import { danceMetadataFields, danceWideFields } from './DanceDetailPage.fields'
+import { FiguresList } from './FiguresList'
+import type { DanceWithJoins } from './DancesPage.columns'
+
+type FigureMode = 'choreography' | 'calling'
 
 export function DanceDetailPage() {
   const { id } = useParams()
   const { dance, isLoading } = useDance(id ?? '')
+  const [figureMode, setFigureMode] = useState<FigureMode>('choreography')
 
   if (isLoading) return <PageSpinner />
 
@@ -28,9 +35,32 @@ export function DanceDetailPage() {
             )}
           </div>
           <div className="mt-6 grid grid-cols-1 gap-8 sm:grid-cols-[1fr_20rem]">
-            <FieldList fields={danceWideFields} row={dance} className="space-y-4" />
             <div className="space-y-4">
-              <FieldList fields={danceMetadataFields} row={dance} className="space-y-4" />
+              {dance.calling_figures !== null && (
+                <div className="flex gap-1">
+                  <Button
+                    variant={figureMode === 'choreography' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    aria-pressed={figureMode === 'choreography'}
+                    onClick={() => setFigureMode('choreography')}
+                  >
+                    Choreography
+                  </Button>
+                  <Button
+                    variant={figureMode === 'calling' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    aria-pressed={figureMode === 'calling'}
+                    onClick={() => setFigureMode('calling')}
+                  >
+                    Calling
+                  </Button>
+                </div>
+              )}
+              <FiguresList items={figureMode === 'calling' ? (dance.calling_figures ?? []) : dance.figures} />
+              <FieldList<DanceWithJoins> fields={danceWideFields} row={dance} className="space-y-4" />
+            </div>
+            <div className="space-y-4">
+              <FieldList<DanceWithJoins> fields={danceMetadataFields} row={dance} className="space-y-4" />
               <div className="space-y-1 border-t pt-4 text-sm text-muted-foreground">
                 <p>Added {formatDate(dance.created_at)}</p>
                 <p>Edited {formatDate(dance.updated_at)}</p>
