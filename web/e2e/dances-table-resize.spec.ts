@@ -130,6 +130,18 @@ test.describe('touch gestures', () => {
     const client = await getTouchClient(page)
     const x = box.x + box.width / 2
     const y = box.y + box.height / 2
+
+    // "Quick" here has to mean "before useLongPressTouch's real 500ms
+    // setTimeout fires," not "however fast Playwright happens to dispatch
+    // touch events this run" - the latter has no guaranteed bound (it's
+    // just real CDP round-trips), so it can lose that race under load
+    // (e.g. right after a prior test run) even though it reliably wins on
+    // an idle machine. Installing the clock fakes the page's own timers,
+    // so that setTimeout(delay) simply can't fire unless this test
+    // explicitly advances virtual time - which it never does below -
+    // making "quick" deterministic instead of a real-clock gamble.
+    await page.clock.install()
+
     // Total column width comfortably exceeds this viewport's 768px, so the
     // table is real horizontally scrollable - swiping left reveals columns
     // further right, the same direction dragging the divider itself would
