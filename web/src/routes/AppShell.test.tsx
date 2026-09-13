@@ -87,10 +87,10 @@ describe('AppShell', () => {
     useStatusMock.mockReturnValue({ hasSynced: false })
     renderAppShell()
 
-    expect(screen.getByRole('button', { name: 'jane@example.com' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Account menu' })).toBeInTheDocument()
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'jane@example.com' }))
+    await user.click(screen.getByRole('button', { name: 'Account menu' }))
 
     expect(await screen.findByRole('menuitem', { name: 'Sign out' })).toBeInTheDocument()
   })
@@ -102,10 +102,15 @@ describe('AppShell', () => {
     expect(screen.getByRole('link', { name: 'Programs' })).toHaveAttribute('href', '/programs')
   })
 
-  it('shows the signed-in user email in the menu trigger', () => {
+  it('shows the signed-in user email inside the account menu, not the icon-only trigger', async () => {
     renderAppShell()
 
-    expect(screen.getByRole('button', { name: 'jane@example.com' })).toBeInTheDocument()
+    expect(screen.queryByText('jane@example.com')).not.toBeInTheDocument()
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Account menu' }))
+
+    expect(await screen.findByText('jane@example.com')).toBeInTheDocument()
   })
 
   it('calls signOut when Sign out is clicked from the menu', async () => {
@@ -114,7 +119,7 @@ describe('AppShell', () => {
     renderAppShell()
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'jane@example.com' }))
+    await user.click(screen.getByRole('button', { name: 'Account menu' }))
     await user.click(await screen.findByRole('menuitem', { name: 'Sign out' }))
 
     expect(signOut).toHaveBeenCalled()
@@ -126,7 +131,7 @@ describe('AppShell', () => {
     renderAppShell()
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'jane@example.com' }))
+    await user.click(screen.getByRole('button', { name: 'Account menu' }))
     // Options are hidden inside a submenu until "Theme" is opened, keeping
     // the top-level menu from being cluttered with all three at once.
     await user.click(await screen.findByRole('menuitem', { name: 'Theme' }))

@@ -10,7 +10,7 @@ test('sign out clears the session and redirects to /signin', async ({ page }) =>
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page).toHaveURL('/dances')
 
-  await page.getByRole('button', { name: email }).click()
+  await page.getByRole('button', { name: 'Account menu' }).click()
   await page.getByRole('menuitem', { name: 'Sign out' }).click()
   await expect(page).toHaveURL('/signin')
 

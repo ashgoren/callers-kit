@@ -1,10 +1,13 @@
+import { CircleUserRound } from 'lucide-react'
 import { Link, NavLink, Outlet } from 'react-router'
 import { useStatus } from '@powersync/react'
 import { useEffect, useState } from 'react'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
@@ -85,13 +88,26 @@ export function AppShell() {
         </nav>
 
         <DropdownMenu>
-          {/* user?.email is the placeholder identity display until real user
-              profiles exist — swap for e.g. user?.displayName ?? user?.email
-              here once one does. */}
-          <DropdownMenuTrigger className="justify-self-end rounded-md px-2 py-1 text-sm hover:bg-muted">
-            {user?.email}
+          {/* Icon-only trigger, not the email itself - on narrow screens the
+              email text was long enough to overlap the nav links next to
+              it. The identity display moves into the menu content below. */}
+          <DropdownMenuTrigger
+            aria-label="Account menu"
+            className="justify-self-end rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <CircleUserRound className="size-5" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          {/* w-auto: sizes to its content (still floored by the default
+              min-w-32) instead of matching its icon-sized trigger's width -
+              narrow for a short email, wider only if one actually needs it. */}
+          <DropdownMenuContent align="end" className="w-auto">
+            {/* user?.email is the placeholder identity display until real
+                user profiles exist — swap for e.g. user?.displayName ??
+                user?.email here once one does. */}
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>Theme</DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
