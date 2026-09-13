@@ -1,5 +1,6 @@
 import { sortFn_alphanumeric, sortFn_basic } from '@tanstack/react-table'
 import { buildColumns, makeFieldDefiner } from '@/components/table/fieldColumns'
+import { TruncatedTooltipText } from '@/components/table/TruncatedTooltipText'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { formatDate, mutedPlaceholder, sortAlphabetically } from '@/lib/format'
 import { formatProgramLabel } from '@/routes/programs/ProgramsPage.columns'
@@ -103,15 +104,7 @@ export const danceFields: Field<DanceWithJoins>[] = [
   defineField({
     key: 'notes',
     label: 'Notes',
-    render: (value) =>
-      value ? (
-        <Tooltip>
-          <TooltipTrigger>{value}</TooltipTrigger>
-          <TooltipContent>{value}</TooltipContent>
-        </Tooltip>
-      ) : (
-        mutedPlaceholder
-      ),
+    render: (value) => (value ? <TruncatedTooltipText content={value}>{value}</TruncatedTooltipText> : mutedPlaceholder),
     // Plain text, not the table's hover-tooltip trigger - the card list is
     // the touch layout, where there's no hover to reveal it.
     cardRender: (value) => value ? <span>{value}</span> : mutedPlaceholder,

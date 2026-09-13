@@ -28,7 +28,7 @@ test('the programs table renders real data, including its ordered dance lineup',
   await expect(row).toContainText(`1. ${danceTitle}`)
 })
 
-test('hovering the Notes cell reveals its full text via a real tooltip, not the browser\'s native title attribute', async ({ page }) => {
+test('hovering a truncated Notes cell reveals its full text via a real tooltip, not the browser\'s native title attribute', async ({ page }) => {
   const email = process.env.E2E_TEST_EMAIL!
   const password = process.env.E2E_TEST_PASSWORD!
   const programNotes = process.env.E2E_TEST_PROGRAM_NOTES!
