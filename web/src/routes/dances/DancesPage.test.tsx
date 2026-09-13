@@ -381,8 +381,8 @@ describe('DancesPage', () => {
         'Vibes',
         'Notes',
         'Programs',
-        'Created',
-        'Updated',
+        'Added',
+        'Edited',
       ]) {
         expect(await screen.findByRole('switch', { name: label })).toHaveAttribute('aria-checked', 'true')
       }
@@ -435,7 +435,7 @@ describe('DancesPage', () => {
       // Hide every column except Title, one at a time.
       // Dance Type is already hidden by default, so it's deliberately left
       // out here - clicking it would show it, not hide it.
-      for (const label of ['Difficulty', 'Formation', 'Progression', 'Choreographers', 'Key Moves', 'Vibes', 'Notes', 'Programs', 'Created', 'Updated']) {
+      for (const label of ['Difficulty', 'Formation', 'Progression', 'Choreographers', 'Key Moves', 'Vibes', 'Notes', 'Programs', 'Added', 'Edited']) {
         await user.click(await screen.findByRole('switch', { name: label }))
       }
 
@@ -633,7 +633,7 @@ describe('DancesPage', () => {
       expect(rowTitlesInOrder(table)).toEqual(['Zeb and Amy', 'Just Ben'])
     })
 
-    it('sorts Created by raw timestamp, ascending then descending', async () => {
+    it('sorts Added by raw timestamp, ascending then descending', async () => {
       mockDances({
         data: [
           makeDance({ id: '1', title: 'Newer', created_at: '2026-03-20T12:00:00.000Z' }),
@@ -645,14 +645,14 @@ describe('DancesPage', () => {
 
       const table = screen.getByRole('table')
       const user = userEvent.setup()
-      await user.click(screen.getByRole('button', { name: 'Created' }))
+      await user.click(screen.getByRole('button', { name: 'Added' }))
       expect(rowTitlesInOrder(table)).toEqual(['Older', 'Newer'])
 
-      await user.click(screen.getByRole('button', { name: 'Created' }))
+      await user.click(screen.getByRole('button', { name: 'Added' }))
       expect(rowTitlesInOrder(table)).toEqual(['Newer', 'Older'])
     })
 
-    it('sorts Updated by raw timestamp, ascending then descending', async () => {
+    it('sorts Edited by raw timestamp, ascending then descending', async () => {
       mockDances({
         data: [
           makeDance({ id: '1', title: 'Newer', updated_at: '2026-03-20T12:00:00.000Z' }),
@@ -664,10 +664,10 @@ describe('DancesPage', () => {
 
       const table = screen.getByRole('table')
       const user = userEvent.setup()
-      await user.click(screen.getByRole('button', { name: 'Updated' }))
+      await user.click(screen.getByRole('button', { name: 'Edited' }))
       expect(rowTitlesInOrder(table)).toEqual(['Older', 'Newer'])
 
-      await user.click(screen.getByRole('button', { name: 'Updated' }))
+      await user.click(screen.getByRole('button', { name: 'Edited' }))
       expect(rowTitlesInOrder(table)).toEqual(['Newer', 'Older'])
     })
   })
@@ -1039,7 +1039,7 @@ describe('DancesPage', () => {
       await user.click(screen.getByRole('button', { name: 'Columns' }))
       // Dance Type is already hidden by default, so it's deliberately left
       // out here - clicking it would show it, not hide it.
-      for (const label of ['Difficulty', 'Formation', 'Progression', 'Choreographers', 'Key Moves', 'Vibes', 'Notes', 'Programs', 'Created', 'Updated']) {
+      for (const label of ['Difficulty', 'Formation', 'Progression', 'Choreographers', 'Key Moves', 'Vibes', 'Notes', 'Programs', 'Added', 'Edited']) {
         await user.click(await screen.findByRole('switch', { name: label }))
       }
       await user.keyboard('{Escape}')
@@ -1077,7 +1077,7 @@ describe('DancesPage', () => {
 
       // Dance Type is hidden by default, so it renders no columnheader at
       // all here - deliberately left out.
-      for (const label of ['Title', 'Difficulty', 'Formation', 'Progression', 'Choreographers', 'Key Moves', 'Vibes', 'Notes', 'Programs', 'Created', 'Updated']) {
+      for (const label of ['Title', 'Difficulty', 'Formation', 'Progression', 'Choreographers', 'Key Moves', 'Vibes', 'Notes', 'Programs', 'Added', 'Edited']) {
         const sortButton = within(screen.getByRole('columnheader', { name: label })).getByRole('button')
         expect(sortButton).toHaveAttribute('aria-roledescription', 'sortable')
       }
@@ -1152,7 +1152,7 @@ describe('DancesPage', () => {
       const user = userEvent.setup()
       await user.click(screen.getByRole('button', { name: 'Columns' }))
 
-      for (const label of ['Title', 'Choreographers', 'Key Moves', 'Vibes', 'Difficulty', 'Dance Type', 'Formation', 'Progression', 'Notes', 'Programs', 'Created', 'Updated']) {
+      for (const label of ['Title', 'Choreographers', 'Key Moves', 'Vibes', 'Difficulty', 'Dance Type', 'Formation', 'Progression', 'Notes', 'Programs', 'Added', 'Edited']) {
         expect(await screen.findByRole('button', { name: `Reorder ${label}` })).toBeInTheDocument()
       }
     })

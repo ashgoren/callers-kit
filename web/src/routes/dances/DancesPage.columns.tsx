@@ -143,14 +143,14 @@ export const danceFields: Field<DanceWithJoins>[] = [
   }),
   defineField({
     key: 'created_at',
-    label: 'Created',
+    label: 'Added',
     render: (value) => (value === null ? mutedPlaceholder : formatDate(value)),
     sortFn: sortFn_basic, // sorts by raw ISO timestamp
     size: 90,
   }),
   defineField({
     key: 'updated_at',
-    label: 'Updated',
+    label: 'Edited',
     render: (value) => (value === null ? mutedPlaceholder : formatDate(value)),
     sortFn: sortFn_basic, // sorts by raw ISO timestamp
     size: 90,

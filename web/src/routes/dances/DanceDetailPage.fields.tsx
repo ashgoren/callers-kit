@@ -55,6 +55,6 @@ export const danceMetadataFields: DetailField<DanceWithJoins>[] = [
   }),
   defineField({ key: 'progression', label: 'Progression', render: (value) => (value === null ? mutedPlaceholder : value) }),
   defineField({ key: 'programs', label: 'Programs', render: renderProgramHistory }),
-  defineField({ key: 'created_at', label: 'Created', render: (value) => (value === null ? mutedPlaceholder : formatDate(value)) }),
-  defineField({ key: 'updated_at', label: 'Updated', render: (value) => (value === null ? mutedPlaceholder : formatDate(value)) }),
+  defineField({ key: 'created_at', label: 'Added', render: (value) => (value === null ? mutedPlaceholder : formatDate(value)) }),
+  defineField({ key: 'updated_at', label: 'Edited', render: (value) => (value === null ? mutedPlaceholder : formatDate(value)) }),
 ]
