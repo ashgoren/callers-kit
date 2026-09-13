@@ -74,11 +74,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
       // clips overflowing content instead of visually bleeding into the
       // next cell - table-layout: fixed (see Table above) means the width
       // set on a resized column is now real and enforceable, so this needs
-      // to actually be honored, not just suggested. (Imperfect for a header
-      // whose content is a flex layout - the button/arrow-icon markup
-      // inside can still hard-clip without a "…", since flex children don't
-      // shrink below their content size by default - low-stakes since
-      // header labels are short static app copy, not open-ended user data.)
+      // to actually be honored, not just suggested.
       className={cn(
         "h-10 truncate px-2 text-left align-middle font-medium text-foreground has-[[role=checkbox]]:pr-0",
         className

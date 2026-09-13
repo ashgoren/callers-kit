@@ -2,7 +2,7 @@ import { useTable } from '@tanstack/react-table'
 import { Spinner } from '@/components/ui/spinner'
 import { useTableColumnState } from '@/lib/powersync/useTableColumnState'
 import { useDances } from './DancesPage.data'
-import { columns, DEFAULT_COLUMN_STATE, features } from './DancesPage.columns'
+import { DEFAULT_COLUMN_STATE, features, makeColumns } from './DancesPage.columns'
 import { TableView } from './DancesPage.TableView'
 import { CardList } from './DancesPage.CardList'
 import { ColumnSizingSync } from './DancesPage.ColumnSizingSync'
@@ -19,6 +19,8 @@ export function DancesPage() {
     setColumnSizing,
     resetToDefaults,
   } = useTableColumnState('dances', DEFAULT_COLUMN_STATE)
+
+  const columns = makeColumns({ isDesktopWidth: window.innerWidth >= 1024 })
 
   const table = useTable({
     features,

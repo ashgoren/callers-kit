@@ -54,6 +54,7 @@ interface DanceField<K extends keyof DanceWithJoins = keyof DanceWithJoins> {
   sortValue?: (value: DanceWithJoins[K]) => string | number | null
   sortFn?: SortFn<typeof features, DanceWithJoins>
   size?: number
+  compactSize?: number
   minSize?: number
   maxSize?: number
 }
@@ -125,7 +126,7 @@ export const danceFields: DanceField[] = [
     cardRender: (value) => value ? <span className="block truncate" title={value}>{value}</span> : mutedPlaceholder,
     sortValue: (value) => value || null, // sorts to the end if missing or empty
     sortFn: sortFn_alphanumeric,
-    size: 260,
+    size: 250,
     minSize: 80,
     maxSize: 500,
   }),
@@ -178,38 +179,40 @@ export type LeafHeader = ReturnType<TableInstance['getLeafHeaders']>[number]
 
 const columnHelper = createColumnHelper<typeof features, DanceWithJoins>()
 
-export const columns = columnHelper.columns(
-  danceFields.map((field) =>
-    columnHelper.accessor(
-      // A function accessor, not a plain key, so this can resolve to
-      // field.sortValue's result (falling back to the raw value) instead of
-      // always reading the row directly - the sort machinery needs this
-      // resolved value, but rendering below deliberately doesn't use it.
-      (row) => {
-        const raw = row[field.key]
-        const resolved = field.sortValue ? field.sortValue(raw) : raw
-        // Coalesces null (this app's "missing" sentinel) to undefined,
-        // which is what sortUndefined below actually checks for.
-        return resolved ?? undefined
-      },
-      {
-        id: field.key,
-        header: field.label,
-        // Reads the untouched original row, not this accessor's resolved
-        // value above - that value exists purely to feed the sort
-        // machinery, and shouldn't also change what's rendered.
-        cell: (info) => field.render(info.row.original[field.key]),
-        enableHiding: field.enableHiding,
-        size: field.size,
-        minSize: field.minSize,
-        maxSize: field.maxSize,
-        sortFn: field.sortFn,
-        // Missing values (now undefined, see above) always sort last,
-        // regardless of ascending vs. descending - blank cells staying put
-        // at the bottom rather than jumping to the top when you flip
-        // direction, matching how spreadsheets handle this.
-        sortUndefined: 'last',
-      },
+// Builds this table's column definitions for the given breakpoint -
+// isDesktopWidth picks each field's `size` vs. `compactSize` as the starting
+// width. Only affects a column nobody's resized yet on this device; once
+// resized, the saved width overrides this regardless of breakpoint.
+export function makeColumns({ isDesktopWidth }: { isDesktopWidth: boolean }) {
+  return columnHelper.columns(
+    danceFields.map((field) =>
+      columnHelper.accessor(
+        // A function accessor, not a plain key, so this can resolve to
+        // field.sortValue's result (falling back to the raw value) instead of
+        // always reading the row directly - the sort machinery needs this
+        // resolved value, but rendering below deliberately doesn't use it.
+        (row) => {
+          const raw = row[field.key]
+          const resolved = field.sortValue ? field.sortValue(raw) : raw
+          // Coalesces null (this app's "missing" sentinel) to undefined,
+          // which is what sortUndefined below actually checks for.
+          return resolved ?? undefined
+        },
+        {
+          id: field.key,
+          header: field.label,
+          // Reads the untouched original row, not this accessor's resolved
+          // value above - that value exists purely to feed the sort
+          // machinery, and shouldn't also change what's rendered.
+          cell: (info) => field.render(info.row.original[field.key]),
+          enableHiding: field.enableHiding,
+          size: isDesktopWidth ? field.size : (field.compactSize ?? field.size),
+          minSize: field.minSize,
+          maxSize: field.maxSize,
+          sortFn: field.sortFn,
+          sortUndefined: 'last',
+        },
+      ),
     ),
-  ),
-)
+  )
+}
