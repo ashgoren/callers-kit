@@ -45,6 +45,21 @@ const user_table_preferences = new Table({
   column_state: column.text,
 })
 
+const programs = new Table({
+  created_at: column.text, // ISO 8601
+  updated_at: column.text, // ISO 8601
+  date: column.text, // ISO 8601 date only (no time component)
+  location: column.text,
+  notes: column.text,
+  share_token: column.text,
+})
+
+const programs_dances = new Table({
+  order: column.integer,
+  dance_id: column.text,
+  program_id: column.text,
+})
+
 export const AppSchema = new Schema({
   dances,
   choreographers,
@@ -54,6 +69,8 @@ export const AppSchema = new Schema({
   dances_key_moves,
   dances_vibes,
   user_table_preferences,
+  programs,
+  programs_dances,
 })
 
 export type Database = (typeof AppSchema)['types']
@@ -61,3 +78,4 @@ export type Dance = Database['dances']
 export type Choreographer = Database['choreographers']
 export type KeyMove = Database['key_moves']
 export type Vibe = Database['vibes']
+export type Program = Database['programs']

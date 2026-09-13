@@ -66,3 +66,19 @@ streams:
     # choreographers above - one row per (user_id, table_name).
     auto_subscribe: true
     query: SELECT * FROM user_table_preferences WHERE user_table_preferences.user_id = auth.user_id()
+
+  programs:
+    # Owner table with its own user_id column, same pattern as dances above
+    auto_subscribe: true
+    query: SELECT * FROM programs WHERE programs.user_id = auth.user_id()
+
+  programs_dances:
+    # Junction table has no user_id of its own - scoped via join to the
+    # owning dance's user_id, matching the "user_access" RLS policy on this
+    # table (which joins to dances, not programs). Same pattern and no-alias
+    # rule as dances_choreographers above.
+    auto_subscribe: true
+    query: >
+      SELECT programs_dances.* FROM programs_dances
+      JOIN dances ON dances.id = programs_dances.dance_id
+      WHERE dances.user_id = auth.user_id()
