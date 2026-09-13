@@ -29,9 +29,9 @@ export function DanceDetailPage() {
       ) : (
         <>
           <div className="mt-2 border-b pb-4">
-            <h1 className="text-2xl font-semibold">{dance.title || mutedPlaceholder}</h1>
+            <h1 className="text-4xl font-bold">{dance.title || mutedPlaceholder}</h1>
             {dance.choreographers.length > 0 && (
-              <p className="mt-0.5 text-sm text-muted-foreground">by {sortAlphabetically(dance.choreographers).join(', ')}</p>
+              <p className="mt-1 text-base text-muted-foreground">by {sortAlphabetically(dance.choreographers).join(', ')}</p>
             )}
           </div>
           <div className="mt-6 grid grid-cols-1 gap-8 sm:grid-cols-[1fr_20rem]">
@@ -63,8 +63,8 @@ export function DanceDetailPage() {
                 <FieldList<DanceWithJoins> fields={danceWideFields} row={dance} className="space-y-4" />
               </div>
             </div>
-            <div className="space-y-4">
-              <FieldList<DanceWithJoins> fields={danceMetadataFields} row={dance} className="space-y-4" />
+            <div className="space-y-6">
+              <FieldList<DanceWithJoins> fields={danceMetadataFields} row={dance} className="space-y-6" />
               <div className="space-y-1 border-t pt-4 text-sm text-muted-foreground">
                 <p>Added {formatDate(dance.created_at)}</p>
                 <p>Edited {formatDate(dance.updated_at)}</p>
