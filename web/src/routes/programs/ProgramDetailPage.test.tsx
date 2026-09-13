@@ -40,12 +40,11 @@ describe('ProgramDetailPage', () => {
     expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument()
   })
 
-  it('shows a not-found message and a working back link when no program matches the id', () => {
+  it('shows a not-found message when no program matches the id', () => {
     useQueryMock.mockReturnValue({ data: [], isLoading: false })
     renderProgramDetailPage('missing')
 
     expect(screen.getByText('Program not found.')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '← Programs' })).toHaveAttribute('href', '/programs')
   })
 
   it('renders date and location stacked in the page header, and every other field with its correct value', () => {

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router'
+import { useParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { PageSpinner } from '@/components/PageSpinner'
 import { FieldList } from '@/components/fields/FieldList'
@@ -20,16 +20,12 @@ export function DanceDetailPage() {
 
   return (
     <div className="mx-auto max-w-4xl p-4">
-      <Link to="/dances" className="text-sm text-muted-foreground hover:text-foreground">
-        ← Dances
-      </Link>
-
       {!dance ? (
-        <p className="mt-4 text-sm text-muted-foreground">Dance not found.</p>
+        <p className="text-sm text-muted-foreground">Dance not found.</p>
       ) : (
         <>
-          <div className="mt-2 border-b pb-4">
-            <h1 className="text-4xl font-bold">{dance.title || mutedPlaceholder}</h1>
+          <div className="border-b pb-4">
+            <h1 className="text-4xl font-semibold">{dance.title || mutedPlaceholder}</h1>
             {dance.choreographers.length > 0 && (
               <p className="mt-1 text-base text-muted-foreground">by {sortAlphabetically(dance.choreographers).join(', ')}</p>
             )}

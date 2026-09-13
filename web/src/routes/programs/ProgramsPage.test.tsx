@@ -287,4 +287,38 @@ describe('ProgramsPage', () => {
       expect(navigateMock).toHaveBeenCalledWith('/programs/1')
     })
   })
+
+  describe('sorting', () => {
+    // Assumes Date stays the first rendered column - true given
+    // DEFAULT_COLUMN_STATE pins it first.
+    function rowDatesInOrder(table: HTMLElement): string[] {
+      return within(table)
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => within(row).getAllByRole('cell')[0].textContent ?? '')
+    }
+
+    it('sorts the Date column descending on the first click - most recent first, not oldest first', async () => {
+      mockPrograms(
+        {
+          data: [
+            makeProgram({ id: '1', date: '2025-01-01', location: 'Old Hall' }),
+            makeProgram({ id: '2', date: '2026-06-01', location: 'New Hall' }),
+          ],
+          isLoading: false,
+        },
+        { sorting: [] }, // starts unsorted, so the click below is a genuine first click
+      )
+      renderProgramsPage()
+
+      const table = screen.getByRole('table')
+      const dateHeader = screen.getByRole('button', { name: 'Date' })
+
+      const user = userEvent.setup()
+      await user.click(dateHeader)
+
+      expect(rowDatesInOrder(table)).toEqual(['6/1/26', '1/1/25'])
+      expect(dateHeader.querySelector('.lucide-arrow-down')).toBeInTheDocument()
+    })
+  })
 })

@@ -48,12 +48,11 @@ describe('DanceDetailPage', () => {
     expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument()
   })
 
-  it('shows a not-found message and a working back link when no dance matches the id', () => {
+  it('shows a not-found message when no dance matches the id', () => {
     useQueryMock.mockReturnValue({ data: [], isLoading: false })
     renderDanceDetailPage('missing')
 
     expect(screen.getByText('Dance not found.')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '← Dances' })).toHaveAttribute('href', '/dances')
   })
 
   it('renders the dance title and choreographers in the page header, and every other field with its correct value', () => {
