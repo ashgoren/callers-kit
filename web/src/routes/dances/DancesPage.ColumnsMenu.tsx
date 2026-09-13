@@ -8,7 +8,6 @@ import { GripVertical, Pin, RotateCcw } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Switch } from '@/components/ui/switch'
 import { useDragBodyClass } from '@/hooks/useDragBodyClass'
-import { getDanceField } from './DancesPage.columns'
 import type { TableInstance } from './DancesPage.columns'
 import { applyColumnReorder, makeSameGroupCollisionDetection } from './DancesPage.reorder'
 
@@ -82,7 +81,8 @@ function SortableColumnRow({ table, columnId }: { table: TableInstance; columnId
 
   if (!column) return null
 
-  const label = getDanceField(columnId)?.label ?? columnId
+  const headerDef = column.columnDef.header
+  const label = typeof headerDef === 'string' ? headerDef : columnId
 
   return (
     // column.getIsVisible()/getIsPinned() hide their real dependency behind
