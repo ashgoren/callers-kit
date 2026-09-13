@@ -62,3 +62,22 @@ test('does not open a tooltip on hover for a Notes value short enough to already
   await page.waitForTimeout(800)
   await expect(page.locator('[data-slot="tooltip-content"]')).not.toBeAttached()
 })
+
+test('clicking a dance row opens its detail page, showing the same real data', async ({ page }) => {
+  const email = process.env.E2E_TEST_EMAIL!
+  const password = process.env.E2E_TEST_PASSWORD!
+  const danceTitle = process.env.E2E_TEST_DANCE_TITLE!
+  const choreographer1 = process.env.E2E_TEST_CHOREOGRAPHER_1!
+
+  await page.goto('/signin')
+  await page.getByLabel('Email').fill(email)
+  await page.getByLabel('Password').fill(password)
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await expect(page).toHaveURL('/dances')
+
+  await page.getByRole('row', { name: new RegExp(danceTitle) }).click()
+
+  await expect(page).toHaveURL(/\/dances\/.+/)
+  await expect(page.getByRole('heading', { name: danceTitle })).toBeVisible()
+  await expect(page.getByText(choreographer1)).toBeVisible()
+})

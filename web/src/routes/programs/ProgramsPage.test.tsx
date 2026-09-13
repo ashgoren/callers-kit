@@ -1,9 +1,28 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import type { Program } from '@/lib/powersync/schema'
 import { formatProgramLabel } from './ProgramsPage.columns'
 import { ProgramsPage } from './ProgramsPage'
+
+const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
+
+// react-router's other exports (MemoryRouter) are used as-is via
+// importOriginal - only useNavigate needs mocking, so row-click navigation
+// tests can assert on it directly (same pattern as SignInPage.test.tsx).
+vi.mock('react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router')>()
+  return { ...actual, useNavigate: () => navigateMock }
+})
+
+function renderProgramsPage() {
+  return render(
+    <MemoryRouter>
+      <ProgramsPage />
+    </MemoryRouter>,
+  )
+}
 
 const { useQueryMock } = vi.hoisted(() => ({ useQueryMock: vi.fn() }))
 
@@ -44,6 +63,7 @@ function mockPointer(isCoarse: boolean) {
 
 beforeEach(() => {
   mockPointer(false)
+  navigateMock.mockClear()
 })
 
 // The mocked useQuery stands in for ProgramsPage.data.ts's raw SQL result,
@@ -79,7 +99,7 @@ describe('formatProgramLabel', () => {
 describe('ProgramsPage', () => {
   it('queries the ordered dance-lineup join with the expected tables, order column, and output alias', () => {
     mockPrograms({ data: [], isLoading: false })
-    render(<ProgramsPage />)
+    renderProgramsPage()
 
     const query = useQueryMock.mock.calls[0][0] as string
 
@@ -101,7 +121,7 @@ describe('ProgramsPage', () => {
 
   it('shows a loading state while the query is in flight', () => {
     mockPrograms({ data: [], isLoading: true })
-    render(<ProgramsPage />)
+    renderProgramsPage()
 
     expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
@@ -119,7 +139,7 @@ describe('ProgramsPage', () => {
       ],
       isLoading: false,
     })
-    render(<ProgramsPage />)
+    renderProgramsPage()
 
     const table = screen.getByRole('table')
     const row = within(table).getByText('9/13/26').closest('tr')!
@@ -151,7 +171,7 @@ describe('ProgramsPage', () => {
       ],
       isLoading: false,
     })
-    render(<ProgramsPage />)
+    renderProgramsPage()
 
     const table = screen.getByRole('table')
     expect(within(table).getByText('0. Chorus Jig')).toBeInTheDocument()
@@ -165,7 +185,7 @@ describe('ProgramsPage', () => {
 
   it('shows placeholders for null/empty location, notes, and an empty dance lineup', () => {
     mockPrograms({ data: [makeProgram({ location: null, notes: null, dances: '[]' })], isLoading: false })
-    render(<ProgramsPage />)
+    renderProgramsPage()
 
     const table = screen.getByRole('table')
     const row = within(table).getByText('9/13/26').closest('tr')!
@@ -185,7 +205,7 @@ describe('ProgramsPage', () => {
       ],
       isLoading: false,
     })
-    render(<ProgramsPage />)
+    renderProgramsPage()
 
     // CardList's outer <ul> is the first "list" role in document order - the
     // dance lineup's own <ol> (see cardRenderDanceList) is nested inside it,
@@ -197,7 +217,7 @@ describe('ProgramsPage', () => {
 
   it('shows "date @ location" combined as the card\'s title line, not as separate rows', () => {
     mockPrograms({ data: [makeProgram({ date: '2026-09-13', location: 'Grange Hall' })], isLoading: false })
-    render(<ProgramsPage />)
+    renderProgramsPage()
 
     const [cardList] = screen.getAllByRole('list')
     expect(within(cardList).getByText('9/13/26 @ Grange Hall')).toBeInTheDocument()
@@ -207,7 +227,7 @@ describe('ProgramsPage', () => {
 
   it('falls back to just the date on the card title line when a program has no location', () => {
     mockPrograms({ data: [makeProgram({ date: '2026-09-13', location: null })], isLoading: false })
-    render(<ProgramsPage />)
+    renderProgramsPage()
 
     const [cardList] = screen.getAllByRole('list')
     expect(within(cardList).getByText('9/13/26')).toBeInTheDocument()
@@ -215,7 +235,7 @@ describe('ProgramsPage', () => {
 
   it('leaves Created/Updated off the card, even though the table (once toggled on) shows them', () => {
     mockPrograms({ data: [makeProgram()], isLoading: false })
-    render(<ProgramsPage />)
+    renderProgramsPage()
 
     const [cardList] = screen.getAllByRole('list')
     expect(within(cardList).queryByText('Created')).not.toBeInTheDocument()
@@ -227,7 +247,7 @@ describe('ProgramsPage', () => {
   describe('column visibility', () => {
     it('starts with Created/Updated hidden, and every other column shown, in the Columns menu', async () => {
       mockPrograms({ data: [makeProgram()], isLoading: false })
-      render(<ProgramsPage />)
+      renderProgramsPage()
 
       const user = userEvent.setup()
       await user.click(screen.getByRole('button', { name: 'Columns' }))
@@ -242,7 +262,7 @@ describe('ProgramsPage', () => {
 
     it('shows the Created/Updated columns once toggled on', async () => {
       mockPrograms({ data: [makeProgram()], isLoading: false })
-      render(<ProgramsPage />)
+      renderProgramsPage()
 
       const table = screen.getByRole('table')
       expect(within(table).queryByRole('columnheader', { name: 'Created' })).not.toBeInTheDocument()
@@ -253,6 +273,18 @@ describe('ProgramsPage', () => {
 
       expect(within(table).getByRole('columnheader', { name: 'Created' })).toBeInTheDocument()
       expect(within(table).getByText('1/15/26')).toBeInTheDocument()
+    })
+  })
+
+  describe('row click navigation', () => {
+    it('navigates to the program\'s detail page when a table row is clicked', async () => {
+      mockPrograms({ data: [makeProgram()], isLoading: false })
+      renderProgramsPage()
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('cell', { name: 'Grange Hall' }))
+
+      expect(navigateMock).toHaveBeenCalledWith('/programs/1')
     })
   })
 })

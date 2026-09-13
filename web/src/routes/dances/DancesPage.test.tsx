@@ -1,8 +1,27 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Dance } from '@/lib/powersync/schema'
 import { DancesPage } from './DancesPage'
+
+const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
+
+// react-router's other exports (MemoryRouter) are used as-is via
+// importOriginal - only useNavigate needs mocking, so row-click navigation
+// tests can assert on it directly (same pattern as SignInPage.test.tsx).
+vi.mock('react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router')>()
+  return { ...actual, useNavigate: () => navigateMock }
+})
+
+function renderDancesPage() {
+  return render(
+    <MemoryRouter>
+      <DancesPage />
+    </MemoryRouter>,
+  )
+}
 
 const { useQueryMock } = vi.hoisted(() => ({ useQueryMock: vi.fn() }))
 
@@ -71,6 +90,7 @@ function mockPointer(initialIsCoarse: boolean) {
 // whichever test happens to run next.
 beforeEach(() => {
   mockPointer(false)
+  navigateMock.mockClear()
 })
 
 // The mocked useQuery stands in for DancesPage.data.ts's raw SQL result, so
@@ -117,7 +137,7 @@ describe('DancesPage', () => {
     // pass every other test in this file and only surface in the slower,
     // live-data e2e suite. This asserts on the real query text instead.
     mockDances({ data: [], isLoading: false })
-    render(<DancesPage />)
+    renderDancesPage()
 
     const query = useQueryMock.mock.calls[0][0] as string
 
@@ -149,7 +169,7 @@ describe('DancesPage', () => {
     // aggregates {date, location} objects instead of a plain name, so it
     // doesn't fit that loop's shape.
     mockDances({ data: [], isLoading: false })
-    render(<DancesPage />)
+    renderDancesPage()
 
     const query = useQueryMock.mock.calls[0][0] as string
 
@@ -165,7 +185,7 @@ describe('DancesPage', () => {
 
   it('shows a loading state while the query is in flight', () => {
     mockDances({ data: [], isLoading: true })
-    render(<DancesPage />)
+    renderDancesPage()
 
     expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
@@ -173,7 +193,7 @@ describe('DancesPage', () => {
 
   it('renders a dance row with all columns correctly formatted', () => {
     mockDances({ data: [makeDance()], isLoading: false })
-    render(<DancesPage />)
+    renderDancesPage()
 
     const table = screen.getByRole('table')
     const row = within(table).getByText('Chorus Jig').closest('tr')!
@@ -197,7 +217,7 @@ describe('DancesPage', () => {
       data: [makeDance({ title: '', difficulty: null, formation: null, notes: null })],
       isLoading: false,
     })
-    render(<DancesPage />)
+    renderDancesPage()
 
     const table = screen.getByRole('table')
     // created_at isn't overridden, so it's the one non-empty field left to
@@ -218,7 +238,7 @@ describe('DancesPage', () => {
       ],
       isLoading: false,
     })
-    render(<DancesPage />)
+    renderDancesPage()
 
     const table = screen.getByRole('table')
     const rowA = within(table).getByText('Dance A').closest('tr')!
@@ -239,7 +259,7 @@ describe('DancesPage', () => {
       ],
       isLoading: false,
     })
-    render(<DancesPage />)
+    renderDancesPage()
 
     const table = screen.getByRole('table')
     const rowA = within(table).getByText('Dance A').closest('tr')!
@@ -274,7 +294,7 @@ describe('DancesPage', () => {
       ],
       isLoading: false,
     })
-    render(<DancesPage />)
+    renderDancesPage()
 
     expect(within(screen.getByRole('table')).getByText('10/2/26, 1/1/26')).toBeInTheDocument()
   })
@@ -292,7 +312,7 @@ describe('DancesPage', () => {
       ],
       isLoading: false,
     })
-    render(<DancesPage />)
+    renderDancesPage()
 
     // CardList's outer <ul> is the first "list" role in document order - the
     // program history's own <ul> (see cardRenderProgramList) is nested
@@ -304,7 +324,7 @@ describe('DancesPage', () => {
 
   it('also renders the same dance in the card list layout', () => {
     mockDances({ data: [makeDance()], isLoading: false })
-    render(<DancesPage />)
+    renderDancesPage()
 
     // Both layouts render simultaneously in jsdom (no real CSS breakpoints
     // apply) - two matches confirms the card list's own rendering path also
@@ -316,7 +336,7 @@ describe('DancesPage', () => {
 
   it('renders Notes as a hover-tooltip trigger in the table, but as plain untruncated text in the card list - there\'s no hover to reveal a tooltip on touch', () => {
     mockDances({ data: [makeDance({ notes: 'A classic.' })], isLoading: false })
-    render(<DancesPage />)
+    renderDancesPage()
 
     expect(within(screen.getByRole('table')).getByRole('button', { name: 'A classic.' })).toBeInTheDocument()
 
@@ -335,7 +355,7 @@ describe('DancesPage', () => {
       ],
       isLoading: false,
     })
-    render(<DancesPage />)
+    renderDancesPage()
 
     const table = screen.getByRole('table')
     expect(within(table).getByText('Proper')).toBeInTheDocument()
@@ -346,7 +366,7 @@ describe('DancesPage', () => {
   describe('column visibility', () => {
     it('lists every column, Title included, as a checked toggle in the Columns menu - except Dance Type, hidden by default', async () => {
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const user = userEvent.setup()
       await user.click(screen.getByRole('button', { name: 'Columns' }))
@@ -371,7 +391,7 @@ describe('DancesPage', () => {
 
     it('hides a column from the table when its toggle is switched off, and restores it when switched back on', async () => {
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const table = screen.getByRole('table')
       expect(within(table).getByRole('columnheader', { name: 'Notes' })).toBeInTheDocument()
@@ -392,7 +412,7 @@ describe('DancesPage', () => {
 
     it('shows the Dance Type column and its value once toggled on', async () => {
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const table = screen.getByRole('table')
       expect(within(table).queryByRole('columnheader', { name: 'Dance Type' })).not.toBeInTheDocument()
@@ -407,7 +427,7 @@ describe('DancesPage', () => {
 
     it('disables the last remaining visible column\'s toggle, so the table can never end up with no columns shown', async () => {
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const user = userEvent.setup()
       await user.click(screen.getByRole('button', { name: 'Columns' }))
@@ -440,7 +460,7 @@ describe('DancesPage', () => {
         ],
         isLoading: false,
       })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const table = screen.getByRole('table')
       const titleHeader = screen.getByRole('button', { name: 'Title' })
@@ -471,7 +491,7 @@ describe('DancesPage', () => {
         ],
         isLoading: false,
       })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const table = screen.getByRole('table')
       const programsHeader = screen.getByRole('button', { name: 'Programs' })
@@ -494,7 +514,7 @@ describe('DancesPage', () => {
         ],
         isLoading: false,
       })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const table = screen.getByRole('table')
       const user = userEvent.setup()
@@ -524,7 +544,7 @@ describe('DancesPage', () => {
         ],
         isLoading: false,
       })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const table = screen.getByRole('table')
       const user = userEvent.setup()
@@ -546,7 +566,7 @@ describe('DancesPage', () => {
         ],
         isLoading: false,
       })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const table = screen.getByRole('table')
       const user = userEvent.setup()
@@ -565,7 +585,7 @@ describe('DancesPage', () => {
         ],
         isLoading: false,
       })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const table = screen.getByRole('table')
       expect(within(table).getByText('Amy, Zeb')).toBeInTheDocument()
@@ -587,7 +607,7 @@ describe('DancesPage', () => {
         ],
         isLoading: false,
       })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const table = screen.getByRole('table')
       const user = userEvent.setup()
@@ -604,7 +624,7 @@ describe('DancesPage', () => {
         ],
         isLoading: false,
       })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const table = screen.getByRole('table')
       const user = userEvent.setup()
@@ -621,7 +641,7 @@ describe('DancesPage', () => {
         ],
         isLoading: false,
       })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const table = screen.getByRole('table')
       const user = userEvent.setup()
@@ -640,7 +660,7 @@ describe('DancesPage', () => {
         ],
         isLoading: false,
       })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const table = screen.getByRole('table')
       const user = userEvent.setup()
@@ -671,7 +691,7 @@ describe('DancesPage', () => {
         ],
         isLoading: false,
       })
-      render(<DancesPage />)
+      renderDancesPage()
 
       expect(cardTitlesInOrder()).toEqual(['Alpha', 'Bravo', 'Charlie'])
       expect(screen.getByRole('button', { name: 'Sort: Title' })).toBeInTheDocument()
@@ -695,7 +715,7 @@ describe('DancesPage', () => {
         data: [makeDance({ id: '1', title: 'Charlie' }), makeDance({ id: '2', title: 'Alpha' })],
         isLoading: false,
       })
-      render(<DancesPage />)
+      renderDancesPage()
 
       expect(cardTitlesInOrder()).toEqual(['Alpha', 'Charlie'])
       const toggleButton = screen.getByRole('button', { name: 'Sort ascending' })
@@ -718,7 +738,7 @@ describe('DancesPage', () => {
     // genuinely exercisable here, not just this static setup.
     it('renders a resize handle and a matching column width for every visible column', () => {
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const table = screen.getByRole('table')
       const columnCount = within(table).getAllByRole('columnheader').length
@@ -733,7 +753,7 @@ describe('DancesPage', () => {
 
     it('grows a column by the drag distance when its resize handle is dragged', () => {
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const table = screen.getByRole('table')
       const difficultyHeader = screen.getByRole('columnheader', { name: 'Difficulty' })
@@ -760,7 +780,7 @@ describe('DancesPage', () => {
 
     it('stops shrinking a column at its minSize, even when dragged well past it', () => {
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const table = screen.getByRole('table')
       const difficultyHeader = screen.getByRole('columnheader', { name: 'Difficulty' })
@@ -782,7 +802,7 @@ describe('DancesPage', () => {
 
     it('stops growing a column at its maxSize, even when dragged well past it', () => {
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const table = screen.getByRole('table')
       const notesHeader = screen.getByRole('columnheader', { name: 'Notes' })
@@ -803,7 +823,7 @@ describe('DancesPage', () => {
 
     it('persists the settled width once the drag ends, not on every intermediate move', async () => {
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const difficultyHeader = screen.getByRole('columnheader', { name: 'Difficulty' })
       const handle = difficultyHeader.querySelector('.cursor-col-resize')!
@@ -830,7 +850,7 @@ describe('DancesPage', () => {
 
     it('keeps showing the live dragged width even if the component re-renders for an unrelated reason mid-drag', () => {
       mockDances({ data: [makeDance()], isLoading: false })
-      const { rerender } = render(<DancesPage />)
+      const { rerender } = renderDancesPage()
 
       const difficultyHeader = screen.getByRole('columnheader', { name: 'Difficulty' })
       const handle = difficultyHeader.querySelector('.cursor-col-resize')!
@@ -842,7 +862,11 @@ describe('DancesPage', () => {
       // itself ticking) causes DancesPage to re-render mid-drag - this
       // shouldn't snap the live drag back to the last-committed width via
       // ColumnSizingSync's inbound sync.
-      rerender(<DancesPage />)
+      rerender(
+        <MemoryRouter>
+          <DancesPage />
+        </MemoryRouter>,
+      )
 
       const table = screen.getByRole('table')
       const headers = within(table).getAllByRole('columnheader')
@@ -856,7 +880,7 @@ describe('DancesPage', () => {
   describe('column pinning', () => {
     it('pins Title by default (shown as "Unpin"), with every other column offered as "Pin"', async () => {
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const user = userEvent.setup()
       await user.click(screen.getByRole('button', { name: 'Columns' }))
@@ -867,7 +891,7 @@ describe('DancesPage', () => {
 
     it('sticky-positions Title by default, and removes that once unpinned', async () => {
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       expect(screen.getByRole('columnheader', { name: 'Title' }).style.position).toBe('sticky')
 
@@ -886,7 +910,7 @@ describe('DancesPage', () => {
 
     it('sticky-positions a column once its Pin button is clicked', async () => {
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       expect(screen.getByRole('columnheader', { name: 'Difficulty' }).style.position).not.toBe('sticky')
 
@@ -903,7 +927,7 @@ describe('DancesPage', () => {
       // in ColumnsMenu.tsx): clicking Pin/Unpin on the same rendered row
       // twice in a row, without re-querying or reopening the menu in between.
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const user = userEvent.setup()
       await user.click(screen.getByRole('button', { name: 'Columns' }))
@@ -917,7 +941,7 @@ describe('DancesPage', () => {
 
     it('offsets a second pinned column past the first one\'s width, rather than stacking them at the same position', async () => {
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const user = userEvent.setup()
       await user.click(screen.getByRole('button', { name: 'Columns' }))
@@ -937,7 +961,7 @@ describe('DancesPage', () => {
 
     it('puts a divider on the last pinned column, in both the header and the body rows, as a persistent boundary between the frozen and scrollable regions', async () => {
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const titleCell = within(screen.getByRole('table')).getByText('Chorus Jig').closest('td')!
       // Title is the only (and therefore last) pinned column by default.
@@ -959,7 +983,7 @@ describe('DancesPage', () => {
   describe('column header context menu', () => {
     it('hides a column via a right-click on its header', async () => {
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const notesHeader = screen.getByRole('columnheader', { name: 'Notes' })
       fireEvent.contextMenu(within(notesHeader).getByRole('button'))
@@ -972,7 +996,7 @@ describe('DancesPage', () => {
 
     it('offers Unpin (not Pin) for an already-pinned column, and unpins it on click', async () => {
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       // Title is pinned by default.
       const titleHeader = screen.getByRole('columnheader', { name: 'Title' })
@@ -992,7 +1016,7 @@ describe('DancesPage', () => {
 
     it('pins a column via a right-click on its header, matching the sticky style the manage-columns menu applies', async () => {
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const difficultyHeader = screen.getByRole('columnheader', { name: 'Difficulty' })
       expect(difficultyHeader.style.position).not.toBe('sticky')
@@ -1008,7 +1032,7 @@ describe('DancesPage', () => {
 
     it('disables Hide on the last remaining visible column, matching the manage-columns menu guard', async () => {
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       // Hide every column except Title via the manage-columns menu first.
       const user = userEvent.setup()
@@ -1049,7 +1073,7 @@ describe('DancesPage', () => {
     // already covered directly below.
     it('wires every sort button up for drag-based reordering, alongside click-to-sort', () => {
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       // Dance Type is hidden by default, so it renders no columnheader at
       // all here - deliberately left out.
@@ -1061,7 +1085,7 @@ describe('DancesPage', () => {
 
     it('gives the sort button touch-none on a mouse/fine pointer, so a mouse drag claims the gesture immediately', () => {
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const sortButton = within(screen.getByRole('columnheader', { name: 'Title' })).getByRole('button')
       expect(sortButton.className).toMatch(/\btouch-none\b/)
@@ -1070,7 +1094,7 @@ describe('DancesPage', () => {
     it('omits touch-none from the sort button on a coarse/touch pointer, so a quick swipe still scrolls natively', () => {
       mockPointer(true)
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const sortButton = within(screen.getByRole('columnheader', { name: 'Title' })).getByRole('button')
       expect(sortButton.className).not.toMatch(/\btouch-none\b/)
@@ -1088,7 +1112,7 @@ describe('DancesPage', () => {
     it('never opens, even on a right-click/contextmenu event', () => {
       mockPointer(true)
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const notesHeader = screen.getByRole('columnheader', { name: 'Notes' })
       fireEvent.contextMenu(within(notesHeader).getByRole('button'))
@@ -1100,7 +1124,7 @@ describe('DancesPage', () => {
     it('reappears if the pointer type switches back to fine mid-session, e.g. a mouse being attached', () => {
       const pointer = mockPointer(true)
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       act(() => {
         pointer.setIsCoarse(false)
@@ -1123,7 +1147,7 @@ describe('DancesPage', () => {
     // static wiring: a drag handle exists for every column in the menu.
     it('renders a drag handle for every column in the manage-columns menu', async () => {
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const user = userEvent.setup()
       await user.click(screen.getByRole('button', { name: 'Columns' }))
@@ -1135,7 +1159,7 @@ describe('DancesPage', () => {
 
     it('separates pinned columns from unpinned ones with a divider, so they read as two distinct reorderable groups', async () => {
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const user = userEvent.setup()
       await user.click(screen.getByRole('button', { name: 'Columns' }))
@@ -1158,7 +1182,7 @@ describe('DancesPage', () => {
         { data: [makeDance()], isLoading: false },
         { columnVisibility: { notes: false }, sorting: [{ id: 'difficulty', desc: true }] },
       )
-      render(<DancesPage />)
+      renderDancesPage()
 
       // Notes was hidden in the saved layout - shouldn't render at all,
       // unlike every other test in this file where it's visible by default.
@@ -1171,7 +1195,7 @@ describe('DancesPage', () => {
 
     it('persists a column visibility change to the local db, updating the seeded row by id', async () => {
       mockDances({ data: [makeDance()], isLoading: false })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const user = userEvent.setup()
       await user.click(screen.getByRole('button', { name: 'Columns' }))
@@ -1191,7 +1215,7 @@ describe('DancesPage', () => {
 
     it('restores a previously saved column width instead of the field\'s built-in default', () => {
       mockDances({ data: [makeDance()], isLoading: false }, { columnSizing: { difficulty: 205 } })
-      render(<DancesPage />)
+      renderDancesPage()
 
       const table = screen.getByRole('table')
       const headers = within(table).getAllByRole('columnheader')
@@ -1202,7 +1226,7 @@ describe('DancesPage', () => {
 
     it('picks up a remote column-width change without needing a reload', () => {
       mockDances({ data: [makeDance()], isLoading: false }, {})
-      const { rerender } = render(<DancesPage />)
+      const { rerender } = renderDancesPage()
 
       const colWidth = () => {
         const table = screen.getByRole('table')
@@ -1217,7 +1241,11 @@ describe('DancesPage', () => {
       // open - same reactive-query mechanism the other four preference
       // fields already rely on for this (see useTableColumnState.test.tsx).
       mockDances({ data: [makeDance()], isLoading: false }, { columnSizing: { difficulty: 205 } })
-      rerender(<DancesPage />)
+      rerender(
+        <MemoryRouter>
+          <DancesPage />
+        </MemoryRouter>,
+      )
 
       expect(colWidth()).toBe('205px')
     })
@@ -1231,7 +1259,7 @@ describe('DancesPage', () => {
           columnSizing: { difficulty: 205 },
         },
       )
-      render(<DancesPage />)
+      renderDancesPage()
 
       // Confirms the saved (non-default) layout actually took effect first.
       expect(screen.queryByRole('columnheader', { name: 'Notes' })).not.toBeInTheDocument()
@@ -1259,6 +1287,28 @@ describe('DancesPage', () => {
       const headers = within(table).getAllByRole('columnheader')
       const difficultyHeader = screen.getByRole('columnheader', { name: 'Difficulty' })
       expect(table.querySelectorAll('col')[headers.indexOf(difficultyHeader)].style.width).toBe('105px')
+    })
+  })
+
+  describe('row click navigation', () => {
+    it('navigates to the dance\'s detail page when a table row is clicked', async () => {
+      mockDances({ data: [makeDance()], isLoading: false })
+      renderDancesPage()
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('cell', { name: 'Chorus Jig' }))
+
+      expect(navigateMock).toHaveBeenCalledWith('/dances/1')
+    })
+
+    it('still navigates when the click lands on the Notes hover-tooltip trigger - it has no independent click action of its own', async () => {
+      mockDances({ data: [makeDance({ notes: 'A classic.' })], isLoading: false })
+      renderDancesPage()
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'A classic.' }))
+
+      expect(navigateMock).toHaveBeenCalledWith('/dances/1')
     })
   })
 })

@@ -44,7 +44,7 @@ function renderDanceChips(value: ProgramDance[]): ReactNode {
 }
 
 // Card view: full untruncated numbered list, one dance per line
-function cardRenderDanceList(value: ProgramDance[]): ReactNode {
+export function cardRenderDanceList(value: ProgramDance[]): ReactNode {
   if (value.length === 0) return mutedPlaceholder
   return (
     <ol className="space-y-0.5">

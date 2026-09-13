@@ -51,3 +51,25 @@ test('hovering a truncated Notes cell reveals its full text via a real tooltip, 
   // same text, so an unscoped getByText would match both.
   await expect(page.locator('[data-slot="tooltip-content"]')).toHaveText(programNotes)
 })
+
+test('clicking a program row opens its detail page, showing the same real data', async ({ page }) => {
+  const email = process.env.E2E_TEST_EMAIL!
+  const password = process.env.E2E_TEST_PASSWORD!
+  const programLocation = process.env.E2E_TEST_PROGRAM_LOCATION!
+  const danceTitle = process.env.E2E_TEST_DANCE_TITLE!
+
+  await page.goto('/signin')
+  await page.getByLabel('Email').fill(email)
+  await page.getByLabel('Password').fill(password)
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await page.getByRole('link', { name: 'Programs' }).click()
+  await expect(page).toHaveURL('/programs')
+
+  await page.getByRole('row', { name: new RegExp(programLocation) }).click()
+
+  await expect(page).toHaveURL(/\/programs\/.+/)
+  // Location is its own line below the date heading now, not combined into
+  // the heading text itself.
+  await expect(page.getByText(programLocation)).toBeVisible()
+  await expect(page.getByText(`1. ${danceTitle}`)).toBeVisible()
+})

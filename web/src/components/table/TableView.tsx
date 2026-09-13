@@ -1,14 +1,24 @@
 import { DndContext } from '@dnd-kit/core'
 import { horizontalListSortingStrategy, SortableContext } from '@dnd-kit/sortable'
+import { cn } from 'cn'
 import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table'
 import { ColumnsMenu } from './ColumnsMenu'
 import { pinnedCellStyle, PinBoundaryDivider } from './pinning'
 import { TableHeaderCell } from './TableHeaderCell'
 import { useHeaderReorder } from './useHeaderReorder'
+import type { MouseEvent } from 'react'
 import type { RowData } from '@tanstack/react-table'
 import type { TableInstance } from './tableInstance'
 
-export function TableView<TRow extends RowData>({ table, resetColumns }: { table: TableInstance<TRow>; resetColumns: () => void }) {
+export function TableView<TRow extends RowData>({
+  table,
+  resetColumns,
+  onRowClick,
+}: {
+  table: TableInstance<TRow>
+  resetColumns: () => void
+  onRowClick?: (row: TRow) => void
+}) {
   const { leafHeaders, pinnedHeaders, unpinnedHeaders, pinBoundaryDividerRef, dndContextProps } = useHeaderReorder(table)
 
   return (
@@ -48,7 +58,18 @@ export function TableView<TRow extends RowData>({ table, resetColumns }: { table
         <TableBody>
           {table.getRowModel().rows.map((row) => (
             // group: allows pinned cell's bg to respond to this row being hovered (see cell's group-hover class below).
-            <TableRow key={row.id} className="group">
+            <TableRow
+              key={row.id}
+              className={cn('group', onRowClick && 'cursor-pointer')}
+              onClick={
+                onRowClick &&
+                ((event: MouseEvent<HTMLTableRowElement>) => {
+                  // Don't trigger row click if the user clicked a link in the row.
+                  if ((event.target as HTMLElement).closest('a')) return
+                  onRowClick(row.original)
+                })
+              }
+            >
               {row.getVisibleCells().map((cell) => (
                 <TableCell
                   key={cell.id}
