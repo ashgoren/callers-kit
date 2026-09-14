@@ -113,17 +113,50 @@ describe('SupabaseConnector.uploadData', () => {
     expect(complete).toHaveBeenCalled()
   })
 
-  it('still throws on a PUT error that is not a unique violation', async () => {
+  it('skips a not-null violation (23502) on PATCH instead of retrying it forever', async () => {
+    // The actual production bug this guards against: clearing a NOT NULL
+    // column (e.g. a dance's title) locally succeeds in SQLite, but
+    // Postgres rejects the upload - and since that PATCH can never succeed
+    // no matter how many times it's retried, it must complete the
+    // transaction rather than block every later queued write behind it.
+    const complete = vi.fn(() => Promise.resolve())
+    const transaction = new CrudTransaction(
+      [makeCrudEntry({ op: UpdateType.PATCH, table: 'dances', id: '1', opData: { title: null } })],
+      complete,
+    )
+    eqMock.mockResolvedValueOnce({
+      error: { code: '23502', message: 'null value in column "title" violates not-null constraint' },
+    })
+
+    await connector.uploadData(makeDatabase(transaction))
+
+    expect(complete).toHaveBeenCalled()
+  })
+
+  it('skips a permanent-failure error on DELETE too', async () => {
+    const complete = vi.fn(() => Promise.resolve())
+    const transaction = new CrudTransaction(
+      [makeCrudEntry({ op: UpdateType.DELETE, table: 'dances', id: '1', opData: undefined })],
+      complete,
+    )
+    eqMock.mockResolvedValueOnce({ error: { code: '23503', message: 'foreign key violation' } })
+
+    await connector.uploadData(makeDatabase(transaction))
+
+    expect(complete).toHaveBeenCalled()
+  })
+
+  it('still throws on a PUT error outside the permanent-failure classes (22/23)', async () => {
     const complete = vi.fn(() => Promise.resolve())
     const transaction = new CrudTransaction(
       [makeCrudEntry({ op: UpdateType.PUT, table: 'dances', id: '1', opData: { title: 'X' } })],
       complete,
     )
-    upsertMock.mockResolvedValueOnce({ error: { code: '23503', message: 'foreign key violation' } })
+    upsertMock.mockResolvedValueOnce({ error: { code: '42501', message: 'insufficient privilege' } })
 
     await expect(connector.uploadData(makeDatabase(transaction))).rejects.toEqual({
-      code: '23503',
-      message: 'foreign key violation',
+      code: '42501',
+      message: 'insufficient privilege',
     })
     expect(complete).not.toHaveBeenCalled()
   })

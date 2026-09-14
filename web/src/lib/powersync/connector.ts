@@ -10,6 +10,21 @@ const JSON_COLUMNS: Record<string, readonly string[]> = {
   user_table_preferences: ['column_state'],
 }
 
+// Postgres SQLSTATE classes 22 (data exception) and 23 (integrity
+// constraint violation) - not-null, unique, check, foreign-key violations,
+// malformed values, etc. - mean the *data* itself is invalid for this
+// write. Retrying the exact same payload can never succeed for these, so
+// without treating them as permanent failures, PowerSync retries the same
+// doomed upload forever, blocking every later queued write behind it (a
+// stale queued edit from before a field had validation is exactly how this
+// arises in practice, not just a hypothetical). Anything outside these two
+// classes (network errors, auth failures, rate limiting, server errors) is
+// left to throw and retry normally, since those genuinely can succeed on a
+// later attempt.
+function isPermanentFailure(error: { code?: string }): boolean {
+  return error.code?.startsWith('22') === true || error.code?.startsWith('23') === true
+}
+
 function decodeJsonColumns(table: string, opData: Record<string, unknown>): Record<string, unknown> {
   const jsonColumns = JSON_COLUMNS[table]
   if (!jsonColumns) return opData
@@ -80,29 +95,20 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
       switch (op.op) {
         case UpdateType.PUT: {
           const { error } = await supabase.from(op.table).upsert({ id: op.id, ...opData })
-          // 23505 = Postgres unique_violation: a row with this natural key
-          // already exists. Nothing in this app's current write paths
-          // creates rows client-side without knowing whether one already
-          // exists, but a stale queued PUT from an earlier version of the
-          // client (or a genuine same-moment race between two devices) can
-          // still be sitting in a device's local upload queue. PowerSync
-          // retries a failed upload indefinitely, so throwing here would
-          // leave that device stuck retrying a write that can never
-          // succeed - hammering the same conflict forever - instead of
-          // recognizing the row it wanted to create already exists and
-          // moving on.
-          if (error && error.code !== '23505') throw error
-          if (error) console.warn(`uploadData: ignoring unique-violation PUT on ${op.table} (row already exists)`, error)
+          if (error && !isPermanentFailure(error)) throw error
+          if (error) console.warn(`uploadData: skipping permanently-failing PUT on ${op.table}`, error)
           break
         }
         case UpdateType.PATCH: {
           const { error } = await supabase.from(op.table).update(opData).eq('id', op.id)
-          if (error) throw error
+          if (error && !isPermanentFailure(error)) throw error
+          if (error) console.warn(`uploadData: skipping permanently-failing PATCH on ${op.table}`, error)
           break
         }
         case UpdateType.DELETE: {
           const { error } = await supabase.from(op.table).delete().eq('id', op.id)
-          if (error) throw error
+          if (error && !isPermanentFailure(error)) throw error
+          if (error) console.warn(`uploadData: skipping permanently-failing DELETE on ${op.table}`, error)
           break
         }
       }
