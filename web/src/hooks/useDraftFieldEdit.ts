@@ -1,24 +1,26 @@
 import { useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import type { z } from 'zod'
+import type { FieldEditState } from '@/components/fields/InlineEditableField'
 
-// Backs every inline-editable field on a detail page - draft/focus/
-// validation state only. The actual write is the caller's job (typically
-// `commitFieldEdit`), passed in as `onCommit` so this hook has no idea it's
-// talking to PowerSync at all.
-export function useFieldEdit<T>({ value, onCommit, schema }: {
+// For fields whose value is typed or otherwise adjusted freely, then
+// committed at one deferred point (blur or Enter) rather than as each
+// change happens - in this app, that's Dance's title and difficulty today,
+// and eventually rich text (notes, figures content) once that's built.
+//
+// Not "the" hook for editing any field - a select, say, has no separate
+// draft to hold at all (picking an option is itself an immediate commit)
+// and needs its own hook returning the same FieldEditState shape instead of
+// forcing that behavior through this one.
+//
+// The actual write is the caller's job (typically `commitFieldEdit`),
+// passed in as `onCommit` so this hook has no idea it's talking to
+// PowerSync at all.
+export function useDraftFieldEdit<T>({ value, onCommit, schema }: {
   value: T
   onCommit: (value: T) => void
   schema?: z.ZodType<T>
-}): {
-  draft: T
-  error: string | null
-  isFocused: boolean
-  onFocus: () => void
-  onChange: (value: T) => void
-  onBlur: () => void
-  onKeyDown: (e: KeyboardEvent) => void
-} {
+}): FieldEditState<T> {
   const [isFocused, setIsFocused] = useState(false)
   const [editingDraft, setEditingDraft] = useState<T>(value)
   const [error, setError] = useState<string | null>(null)
@@ -57,11 +59,6 @@ export function useFieldEdit<T>({ value, onCommit, schema }: {
 
   function commit() {
     if (editingDraft === liveValue) {
-      // Nothing actually changed (e.g. the field was clicked into and
-      // right back out) - skip validating and writing a value that was
-      // never touched. A no-op write is still a real write as far as
-      // whatever this is wired to is concerned (extra sync traffic, a
-      // bumped "last edited" timestamp, etc.), not a free no-op.
       setIsFocused(false)
       return
     }

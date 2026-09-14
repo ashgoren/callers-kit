@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
-import { useFieldEdit } from './useFieldEdit'
+import { useDraftFieldEdit } from './useDraftFieldEdit'
 import type { KeyboardEvent } from 'react'
 
 // A minimal stand-in for the bits of a real KeyboardEvent onKeyDown reads -
@@ -14,9 +14,9 @@ function makeKeyEvent(key: string) {
   return { event, preventDefault }
 }
 
-describe('useFieldEdit', () => {
+describe('useDraftFieldEdit', () => {
   it('starts with draft equal to the given value, unfocused, no error', () => {
-    const { result } = renderHook(() => useFieldEdit({ value: 'Chorus Jig', onCommit: vi.fn() }))
+    const { result } = renderHook(() => useDraftFieldEdit({ value: 'Chorus Jig', onCommit: vi.fn() }))
 
     expect(result.current.draft).toBe('Chorus Jig')
     expect(result.current.isFocused).toBe(false)
@@ -24,7 +24,7 @@ describe('useFieldEdit', () => {
   })
 
   it('tracks external value changes while unfocused', () => {
-    const { result, rerender } = renderHook(({ value }) => useFieldEdit({ value, onCommit: vi.fn() }), {
+    const { result, rerender } = renderHook(({ value }) => useDraftFieldEdit({ value, onCommit: vi.fn() }), {
       initialProps: { value: 'Chorus Jig' },
     })
 
@@ -38,7 +38,7 @@ describe('useFieldEdit', () => {
     // reactive query feeding `value` back in hasn't necessarily caught up
     // the instant commit() unfocuses - without the optimistic bridge, this
     // would flash the stale pre-edit value for a moment.
-    const { result, rerender } = renderHook(({ value }) => useFieldEdit({ value, onCommit: vi.fn() }), {
+    const { result, rerender } = renderHook(({ value }) => useDraftFieldEdit({ value, onCommit: vi.fn() }), {
       initialProps: { value: 'Chorus Jig Extended' },
     })
 
@@ -61,7 +61,7 @@ describe('useFieldEdit', () => {
   })
 
   it('stops tracking external value changes once focused, so an in-progress edit is never clobbered', () => {
-    const { result, rerender } = renderHook(({ value }) => useFieldEdit({ value, onCommit: vi.fn() }), {
+    const { result, rerender } = renderHook(({ value }) => useDraftFieldEdit({ value, onCommit: vi.fn() }), {
       initialProps: { value: 'Chorus Jig' },
     })
 
@@ -76,7 +76,7 @@ describe('useFieldEdit', () => {
 
   it('does not call onCommit on blur when the draft was never changed from the original value', () => {
     const onCommit = vi.fn()
-    const { result } = renderHook(() => useFieldEdit({ value: 'Chorus Jig', onCommit }))
+    const { result } = renderHook(() => useDraftFieldEdit({ value: 'Chorus Jig', onCommit }))
 
     act(() => result.current.onFocus())
     act(() => result.current.onBlur())
@@ -87,7 +87,7 @@ describe('useFieldEdit', () => {
 
   it('commits the draft on blur when there is no schema', () => {
     const onCommit = vi.fn()
-    const { result } = renderHook(() => useFieldEdit({ value: 'Chorus Jig', onCommit }))
+    const { result } = renderHook(() => useDraftFieldEdit({ value: 'Chorus Jig', onCommit }))
 
     act(() => result.current.onFocus())
     act(() => result.current.onChange('New Title'))
@@ -99,7 +99,7 @@ describe('useFieldEdit', () => {
 
   it('commits on Enter, the same as blur, and prevents the event\'s default behavior', () => {
     const onCommit = vi.fn()
-    const { result } = renderHook(() => useFieldEdit({ value: 'Chorus Jig', onCommit }))
+    const { result } = renderHook(() => useDraftFieldEdit({ value: 'Chorus Jig', onCommit }))
 
     act(() => result.current.onFocus())
     act(() => result.current.onChange('New Title'))
@@ -112,7 +112,7 @@ describe('useFieldEdit', () => {
 
   it('reverts to the last-committed value on Escape, without committing', () => {
     const onCommit = vi.fn()
-    const { result } = renderHook(() => useFieldEdit({ value: 'Chorus Jig', onCommit }))
+    const { result } = renderHook(() => useDraftFieldEdit({ value: 'Chorus Jig', onCommit }))
 
     act(() => result.current.onFocus())
     act(() => result.current.onChange('Abandoned edit'))
@@ -125,7 +125,7 @@ describe('useFieldEdit', () => {
 
   it('commits when the draft passes the given schema', () => {
     const onCommit = vi.fn()
-    const { result } = renderHook(() => useFieldEdit({ value: 3, onCommit, schema: z.number().int().min(0).max(10) }))
+    const { result } = renderHook(() => useDraftFieldEdit({ value: 3, onCommit, schema: z.number().int().min(0).max(10) }))
 
     act(() => result.current.onFocus())
     act(() => result.current.onChange(7))
@@ -139,7 +139,7 @@ describe('useFieldEdit', () => {
   it('shows an error and stays focused, without committing, when the draft fails the given schema', () => {
     const onCommit = vi.fn()
     const { result } = renderHook(() =>
-      useFieldEdit({ value: 3, onCommit, schema: z.number().int().min(0).max(10, { message: 'Must be 10 or less' }) }),
+      useDraftFieldEdit({ value: 3, onCommit, schema: z.number().int().min(0).max(10, { message: 'Must be 10 or less' }) }),
     )
 
     act(() => result.current.onFocus())
@@ -154,7 +154,7 @@ describe('useFieldEdit', () => {
 
   it('clears a previous error once a later commit attempt passes the schema', () => {
     const onCommit = vi.fn()
-    const { result } = renderHook(() => useFieldEdit({ value: 3, onCommit, schema: z.number().int().min(0).max(10) }))
+    const { result } = renderHook(() => useDraftFieldEdit({ value: 3, onCommit, schema: z.number().int().min(0).max(10) }))
 
     act(() => result.current.onFocus())
     act(() => result.current.onChange(99))

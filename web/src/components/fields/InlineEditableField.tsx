@@ -1,8 +1,22 @@
 import { cn } from 'cn'
 import { useId } from 'react'
-import { useFieldEdit } from '@/hooks/useFieldEdit'
 import type { ElementType, KeyboardEvent, ReactNode } from 'react'
-import type { z } from 'zod'
+
+// What this shell needs to drive the view/edit toggle - deliberately not
+// specific to any one commit model. useDraftFieldEdit (a local draft,
+// committed at blur/Enter) is one implementation; a field whose commit
+// model looks nothing like that - a select, where picking an option is
+// itself an immediate commit with no separate draft to hold - implements
+// its own hook returning this same shape instead.
+export interface FieldEditState<T> {
+  draft: T
+  error: string | null
+  isFocused: boolean
+  onFocus: () => void
+  onChange: (value: T) => void
+  onBlur: () => void
+  onKeyDown: (e: KeyboardEvent) => void
+}
 
 // The shared "click (or tap) to edit" shell every Editable* field builds on:
 // a read-mode display that swaps to a real input once activated, rather
@@ -11,18 +25,23 @@ import type { z } from 'zod'
 // say) - the swap to an actual input only happens once genuinely editing,
 // so there's nothing fighting the input's own preset styling to make it
 // look like something else.
+//
+// Takes a FieldEditState<T> directly (spread in by the caller) rather than
+// building one itself - this shell only cares about isFocused/draft/error
+// and the handlers, not which hook or commit model produced them.
 export function InlineEditableField<T>({
-  value,
-  onCommit,
-  schema,
+  draft,
+  error,
+  isFocused,
+  onFocus,
+  onChange,
+  onBlur,
+  onKeyDown,
   as: As = 'span',
   className,
   renderDisplay,
   renderInput,
-}: {
-  value: T
-  onCommit: (value: T) => void
-  schema?: z.ZodType<T>
+}: FieldEditState<T> & {
   as?: ElementType
   className?: string
   renderDisplay: (value: T) => ReactNode
@@ -35,7 +54,6 @@ export function InlineEditableField<T>({
     errorId: string
   }) => ReactNode
 }) {
-  const { draft, error, isFocused, onFocus, onChange, onBlur, onKeyDown } = useFieldEdit({ value, onCommit, schema })
   const errorId = useId()
 
   if (!isFocused) {

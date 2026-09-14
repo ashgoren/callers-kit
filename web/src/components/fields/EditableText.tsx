@@ -1,5 +1,6 @@
 import { cn } from 'cn'
 import { Input } from '@/components/ui/input'
+import { useDraftFieldEdit } from '@/hooks/useDraftFieldEdit'
 import { InlineEditableField } from './InlineEditableField'
 import type { ElementType } from 'react'
 import type { z } from 'zod'
@@ -33,11 +34,11 @@ export function EditableText({ value, onCommit, schema, placeholder, as, classNa
   as?: ElementType
   className?: string
 }) {
+  const fieldEdit = useDraftFieldEdit({ value, onCommit, schema })
+
   return (
     <InlineEditableField
-      value={value}
-      onCommit={onCommit}
-      schema={schema}
+      {...fieldEdit}
       as={as}
       className={className}
       renderDisplay={(v) => v || (placeholder && <span className="text-muted-foreground">{placeholder}</span>)}
