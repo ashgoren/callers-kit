@@ -9,7 +9,7 @@ export async function commitFieldEdit(
   table: string,
   id: string,
   column: string,
-  value: string | null,
+  value: string | number | null,
 ): Promise<void> {
   await db.execute(`UPDATE ${table} SET ${column} = ? WHERE id = ?`, [value, id])
 }

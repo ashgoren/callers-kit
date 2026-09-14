@@ -1,12 +1,20 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
+import { db } from '@/lib/powersync/database' // Actually loads the mock below, not the real module.
 import { DanceDetailPage } from './DanceDetailPage'
 
 const { useQueryMock } = vi.hoisted(() => ({ useQueryMock: vi.fn() }))
 
 vi.mock('@powersync/react', () => ({
   useQuery: useQueryMock,
+}))
+
+// Title is now editable, which pulls in commitFieldEdit - real PowerSync/
+// wa-sqlite code must never load during this test (see commitFieldEdit.test.ts).
+vi.mock('@/lib/powersync/database', () => ({
+  db: { execute: vi.fn() },
 }))
 
 // Needs a real route (not just a bare MemoryRouter) so useParams() resolves
@@ -55,6 +63,20 @@ describe('DanceDetailPage', () => {
     renderDanceDetailPage('missing')
 
     expect(screen.getByText('Dance not found.')).toBeInTheDocument()
+  })
+
+  it('commits an edited title through commitFieldEdit, by this dance\'s own id', async () => {
+    useQueryMock.mockReturnValue({ data: [makeDanceRow({ id: '42' })], isLoading: false })
+    renderDanceDetailPage('42')
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('heading', { name: 'Chorus Jig' }))
+    const input = screen.getByRole('textbox')
+    await user.clear(input)
+    await user.type(input, 'Money Musk')
+    await user.tab()
+
+    expect(db.execute).toHaveBeenCalledWith('UPDATE dances SET title = ? WHERE id = ?', ['Money Musk', '42'])
   })
 
   it('renders the dance title and choreographers in the page header, and every other field with its correct value', () => {

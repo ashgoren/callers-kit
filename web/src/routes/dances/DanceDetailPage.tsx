@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { useParams } from 'react-router'
+import { z } from 'zod'
 import { Button } from '@/components/ui/button'
+import { EditableText } from '@/components/fields/EditableText'
 import { PageSpinner } from '@/components/PageSpinner'
 import { FieldList } from '@/components/fields/FieldList'
+import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
 import { formatDate, mutedPlaceholder, sortAlphabetically } from '@/lib/format'
 import { formatFormation } from './DancesPage.columns'
 import { useDance } from './DanceDetailPage.data'
@@ -10,12 +13,8 @@ import { danceMetadataFields } from './DanceDetailPage.fields'
 import { FiguresList } from './FiguresList'
 import type { DanceWithJoins } from './DancesPage.columns'
 
-// Summarizes dance_type/formation/progression into one line above the
-// figures list - only this page needs it, so it isn't a shared helper the
-// way formatFormation is. Each part is left off when it's the common
-// default (Contra, any Duple Minor formation collapses to just its variant
-// name via formatFormation, Single progression) and shown otherwise, so the
-// label only calls out what's actually unusual about this dance.
+const titleSchema = z.string().min(1, 'Title is required')
+
 function makeFiguresLabel(dance: DanceWithJoins): string {
   return [
     dance.dance_type && dance.dance_type.toLowerCase() !== 'contra' ? dance.dance_type : null,
@@ -43,9 +42,20 @@ export function DanceDetailPage() {
       ) : (
         <>
           <div className="border-b pb-4">
-            <h1 className="text-4xl font-semibold">{dance.title || mutedPlaceholder}</h1>
+            <EditableText
+              value={dance.title ?? ''}
+              onCommit={(value) => void commitFieldEdit('dances', dance.id, 'title', value)}
+              schema={titleSchema}
+              placeholder="Untitled"
+              as="h1"
+              // Extra md:text-4xl needed for edit mode because Input has default text-sm className.
+              className="font-semibold text-4xl md:text-4xl"
+            />
             {dance.choreographers.length > 0 && (
-              <p className="mt-1 text-base text-muted-foreground">by {sortAlphabetically(dance.choreographers).join(', ')}</p>
+              // pl-3.25: lines up with the title's own text including invisible padding.
+              <p className="mt-1 pl-3.25 text-base text-muted-foreground">
+                by {sortAlphabetically(dance.choreographers).join(', ')}
+              </p>
             )}
           </div>
           <div className="mt-6 grid grid-cols-1 gap-8 sm:grid-cols-[3fr_1fr]">

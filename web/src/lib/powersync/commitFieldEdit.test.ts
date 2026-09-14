@@ -32,4 +32,13 @@ describe('commitFieldEdit', () => {
       '42',
     ])
   })
+
+  it('supports a numeric value, for an integer column like difficulty', async () => {
+    await commitFieldEdit('dances', '42', 'difficulty', 3)
+
+    expect(db.execute).toHaveBeenCalledWith('UPDATE dances SET difficulty = ? WHERE id = ?', [
+      3,
+      '42',
+    ])
+  })
 })
