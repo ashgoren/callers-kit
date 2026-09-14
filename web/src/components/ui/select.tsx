@@ -55,8 +55,18 @@ function SelectContent({
       >
         <SelectPrimitive.Popup
           data-slot="select-content"
+          // maxHeight as an inline style (not Tailwind's max-h-(--available-height)
+          // class) so a real, resolvable bound exists from the very first paint,
+          // with a 24rem fallback for the moment before floating-ui's positioning
+          // middleware sets --available-height. Without a real bound this early,
+          // the browser doesn't yet see this popup as a bounded scroll container -
+          // so scrolling the current selection into view on open (which Select
+          // does automatically for a value far down a long list, e.g. Formation)
+          // scrolls the whole page instead of just this popup, then snaps back
+          // once the real height lands a moment later.
+          style={{ maxHeight: 'min(24rem, var(--available-height, 24rem))' }}
           className={cn(
-            "z-50 max-h-(--available-height) w-(--anchor-width) min-w-32 origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 outline-none data-[side=bottom]:slide-in-from-top-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:overflow-hidden data-closed:fade-out-0 data-closed:zoom-out-95",
+            "z-50 w-(--anchor-width) min-w-32 origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 outline-none data-[side=bottom]:slide-in-from-top-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:overflow-hidden data-closed:fade-out-0 data-closed:zoom-out-95",
             className
           )}
           {...props}
