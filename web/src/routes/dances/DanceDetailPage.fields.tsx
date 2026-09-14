@@ -91,6 +91,7 @@ export const danceMetadataFields: DetailField<DanceWithJoins>[] = [
         value={value}
         onCommit={(v) => void commitFieldEdit('dances', row.id, 'difficulty', v)}
         schema={difficultySchema}
+        min={0}
       />
     ),
   }),

@@ -14,10 +14,12 @@ import type { z } from 'zod'
 // right here (unset), not coalesced away the way title's NOT NULL column
 // coalesces to an empty string - so both the display and the schema need to
 // account for it directly.
-export function EditableNumber({ value, onCommit, schema, as, className }: {
+export function EditableNumber({ value, onCommit, schema, min, max, as, className }: {
   value: number | null
   onCommit: (value: number | null) => void
   schema?: z.ZodType<number | null>
+  min?: number
+  max?: number
   as?: ElementType
   className?: string
 }) {
@@ -30,7 +32,7 @@ export function EditableNumber({ value, onCommit, schema, as, className }: {
       className={className}
       renderDisplay={(v) => (v === null ? mutedPlaceholder : v)}
       renderInput={({ draft, onChange, onBlur, onKeyDown, hasError, errorId, ref }) => (
-        <NumberField value={draft} onValueChange={onChange} className={cn('inline-block w-12', className)}>
+        <NumberField value={draft} onValueChange={onChange} min={min} max={max} className={cn('inline-block w-12', className)}>
           <NumberFieldInput
             ref={ref as RefObject<HTMLInputElement | null>}
             autoFocus
