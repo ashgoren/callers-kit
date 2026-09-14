@@ -49,8 +49,12 @@ function dancesProgramsSubquery(): string {
 // BY around this.
 export function danceSelectColumns(): string {
   return `
-    dances.id, dances.title, dances.difficulty, dances.dance_type, dances.formation, dances.progression, dances.notes,
+    dances.id, dances.title, dances.difficulty, dances.dance_type, dances.formation, dances.progression,
     dances.created_at, dances.updated_at,
+    -- The primary (first) version's notes stand in for "this dance's notes"
+    -- here - the table/card list has no way to show more than one version's
+    -- worth, and the full versions array is detail-page-only.
+    json_extract(dances.versions, '$[0].notes') AS notes,
     ${tagListSubquery('dances_choreographers', 'choreographers', 'choreographer_id')} AS choreographers,
     ${tagListSubquery('dances_key_moves', 'key_moves', 'key_move_id')} AS key_moves,
     ${tagListSubquery('dances_vibes', 'vibes', 'vibe_id')} AS vibes,
@@ -66,8 +70,10 @@ const DANCES_QUERY = `
 
 // The shape of a row as it comes back from either query above, before the
 // tag-list/program-history columns are JSON.parse'd into real arrays below.
-// Omits figures/calling_figures - danceSelectColumns() doesn't select them.
-export type DanceQueryRow = Omit<Dance, 'figures' | 'calling_figures'> & {
+// Omits versions (danceSelectColumns() extracts just its primary notes,
+// aliased back to "notes" - see above) and adds that extracted value back.
+export type DanceQueryRow = Omit<Dance, 'versions'> & {
+  notes: string | null
   choreographers: string
   key_moves: string
   vibes: string

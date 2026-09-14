@@ -21,8 +21,7 @@ describe('useDance', () => {
     expect(query).toContain('AS key_moves')
     expect(query).toContain('AS vibes')
     expect(query).toContain('AS programs')
-    expect(query).toContain('dances.figures')
-    expect(query).toContain('dances.calling_figures')
+    expect(query).toContain('dances.versions')
     expect(params).toEqual(['42'])
   })
 
@@ -53,8 +52,7 @@ describe('useDance', () => {
           key_moves: '["Hey"]',
           vibes: '["Playful"]',
           programs: '[{"id":"p1","date":"2026-01-01","location":"Grange Hall"}]',
-          figures: '[]',
-          calling_figures: null,
+          versions: '[]',
         },
       ],
       isLoading: false,
@@ -71,13 +69,12 @@ describe('useDance', () => {
         key_moves: ['Hey'],
         vibes: ['Playful'],
         programs: [{ id: 'p1', date: '2026-01-01', location: 'Grange Hall' }],
-        figures: [],
-        calling_figures: null,
+        versions: [],
       }),
     )
   })
 
-  it('parses figures as an array and calling_figures as an array only when present, otherwise null', () => {
+  it('parses versions into an array of {id, label, figures, notes} objects', () => {
     useQueryMock.mockReturnValue({
       data: [
         {
@@ -94,8 +91,15 @@ describe('useDance', () => {
           key_moves: '[]',
           vibes: '[]',
           programs: '[]',
-          figures: '[{"id":"f1","kind":"figure","phrase":"A1","beats":8,"description":"<p>Circle left</p>"}]',
-          calling_figures: '[{"id":"c1","kind":"note","text":"<p>Call it slow</p>"}]',
+          versions: JSON.stringify([
+            {
+              id: 'v1',
+              label: 'Choreography',
+              figures: [{ id: 'f1', kind: 'figure', phrase: 'A1', beats: 8, description: '<p>Circle left</p>' }],
+              notes: 'Danced at half speed.',
+            },
+            { id: 'v2', label: 'Calling', figures: [{ id: 'c1', kind: 'note', text: '<p>Call it slow</p>' }], notes: null },
+          ]),
         },
       ],
       isLoading: false,
@@ -103,9 +107,14 @@ describe('useDance', () => {
 
     const { result } = renderHook(() => useDance('1'))
 
-    expect(result.current.dance?.figures).toEqual([
-      { id: 'f1', kind: 'figure', phrase: 'A1', beats: 8, description: '<p>Circle left</p>' },
+    expect(result.current.dance?.versions).toEqual([
+      {
+        id: 'v1',
+        label: 'Choreography',
+        figures: [{ id: 'f1', kind: 'figure', phrase: 'A1', beats: 8, description: '<p>Circle left</p>' }],
+        notes: 'Danced at half speed.',
+      },
+      { id: 'v2', label: 'Calling', figures: [{ id: 'c1', kind: 'note', text: '<p>Call it slow</p>' }], notes: null },
     ])
-    expect(result.current.dance?.calling_figures).toEqual([{ id: 'c1', kind: 'note', text: '<p>Call it slow</p>' }])
   })
 })

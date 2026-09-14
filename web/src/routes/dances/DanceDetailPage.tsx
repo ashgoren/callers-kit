@@ -6,11 +6,9 @@ import { FieldList } from '@/components/fields/FieldList'
 import { formatDate, mutedPlaceholder, sortAlphabetically } from '@/lib/format'
 import { formatFormation } from './DancesPage.columns'
 import { useDance } from './DanceDetailPage.data'
-import { danceMetadataFields, danceWideFields } from './DanceDetailPage.fields'
+import { danceMetadataFields } from './DanceDetailPage.fields'
 import { FiguresList } from './FiguresList'
 import type { DanceWithJoins } from './DancesPage.columns'
-
-type FigureMode = 'choreography' | 'calling'
 
 // Summarizes dance_type/formation/progression into one line above the
 // figures list - only this page needs it, so it isn't a shared helper the
@@ -31,11 +29,12 @@ function makeFiguresLabel(dance: DanceWithJoins): string {
 export function DanceDetailPage() {
   const { id } = useParams()
   const { dance, isLoading } = useDance(id ?? '')
-  const [figureMode, setFigureMode] = useState<FigureMode>('choreography')
+  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
 
   if (isLoading) return <PageSpinner />
 
   const figuresLabel = dance ? makeFiguresLabel(dance) : ''
+  const selectedVersion = dance?.versions.find((version) => version.id === selectedVersionId) ?? dance?.versions[0]
 
   return (
     <div className="mx-auto max-w-4xl p-4">
@@ -51,36 +50,38 @@ export function DanceDetailPage() {
           </div>
           <div className="mt-6 grid grid-cols-1 gap-8 sm:grid-cols-[1fr_20rem]">
             <div>
-              <div className="space-y-4">
-                {dance.calling_figures !== null && (
-                  <div className="flex gap-1">
+              {dance.versions.length > 1 && (
+                <div className="mb-4 flex flex-wrap gap-1">
+                  {dance.versions.map((version) => (
                     <Button
-                      variant={figureMode === 'choreography' ? 'secondary' : 'ghost'}
+                      key={version.id}
+                      variant={selectedVersion?.id === version.id ? 'secondary' : 'ghost'}
                       size="sm"
-                      aria-pressed={figureMode === 'choreography'}
-                      onClick={() => setFigureMode('choreography')}
+                      aria-pressed={selectedVersion?.id === version.id}
+                      onClick={() => setSelectedVersionId(version.id)}
                     >
-                      Choreography
+                      {version.label}
                     </Button>
-                    <Button
-                      variant={figureMode === 'calling' ? 'secondary' : 'ghost'}
-                      size="sm"
-                      aria-pressed={figureMode === 'calling'}
-                      onClick={() => setFigureMode('calling')}
-                    >
-                      Calling
-                    </Button>
+                  ))}
+                </div>
+              )}
+              <div className="rounded-lg border p-4">
+                <div className="space-y-4">
+                  {figuresLabel && (
+                    <p className={figuresLabel === 'Improper' ? 'text-base text-muted-foreground' : 'text-base font-semibold'}>
+                      {figuresLabel}
+                    </p>
+                  )}
+                  <FiguresList items={selectedVersion?.figures ?? []} />
+                </div>
+                {selectedVersion && (
+                  <div className="mt-12">
+                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Notes</p>
+                    <div className="mt-1">
+                      {selectedVersion.notes ? <p className="whitespace-pre-wrap">{selectedVersion.notes}</p> : mutedPlaceholder}
+                    </div>
                   </div>
                 )}
-                {figuresLabel && (
-                  <p className={figuresLabel === 'Improper' ? 'text-base text-muted-foreground' : 'text-base font-semibold'}>
-                    {figuresLabel}
-                  </p>
-                )}
-                <FiguresList items={figureMode === 'calling' ? (dance.calling_figures ?? []) : dance.figures} />
-              </div>
-              <div className="mt-10">
-                <FieldList<DanceWithJoins> fields={danceWideFields} row={dance} className="space-y-4" />
               </div>
             </div>
             <div className="space-y-6">

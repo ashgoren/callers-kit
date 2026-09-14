@@ -37,16 +37,6 @@ function renderProgramHistory(value: DanceWithJoins['programs']): ReactNode {
 
 const defineField = makeDetailFieldDefiner<DanceWithJoins>()
 
-// The wide column's fields - just notes for now.
-export const danceWideFields: DetailField<DanceWithJoins>[] = [
-  defineField({
-    key: 'notes',
-    label: 'Notes',
-    // whitespace-pre-wrap: notes include literal newlines
-    render: (value) => (value ? <p className="whitespace-pre-wrap">{value}</p> : mutedPlaceholder),
-  }),
-]
-
 // The narrow column's fields.
 export const danceMetadataFields: DetailField<DanceWithJoins>[] = [
   defineField({ key: 'key_moves', label: 'Key Moves', render: renderChipList }),

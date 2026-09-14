@@ -19,6 +19,9 @@ function renderDanceDetailPage(id = '1') {
   return render(<RouterProvider router={router} />)
 }
 
+// A single-version dance by default - most tests don't care about the
+// version selector at all, so it stays hidden (versions.length > 1 is the
+// only thing that shows it).
 function makeDanceRow(overrides: Record<string, unknown> = {}) {
   return {
     id: '1',
@@ -27,15 +30,14 @@ function makeDanceRow(overrides: Record<string, unknown> = {}) {
     dance_type: 'Contra',
     formation: 'Duple Minor - Becket',
     progression: 'Single',
-    notes: 'A classic.',
+    notes: 'A classic.', // unused by the page now, kept only for row-shape realism
     created_at: '2026-01-15T12:00:00.000Z',
     updated_at: '2026-03-20T12:00:00.000Z',
     choreographers: '["Alice","Bob"]',
     key_moves: '["Hey"]',
     vibes: '["Playful"]',
     programs: '[{"id":"p1","date":"2026-01-01","location":"Grange Hall"}]',
-    figures: '[]',
-    calling_figures: null,
+    versions: JSON.stringify([{ id: 'v1', label: 'Choreography', figures: [], notes: 'A classic.' }]),
     ...overrides,
   }
 }
@@ -70,7 +72,7 @@ describe('DanceDetailPage', () => {
     // below for that label's omission rules).
     expect(screen.getAllByText('Becket')).toHaveLength(2)
     expect(screen.getByText('Single')).toBeInTheDocument()
-    expect(screen.getByText('A classic.')).toBeInTheDocument()
+    expect(screen.getByText('A classic.')).toBeInTheDocument() // the primary version's own notes
     expect(screen.getByText('1/1/26 @ Grange Hall')).toBeInTheDocument() // program history
     // created_at/updated_at ("Added"/"Edited") are covered by the dedicated test below.
   })
@@ -90,16 +92,23 @@ describe('DanceDetailPage', () => {
     expect(screen.queryByText(/^by /)).not.toBeInTheDocument()
   })
 
-  it('shows placeholders for empty tag lists, notes, and program history', () => {
+  it('shows placeholders for empty tag lists, figures, notes, and program history', () => {
     useQueryMock.mockReturnValue({
-      data: [makeDanceRow({ notes: null, choreographers: '[]', key_moves: '[]', vibes: '[]', programs: '[]' })],
+      data: [
+        makeDanceRow({
+          choreographers: '[]',
+          key_moves: '[]',
+          vibes: '[]',
+          programs: '[]',
+          versions: JSON.stringify([{ id: 'v1', label: 'Choreography', figures: [], notes: null }]),
+        }),
+      ],
       isLoading: false,
     })
     renderDanceDetailPage()
 
-    // Figures (default '[]' from makeDanceRow), Key Moves, Vibes, Notes,
-    // Programs - five placeholders (choreographers moved to the header,
-    // which shows nothing at all when empty).
+    // Figures, Key Moves, Vibes, Notes, Programs - five placeholders
+    // (choreographers moved to the header, which shows nothing at all when empty).
     expect(screen.getAllByText('—')).toHaveLength(5)
   })
 
@@ -107,11 +116,18 @@ describe('DanceDetailPage', () => {
     useQueryMock.mockReturnValue({
       data: [
         makeDanceRow({
-          figures: JSON.stringify([
-            { id: 'f1', kind: 'figure', phrase: 'A1', beats: 8, description: '<p>Circle left</p>' },
-            { id: 'f2', kind: 'figure', phrase: 'A1', beats: 8, description: '<p>Circle right</p>' },
-            { id: 'n1', kind: 'note', text: '<p>Watch the timing here</p>' },
-            { id: 'f3', kind: 'figure', phrase: 'A2', beats: 8, description: '<p>Swing</p>' },
+          versions: JSON.stringify([
+            {
+              id: 'v1',
+              label: 'Choreography',
+              notes: null,
+              figures: [
+                { id: 'f1', kind: 'figure', phrase: 'A1', beats: 8, description: '<p>Circle left</p>' },
+                { id: 'f2', kind: 'figure', phrase: 'A1', beats: 8, description: '<p>Circle right</p>' },
+                { id: 'n1', kind: 'note', text: '<p>Watch the timing here</p>' },
+                { id: 'f3', kind: 'figure', phrase: 'A2', beats: 8, description: '<p>Swing</p>' },
+              ],
+            },
           ]),
         }),
       ],
@@ -131,35 +147,51 @@ describe('DanceDetailPage', () => {
     expect(screen.getByText('Swing')).toBeInTheDocument()
   })
 
-  it('hides the Choreography/Calling toggle when a dance has no separate calling figures', () => {
-    useQueryMock.mockReturnValue({ data: [makeDanceRow({ calling_figures: null })], isLoading: false })
+  it('hides the version selector when a dance has only one version', () => {
+    useQueryMock.mockReturnValue({ data: [makeDanceRow()], isLoading: false })
     renderDanceDetailPage()
 
-    expect(screen.queryByRole('button', { name: 'Calling' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Choreography' })).not.toBeInTheDocument()
   })
 
-  it('toggles between Choreography and Calling, showing only one figures list at a time', async () => {
+  it('shows a version selector button per version, and switches which one\'s figures/notes are shown', async () => {
     const { default: userEvent } = await import('@testing-library/user-event')
     useQueryMock.mockReturnValue({
       data: [
         makeDanceRow({
-          figures: JSON.stringify([{ id: 'f1', kind: 'figure', phrase: 'A1', beats: null, description: '<p>Circle left</p>' }]),
-          calling_figures: JSON.stringify([{ id: 'c1', kind: 'note', text: '<p>Call it slow</p>' }]),
+          versions: JSON.stringify([
+            {
+              id: 'v1',
+              label: 'Choreography',
+              notes: 'Standard notes.',
+              figures: [{ id: 'f1', kind: 'figure', phrase: 'A1', beats: null, description: '<p>Circle left</p>' }],
+            },
+            {
+              id: 'v2',
+              label: 'Calling',
+              notes: 'Calling notes.',
+              figures: [{ id: 'c1', kind: 'note', text: '<p>Call it slow</p>' }],
+            },
+          ]),
         }),
       ],
       isLoading: false,
     })
     renderDanceDetailPage()
 
-    // Choreography is shown by default.
+    // The primary (first) version is shown by default.
     expect(screen.getByText('Circle left')).toBeInTheDocument()
+    expect(screen.getByText('Standard notes.')).toBeInTheDocument()
     expect(screen.queryByText('Call it slow')).not.toBeInTheDocument()
+    expect(screen.queryByText('Calling notes.')).not.toBeInTheDocument()
 
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: 'Calling' }))
 
     expect(screen.queryByText('Circle left')).not.toBeInTheDocument()
+    expect(screen.queryByText('Standard notes.')).not.toBeInTheDocument()
     expect(screen.getByText('Call it slow')).toBeInTheDocument()
+    expect(screen.getByText('Calling notes.')).toBeInTheDocument()
   })
 
   describe('figures label', () => {

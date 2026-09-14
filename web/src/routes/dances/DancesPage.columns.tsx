@@ -12,9 +12,11 @@ import type { Dance } from '@/lib/powersync/schema'
 import type { TableColumnState } from '@/lib/powersync/tablePreferences'
 import type { ProgramSummary } from '@/routes/programs/ProgramsPage.columns'
 
-// Omits figures/calling_figures - danceSelectColumns() (shared by the table
-// and card list) never selects them, since they're detail-page-only.
-export interface DanceWithJoins extends Omit<Dance, 'figures' | 'calling_figures'> {
+// Omits versions - danceSelectColumns() (shared by the table and card list)
+// only ever extracts its primary version's notes (aliased back to "notes"),
+// never the full versions array, which is detail-page-only.
+export interface DanceWithJoins extends Omit<Dance, 'versions'> {
+  notes: string | null
   choreographers: string[]
   key_moves: string[]
   vibes: string[]
