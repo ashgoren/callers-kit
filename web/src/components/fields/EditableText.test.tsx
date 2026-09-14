@@ -69,6 +69,25 @@ describe('EditableText', () => {
     expect(screen.getByRole('textbox')).toHaveAttribute('aria-describedby', screen.getByText('Title is required').id)
   })
 
+  it('keeps real focus on the textbox after a blur-triggered validation failure, so Escape reverts without clicking again', async () => {
+    const onCommit = vi.fn()
+    render(<EditableText value="Chorus Jig" onCommit={onCommit} schema={z.string().min(1, 'Title is required')} />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('Chorus Jig'))
+    const input = screen.getByRole('textbox')
+    await user.clear(input)
+    await user.tab()
+
+    expect(screen.getByText('Title is required')).toBeInTheDocument()
+    expect(input).toHaveFocus()
+
+    await user.keyboard('{Escape}')
+
+    expect(onCommit).not.toHaveBeenCalled()
+    expect(screen.getByText('Chorus Jig')).toBeInTheDocument()
+  })
+
   it('shows a muted placeholder in the plain-text display when the value is empty', () => {
     render(<EditableText value="" onCommit={vi.fn()} placeholder="Untitled" />)
 

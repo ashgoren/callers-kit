@@ -2,7 +2,7 @@ import { cn } from 'cn'
 import { Input } from '@/components/ui/input'
 import { useDraftFieldEdit } from '@/hooks/useDraftFieldEdit'
 import { InlineEditableField } from './InlineEditableField'
-import type { ElementType } from 'react'
+import type { ElementType, RefObject } from 'react'
 import type { z } from 'zod'
 
 // A plain text inline-editable field -
@@ -42,7 +42,7 @@ export function EditableText({ value, onCommit, schema, placeholder, as, classNa
       as={as}
       className={className}
       renderDisplay={(v) => v || (placeholder && <span className="text-muted-foreground">{placeholder}</span>)}
-      renderInput={({ draft, onChange, onBlur, onKeyDown, hasError, errorId }) => (
+      renderInput={({ draft, onChange, onBlur, onKeyDown, hasError, errorId, ref }) => (
         <div
           data-value={draft || placeholder || ''}
           className={cn(
@@ -51,6 +51,7 @@ export function EditableText({ value, onCommit, schema, placeholder, as, classNa
           )}
         >
           <Input
+            ref={ref as RefObject<HTMLInputElement | null>}
             autoFocus
             value={draft}
             onChange={(e) => onChange(e.target.value)}

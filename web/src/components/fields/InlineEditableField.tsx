@@ -1,6 +1,6 @@
 import { cn } from 'cn'
-import { useId } from 'react'
-import type { ElementType, KeyboardEvent, ReactNode } from 'react'
+import { useId, useLayoutEffect, useRef } from 'react'
+import type { ElementType, KeyboardEvent, ReactNode, RefObject } from 'react'
 
 // What this shell needs to drive the view/edit toggle - deliberately not
 // specific to any one commit model. useDraftFieldEdit (a local draft,
@@ -52,9 +52,22 @@ export function InlineEditableField<T>({
     onKeyDown: (e: KeyboardEvent) => void
     hasError: boolean
     errorId: string
+    ref: RefObject<HTMLElement | null>
   }) => ReactNode
 }) {
   const errorId = useId()
+  const inputRef = useRef<HTMLElement>(null)
+
+  // A blur-triggered commit that fails validation stays in edit mode
+  // (isFocused never flips back to false) so the error can show - but the
+  // browser has already moved real focus away by the time that blur event
+  // even reaches onBlur, useLayoutEffect pulls focus back before the
+  // browser paints, so there's no visible flicker of it being unfocused.
+  useLayoutEffect(() => {
+    if (isFocused && error !== null) {
+      inputRef.current?.focus()
+    }
+  }, [isFocused, error])
 
   if (!isFocused) {
     return (
@@ -85,7 +98,7 @@ export function InlineEditableField<T>({
 
   return (
     <div>
-      {renderInput({ draft, onChange, onBlur, onKeyDown, hasError: error !== null, errorId })}
+      {renderInput({ draft, onChange, onBlur, onKeyDown, hasError: error !== null, errorId, ref: inputRef })}
       {error !== null && (
         <p id={errorId} className="mt-1 text-xs text-destructive">
           {error}
