@@ -6,7 +6,10 @@ import type { ReactNode } from 'react'
 export interface DetailField<TRow, K extends keyof TRow = keyof TRow> {
   key: K
   label: string
-  render: (value: TRow[K]) => ReactNode
+  // row is passed alongside value so a field needing to write back (e.g. an
+  // inline-editable one committing through the row's own id) doesn't have
+  // to be defined as a closure over a specific row instance.
+  render: (value: TRow[K], row: TRow) => ReactNode
 }
 
 // Mirrors makeFieldDefiner's role: lets TypeScript infer K from a single
