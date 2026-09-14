@@ -1,5 +1,5 @@
 import { CircleUserRound } from 'lucide-react'
-import { Link, NavLink, Outlet } from 'react-router'
+import { NavLink, Outlet } from 'react-router'
 import { useStatus } from '@powersync/react'
 import { useEffect, useState } from 'react'
 import {
@@ -71,9 +71,7 @@ export function AppShell() {
   return (
     <div className="flex min-h-svh flex-col">
       <header className="grid grid-cols-3 items-center border-b px-4 py-2">
-        <Link to="/" className="text-sm font-semibold">
-          Caller's Kit
-        </Link>
+        <span className="text-sm font-light">Caller's Kit</span>
 
         <nav className="flex items-center justify-center gap-3">
           {NAV_LINKS.map((link) => (
