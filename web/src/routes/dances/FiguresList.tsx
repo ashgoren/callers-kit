@@ -19,13 +19,12 @@ function withPhraseHeadings(items: FigureItem[]): { item: FigureItem; showPhrase
   })
 }
 
-// Renders one figures array (either a dance's own choreography or its
-// separate calling script - same shape either way) as a phrase/beats/
-// description grid - each figure keeps its own beats count even when its
-// phrase repeats from the row above, only the phrase label itself is
-// suppressed on repeat. All cells are direct grid children (not nested per-
-// row wrappers) so a single grid-template-columns applies down the whole
-// list rather than resetting per row.
+// Renders one dance version's figures list as a phrase/beats/description
+// grid - each figure keeps its own beats count even when its phrase repeats
+// from the row above, only the phrase label itself is suppressed on repeat.
+// All cells are direct grid children (not nested per-row wrappers) so a
+// single grid-template-columns applies down the whole list rather than
+// resetting per row.
 export function FiguresList({ items }: { items: FigureItem[] }) {
   if (items.length === 0) return mutedPlaceholder
 

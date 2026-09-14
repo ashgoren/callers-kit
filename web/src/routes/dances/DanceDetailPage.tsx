@@ -37,7 +37,7 @@ export function DanceDetailPage() {
   const selectedVersion = dance?.versions.find((version) => version.id === selectedVersionId) ?? dance?.versions[0]
 
   return (
-    <div className="mx-auto max-w-4xl p-4">
+    <div className="mx-auto max-w-6xl p-4">
       {!dance ? (
         <p className="text-sm text-muted-foreground">Dance not found.</p>
       ) : (
@@ -48,7 +48,7 @@ export function DanceDetailPage() {
               <p className="mt-1 text-base text-muted-foreground">by {sortAlphabetically(dance.choreographers).join(', ')}</p>
             )}
           </div>
-          <div className="mt-6 grid grid-cols-1 gap-8 sm:grid-cols-[1fr_20rem]">
+          <div className="mt-6 grid grid-cols-1 gap-8 sm:grid-cols-[3fr_1fr]">
             <div>
               {dance.versions.length > 1 && (
                 <div className="mb-4 flex flex-wrap gap-1">
