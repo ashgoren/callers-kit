@@ -48,11 +48,11 @@ export function DanceDetailPage() {
               schema={titleSchema}
               placeholder="Untitled"
               as="h1"
-              // Extra md:text-4xl needed for edit mode because Input has default text-sm className.
               className="font-semibold text-4xl md:text-4xl"
+              // Extra md:text-4xl needed for edit mode since Input has default text-sm className.
             />
             {dance.choreographers.length > 0 && (
-              // pl-3.25: lines up with the title's own text including invisible padding.
+              // pl-3.25: lines up with the title + its padding + its invisible border.
               <p className="mt-1 pl-3.25 text-base text-muted-foreground">
                 by {sortAlphabetically(dance.choreographers).join(', ')}
               </p>
