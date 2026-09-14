@@ -35,13 +35,19 @@ export function useDraftFieldEdit<T>({ value, onCommit, schema }: {
   // without this, unfocusing right after commit would show the still-stale
   // `value` prop for a moment, flashing the pre-edit content before the
   // query catches up and corrects it.
-  const [optimisticValue, setOptimisticValue] = useState<T | null>(null)
+  //
+  // Wrapped in an object rather than stored as a bare `T | null` - for a
+  // field where `null` is itself a legitimate committed value (e.g.
+  // difficulty's "unset"), a bare null couldn't be told apart from "no
+  // optimistic value pending", and would fall straight through to the
+  // stale `value` prop below.
+  const [optimisticValue, setOptimisticValue] = useState<{ value: T } | null>(null)
 
   // Adjusting state during render (React's supported pattern for this,
   // not an effect): once the external value matches what was optimistically
   // expected, there's no more gap left to paper over. Safe from an infinite
   // loop - clearing it makes this condition false on the very next render.
-  if (optimisticValue !== null && value === optimisticValue) {
+  if (optimisticValue !== null && value === optimisticValue.value) {
     setOptimisticValue(null)
   }
 
@@ -50,7 +56,7 @@ export function useDraftFieldEdit<T>({ value, onCommit, schema }: {
   // the same "value prop is the draft" behavior as before - an external
   // update (another device, a sync pull) still always gets through once
   // there's no pending optimistic value to prefer.
-  const liveValue = optimisticValue ?? value
+  const liveValue = optimisticValue !== null ? optimisticValue.value : value
   const draft = isFocused ? editingDraft : liveValue
 
   function onFocus() {
@@ -93,7 +99,7 @@ export function useDraftFieldEdit<T>({ value, onCommit, schema }: {
     setError(null)
     setLastRejectedDraft(null)
     setIsFocused(false)
-    setOptimisticValue(editingDraft)
+    setOptimisticValue({ value: editingDraft })
     onCommit(editingDraft)
   }
 

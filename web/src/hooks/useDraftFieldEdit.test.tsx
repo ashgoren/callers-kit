@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import { useDraftFieldEdit } from './useDraftFieldEdit'
 import type { KeyboardEvent } from 'react'
+import type { FieldEditState } from '@/components/fields/InlineEditableField'
 
 // A minimal stand-in for the bits of a real KeyboardEvent onKeyDown reads -
 // just enough to drive the hook, not a full synthetic event. preventDefault
@@ -58,6 +59,28 @@ describe('useDraftFieldEdit', () => {
     // Once the prop actually catches up, nothing changes visibly.
     rerender({ value: 'Chorus Jig' })
     expect(result.current.draft).toBe('Chorus Jig')
+  })
+
+  it('shows a just-committed null immediately, for a field where null is itself a legitimate value', () => {
+    // A bare `T | null` optimistic-value slot couldn't tell "committed to
+    // null" apart from "nothing pending" for a field like this one - it
+    // would fall straight through to the still-stale `value` prop instead.
+    const { result, rerender } = renderHook<FieldEditState<number | null>, { value: number | null }>(
+      ({ value }) => useDraftFieldEdit({ value, onCommit: vi.fn() }),
+      { initialProps: { value: 3 } },
+    )
+
+    act(() => result.current.onFocus())
+    act(() => result.current.onChange(null))
+    act(() => result.current.onBlur())
+
+    expect(result.current.draft).toBeNull()
+
+    rerender({ value: 3 })
+    expect(result.current.draft).toBeNull()
+
+    rerender({ value: null })
+    expect(result.current.draft).toBeNull()
   })
 
   it('stops tracking external value changes once focused, so an in-progress edit is never clobbered', () => {
