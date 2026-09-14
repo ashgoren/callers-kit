@@ -152,6 +152,48 @@ describe('useDraftFieldEdit', () => {
     expect(result.current.draft).toBe(99)
   })
 
+  it('reverts, rather than re-showing the error, on a second commit attempt with the same still-invalid draft', () => {
+    const onCommit = vi.fn()
+    const { result } = renderHook(() =>
+      useDraftFieldEdit({ value: 'Chorus Jig', onCommit, schema: z.string().min(1, 'Title is required') }),
+    )
+
+    act(() => result.current.onFocus())
+    act(() => result.current.onChange(''))
+    act(() => result.current.onBlur())
+    expect(result.current.error).toBe('Title is required')
+    expect(result.current.isFocused).toBe(true)
+
+    // Blurring again without having changed the (still invalid) draft -
+    // simulates a touch device with no Escape key to fall back on.
+    act(() => result.current.onBlur())
+
+    expect(onCommit).not.toHaveBeenCalled()
+    expect(result.current.error).toBeNull()
+    expect(result.current.isFocused).toBe(false)
+    expect(result.current.draft).toBe('Chorus Jig')
+  })
+
+  it('shows the new error, rather than reverting, when a second failed attempt has a different invalid draft', () => {
+    const onCommit = vi.fn()
+    const { result } = renderHook(() =>
+      useDraftFieldEdit({ value: 3, onCommit, schema: z.number().int().min(0).max(10) }),
+    )
+
+    act(() => result.current.onFocus())
+    act(() => result.current.onChange(99))
+    act(() => result.current.onBlur())
+    expect(result.current.error).not.toBeNull()
+
+    act(() => result.current.onChange(-5))
+    act(() => result.current.onBlur())
+
+    expect(onCommit).not.toHaveBeenCalled()
+    expect(result.current.error).not.toBeNull()
+    expect(result.current.isFocused).toBe(true)
+    expect(result.current.draft).toBe(-5)
+  })
+
   it('clears a previous error once a later commit attempt passes the schema', () => {
     const onCommit = vi.fn()
     const { result } = renderHook(() => useDraftFieldEdit({ value: 3, onCommit, schema: z.number().int().min(0).max(10) }))

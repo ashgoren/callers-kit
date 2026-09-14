@@ -24,6 +24,11 @@ export function useDraftFieldEdit<T>({ value, onCommit, schema }: {
   const [isFocused, setIsFocused] = useState(false)
   const [editingDraft, setEditingDraft] = useState<T>(value)
   const [error, setError] = useState<string | null>(null)
+  // The draft that produced the current error, if any. Lets a second
+  // commit attempt (blur or Enter) with that exact same still-invalid draft
+  // be told apart from a fresh one - see the schema-failure branch of
+  // commit() below.
+  const [lastRejectedDraft, setLastRejectedDraft] = useState<T | null>(null)
   // Set right when a commit succeeds; cleared once the live `value` prop
   // actually catches up to it. Bridges the real gap between committing (an
   // async write) and the reactive query that feeds `value` noticing it -
@@ -57,6 +62,13 @@ export function useDraftFieldEdit<T>({ value, onCommit, schema }: {
     setEditingDraft(next)
   }
 
+  function revert() {
+    setEditingDraft(liveValue)
+    setError(null)
+    setLastRejectedDraft(null)
+    setIsFocused(false)
+  }
+
   function commit() {
     if (editingDraft === liveValue) {
       setIsFocused(false)
@@ -65,11 +77,21 @@ export function useDraftFieldEdit<T>({ value, onCommit, schema }: {
     if (schema) {
       const result = schema.safeParse(editingDraft)
       if (!result.success) {
+        // A second attempt to leave with this exact same invalid draft -
+        // rather than re-showing the same error and trapping focus back in
+        // the field again on a device without an escape key, treat leaving
+        // twice without changing anything as intent to give up on the edit.
+        if (error !== null && editingDraft === lastRejectedDraft) {
+          revert()
+          return
+        }
         setError(result.error.issues[0]?.message ?? 'Invalid value')
+        setLastRejectedDraft(editingDraft)
         return
       }
     }
     setError(null)
+    setLastRejectedDraft(null)
     setIsFocused(false)
     setOptimisticValue(editingDraft)
     onCommit(editingDraft)
@@ -85,9 +107,7 @@ export function useDraftFieldEdit<T>({ value, onCommit, schema }: {
       commit()
     } else if (e.key === 'Escape') {
       e.preventDefault()
-      setEditingDraft(liveValue)
-      setError(null)
-      setIsFocused(false)
+      revert()
     }
   }
 
