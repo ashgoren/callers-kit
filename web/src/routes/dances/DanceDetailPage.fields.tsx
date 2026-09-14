@@ -2,6 +2,7 @@ import { Link } from 'react-router'
 import { z } from 'zod'
 import { formatFormation } from './DancesPage.columns'
 import { EditableNumber } from '@/components/fields/EditableNumber'
+import { EditableSelect } from '@/components/fields/EditableSelect'
 import { makeDetailFieldDefiner } from '@/components/fields/DetailField'
 import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
 import { mutedPlaceholder, sortAlphabetically } from '@/lib/format'
@@ -12,6 +13,41 @@ import type { DanceWithJoins } from './DancesPage.columns'
 
 // Non-negative integer so difficulty stays sortable; null (unset) is also allowed.
 const difficultySchema = z.number().int().min(0).nullable()
+
+// Fixed, admin-managed vocabularies - mirrors the public.dance_type/
+// formation/progression enums in the Supabase schema exactly.
+const DANCE_TYPES = ['Contra', 'Square', 'ECD', 'Mixer', 'Other']
+const FORMATIONS = [
+  'Duple Minor - Improper',
+  'Duple Minor - Becket',
+  'Duple Minor - Becket CCW',
+  'Duple Minor',
+  'Duple Minor - Proper',
+  'Duple Minor - Indecent',
+  'Duple Minor - Reverse progression improper',
+  'Duple Minor - Progressed improper',
+  'Duple Minor - Cross',
+  'Duple Minor - Other',
+  'Triple Minor',
+  'Three Facing Three',
+  'Four Facing Four',
+  'Solo',
+  'Singlet',
+  'Doublet',
+  'Triplet',
+  'Quadruplet',
+  'Longways: 5+ couples',
+  'Other Longways',
+  'Circle Mixer',
+  'Circle of Threesomes',
+  'Sicilian Circle',
+  'Scatter Mixer',
+  'Grid Contra',
+  'Grid Square',
+  'Zia',
+  'other',
+]
+const PROGRESSIONS = ['Single', 'Double', 'Triple', 'None', 'Other']
 
 function renderChipList(values: string[]): ReactNode {
   if (values.length === 0) return mutedPlaceholder
@@ -58,12 +94,39 @@ export const danceMetadataFields: DetailField<DanceWithJoins>[] = [
       />
     ),
   }),
-  defineField({ key: 'dance_type', label: 'Dance Type', render: (value) => (value === null ? mutedPlaceholder : value) }),
+  defineField({
+    key: 'dance_type',
+    label: 'Dance Type',
+    render: (value, row) => (
+      <EditableSelect
+        value={value}
+        onCommit={(v) => void commitFieldEdit('dances', row.id, 'dance_type', v)}
+        options={DANCE_TYPES}
+      />
+    ),
+  }),
   defineField({
     key: 'formation',
     label: 'Formation',
-    render: (value) => (value === null ? mutedPlaceholder : formatFormation(value)),
+    render: (value, row) => (
+      <EditableSelect
+        value={value}
+        onCommit={(v) => void commitFieldEdit('dances', row.id, 'formation', v)}
+        options={FORMATIONS}
+        formatLabel={formatFormation}
+      />
+    ),
   }),
-  defineField({ key: 'progression', label: 'Progression', render: (value) => (value === null ? mutedPlaceholder : value) }),
+  defineField({
+    key: 'progression',
+    label: 'Progression',
+    render: (value, row) => (
+      <EditableSelect
+        value={value}
+        onCommit={(v) => void commitFieldEdit('dances', row.id, 'progression', v)}
+        options={PROGRESSIONS}
+      />
+    ),
+  }),
   defineField({ key: 'programs', label: 'Programs', render: renderProgramHistory }),
 ]
