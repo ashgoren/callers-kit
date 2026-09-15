@@ -1,12 +1,21 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
+import { db } from '@/lib/powersync/database' // Actually loads the mock below, not the real module.
 import { ProgramDetailPage } from './ProgramDetailPage'
 
 const { useQueryMock } = vi.hoisted(() => ({ useQueryMock: vi.fn() }))
 
 vi.mock('@powersync/react', () => ({
   useQuery: useQueryMock,
+}))
+
+// The date header is now editable, which pulls in commitFieldEdit - real
+// PowerSync/wa-sqlite code must never load during this test (see
+// commitFieldEdit.test.ts).
+vi.mock('@/lib/powersync/database', () => ({
+  db: { execute: vi.fn() },
 }))
 
 // Needs a real route (not just a bare MemoryRouter) so useParams() resolves
@@ -58,6 +67,20 @@ describe('ProgramDetailPage', () => {
     // created_at/updated_at are dropped entirely now - never rendered.
     expect(screen.queryByText('1/15/26')).not.toBeInTheDocument()
     expect(screen.queryByText('3/20/26')).not.toBeInTheDocument()
+  })
+
+  it('commits an edited date through commitFieldEdit, by this program\'s own id', async () => {
+    useQueryMock.mockReturnValue({ data: [makeProgramRow({ id: '42' })], isLoading: false })
+    renderProgramDetailPage('42')
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('heading', { name: '9/13/26' }))
+    const input = screen.getByDisplayValue('2026-09-13')
+    // fireEvent.change, not userEvent.type - see EditableDate.test.tsx.
+    fireEvent.change(input, { target: { value: '2026-10-20' } })
+    await user.tab()
+
+    expect(db.execute).toHaveBeenCalledWith('UPDATE programs SET date = ? WHERE id = ?', ['2026-10-20', '42'])
   })
 
   it('shows "No date" in the header when date is missing, and omits the location line entirely when it is missing', () => {
