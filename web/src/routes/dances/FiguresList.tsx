@@ -1,6 +1,7 @@
 import { Fragment } from 'react'
 import { isFigureEntry } from '@/lib/figures'
 import { mutedPlaceholder } from '@/lib/format'
+import { sanitizeHtml } from '@/lib/sanitizeHtml'
 import type { FigureItem } from '@/lib/figures'
 
 // Pairs each item with whether its phrase heading should show - a figure's
@@ -33,7 +34,11 @@ export function FiguresList({ items }: { items: FigureItem[] }) {
       {withPhraseHeadings(items).map(({ item, showPhraseHeading }) => {
         if (!isFigureEntry(item)) {
           return (
-            <div key={item.id} className="col-span-3 pt-3 text-muted-foreground italic" dangerouslySetInnerHTML={{ __html: item.text }} />
+            <div
+              key={item.id}
+              className="col-span-3 pt-3 text-muted-foreground italic"
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.text) }}
+            />
           )
         }
 
@@ -45,7 +50,10 @@ export function FiguresList({ items }: { items: FigureItem[] }) {
             <div className={`text-muted-foreground ${showPhraseHeading ? 'pt-3' : ''}`}>
               {item.beats !== null ? `(${item.beats})` : null}
             </div>
-            <div className={showPhraseHeading ? 'pt-3' : ''} dangerouslySetInnerHTML={{ __html: item.description }} />
+            <div
+              className={showPhraseHeading ? 'pt-3' : ''}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.description) }}
+            />
           </Fragment>
         )
       })}
