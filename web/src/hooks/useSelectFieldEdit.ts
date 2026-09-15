@@ -15,24 +15,20 @@ export function useSelectFieldEdit<T>({ value, onCommit }: {
   onCommit: (value: T) => void
 }): FieldEditState<T> {
   const [isFocused, setIsFocused] = useState(false)
-  // Wrapped in an object, not stored as a bare `T | null`, so a field where
-  // `null` is itself a legitimate committed value (e.g. an unset dance_type)
-  // isn't mistaken for "no optimistic value pending" - see the identical
-  // concern in useDraftFieldEdit.
-  const [optimisticValue, setOptimisticValue] = useState<{ value: T } | null>(null)
+  const [optimisticValue, setOptimisticValue] = useState<T | undefined>(undefined)
 
-  if (optimisticValue !== null && value === optimisticValue.value) {
-    setOptimisticValue(null)
+  if (optimisticValue !== undefined && value === optimisticValue) {
+    setOptimisticValue(undefined)
   }
 
-  const liveValue = optimisticValue !== null ? optimisticValue.value : value
+  const liveValue = optimisticValue !== undefined ? optimisticValue : value
 
   function onFocus() {
     setIsFocused(true)
   }
 
   function onChange(next: T) {
-    setOptimisticValue({ value: next })
+    setOptimisticValue(next)
     onCommit(next)
   }
 
