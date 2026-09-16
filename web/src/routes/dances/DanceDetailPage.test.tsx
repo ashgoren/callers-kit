@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
@@ -79,6 +79,42 @@ describe('DanceDetailPage', () => {
     expect(db.execute).toHaveBeenCalledWith('UPDATE dances SET title = ? WHERE id = ?', ['Money Musk', '42'])
   })
 
+  it('commits edited version notes through commitVersionNotes, writing the whole versions array back with only that version\'s notes changed', async () => {
+    // EditableRichText's own test suite covers the Save/Cancel/Discard
+    // interaction model and sanitization in detail, and commitVersionNotes
+    // has its own dedicated tests for the read-modify-write shape - this
+    // only needs to confirm the two are actually wired together here, by
+    // this dance's own id and versions array.
+    useQueryMock.mockReturnValue({
+      data: [
+        makeDanceRow({
+          id: '42',
+          versions: JSON.stringify([
+            { id: 'v1', label: 'Choreography', figures: [], notes: null },
+            { id: 'v2', label: 'Calling', figures: [], notes: 'Calling notes.' },
+          ]),
+        }),
+      ],
+      isLoading: false,
+    })
+    renderDanceDetailPage('42')
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('No notes yet'))
+    const editor = document.querySelector('[contenteditable="true"]')
+    await waitFor(() => expect(editor).toBeInTheDocument())
+    await user.type(editor!, 'Watch the timing.')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(db.execute).toHaveBeenCalledWith('UPDATE dances SET versions = ? WHERE id = ?', [
+      JSON.stringify([
+        { id: 'v1', label: 'Choreography', figures: [], notes: '<p>Watch the timing.</p>' },
+        { id: 'v2', label: 'Calling', figures: [], notes: 'Calling notes.' },
+      ]),
+      '42',
+    ])
+  })
+
   it('renders the dance title and choreographers in the page header, and every other field with its correct value', () => {
     useQueryMock.mockReturnValue({ data: [makeDanceRow()], isLoading: false })
     renderDanceDetailPage()
@@ -129,9 +165,12 @@ describe('DanceDetailPage', () => {
     })
     renderDanceDetailPage()
 
-    // Figures, Key Moves, Vibes, Notes, Programs - five placeholders
-    // (choreographers moved to the header, which shows nothing at all when empty).
-    expect(screen.getAllByText('—')).toHaveLength(5)
+    // Figures, Key Moves, Vibes, Programs - four "—" placeholders
+    // (choreographers moved to the header, which shows nothing at all when
+    // empty). Notes is now editable and shows EditableRichText's own
+    // descriptive placeholder instead of the generic "—".
+    expect(screen.getAllByText('—')).toHaveLength(4)
+    expect(screen.getByText('No notes yet')).toBeInTheDocument()
   })
 
   it('renders figures grouped by phrase, with a beats count and interspersed notes', () => {

@@ -2,11 +2,13 @@ import { useState } from 'react'
 import { useParams } from 'react-router'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
+import { EditableRichText } from '@/components/fields/EditableRichText'
 import { EditableText } from '@/components/fields/EditableText'
 import { PageSpinner } from '@/components/PageSpinner'
 import { FieldList } from '@/components/fields/FieldList'
 import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
-import { formatDate, mutedPlaceholder, sortAlphabetically } from '@/lib/format'
+import { formatDate, sortAlphabetically } from '@/lib/format'
+import { commitVersionNotes } from './commitVersionNotes'
 import { formatFormation } from './DancesPage.columns'
 import { useDance } from './DanceDetailPage.data'
 import { danceMetadataFields } from './DanceDetailPage.fields'
@@ -88,7 +90,10 @@ export function DanceDetailPage() {
                   <div className="mt-12">
                     <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Notes</p>
                     <div className="mt-1">
-                      {selectedVersion.notes ? <p className="whitespace-pre-wrap">{selectedVersion.notes}</p> : mutedPlaceholder}
+                      <EditableRichText
+                        value={selectedVersion.notes}
+                        onCommit={(value) => void commitVersionNotes(dance.id, dance.versions, selectedVersion.id, value)}
+                      />
                     </div>
                   </div>
                 )}
