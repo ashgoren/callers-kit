@@ -22,7 +22,7 @@ import type { FieldEditState } from '@/components/fields/InlineEditableField'
 export function useSaveCancelFieldEdit<T>({ value, onCommit }: {
   value: T
   onCommit: (value: T) => void
-}): FieldEditState<T> & { attemptCancel: (current: T) => void } {
+}): FieldEditState<T> & { attemptCancel: (current: T) => void; saveWithoutClosing: (next: T) => void } {
   const [isFocused, setIsFocused] = useState(false)
   // `undefined`, not a bare `T | null`, as the "nothing pending" sentinel -
   // see the identical concern (and the same fix) in useDraftFieldEdit.
@@ -51,6 +51,18 @@ export function useSaveCancelFieldEdit<T>({ value, onCommit }: {
   // Deliberately does nothing.
   function onBlur() {}
 
+  // A manual mid-session checkpoint (wired to Cmd/Ctrl-S) - commits like
+  // onChange, but doesn't close the field: isFocused stays true, so the
+  // still-mounted Tiptap editor and the user's cursor/selection are
+  // completely undisturbed. A later Cancel/Escape then compares against
+  // this checkpoint (not the field's original value).
+  function saveWithoutClosing(next: T) {
+    setDiscardWarning(null)
+    if (next === liveValue) return
+    setOptimisticValue(next)
+    onCommit(next)
+  }
+
   function attemptCancel(current: T) {
     if (current === liveValue) {
       setIsFocused(false)
@@ -72,5 +84,5 @@ export function useSaveCancelFieldEdit<T>({ value, onCommit }: {
     if (discardWarning !== null) setDiscardWarning(null)
   }
 
-  return { draft: liveValue, error: discardWarning, isFocused, onFocus, onChange, onBlur, onKeyDown, attemptCancel }
+  return { draft: liveValue, error: discardWarning, isFocused, onFocus, onChange, onBlur, onKeyDown, attemptCancel, saveWithoutClosing }
 }

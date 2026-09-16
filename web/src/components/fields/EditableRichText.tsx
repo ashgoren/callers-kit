@@ -131,6 +131,7 @@ export function EditableRichText({ value, onCommit, placeholder = 'No notes yet'
         <RichTextEditArea
           draft={draft}
           onSave={fieldEdit.onChange}
+          onSaveWithoutClosing={fieldEdit.saveWithoutClosing}
           onCancel={fieldEdit.attemptCancel}
           onKeyDown={onKeyDown}
           hasError={hasError}
@@ -146,6 +147,7 @@ export function EditableRichText({ value, onCommit, placeholder = 'No notes yet'
 function RichTextEditArea({
   draft,
   onSave,
+  onSaveWithoutClosing,
   onCancel,
   onKeyDown,
   hasError,
@@ -155,6 +157,7 @@ function RichTextEditArea({
 }: {
   draft: string | null
   onSave: (value: string | null) => void
+  onSaveWithoutClosing: (value: string | null) => void
   onCancel: (current: string | null) => void
   onKeyDown: (e: KeyboardEvent) => void
   hasError: boolean
@@ -176,7 +179,15 @@ function RichTextEditArea({
 
   if (!editor) return null
 
+  // Cmd/Ctrl-S checkpoints the current content without closing the field -
+  // preventDefault stops the browser's own "Save Page As" dialog from
+  // opening underneath it.
   function handleKeyDown(e: KeyboardEvent) {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault()
+      onSaveWithoutClosing(currentHtml(editor))
+      return
+    }
     if (e.key === 'Escape') {
       e.preventDefault()
       onCancel(currentHtml(editor))

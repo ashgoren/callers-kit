@@ -101,6 +101,39 @@ describe('EditableRichText', () => {
     await waitFor(() => expect(screen.getByText('Bring extra chairs.')).toBeInTheDocument())
   })
 
+  it('checkpoints on Cmd/Ctrl-S without closing the editor', async () => {
+    const onCommit = vi.fn()
+    render(<EditableRichText value={null} onCommit={onCommit} placeholder="No notes yet" />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('No notes yet'))
+    await waitFor(() => expect(getEditor()).toBeInTheDocument())
+    await user.type(getEditor()!, 'Bring extra chairs.')
+    fireEvent.keyDown(getEditor()!, { key: 's', ctrlKey: true })
+
+    expect(onCommit).toHaveBeenCalledWith('<p>Bring extra chairs.</p>')
+    expect(getEditor()).toBeInTheDocument()
+    expect(getEditor()).toHaveTextContent('Bring extra chairs.')
+  })
+
+  it('a Cancel after a Cmd/Ctrl-S checkpoint only discards what changed since, closing with no prompt if nothing did', async () => {
+    const onCommit = vi.fn()
+    render(<EditableRichText value={null} onCommit={onCommit} placeholder="No notes yet" />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('No notes yet'))
+    await waitFor(() => expect(getEditor()).toBeInTheDocument())
+    await user.type(getEditor()!, 'Bring extra chairs.')
+    fireEvent.keyDown(getEditor()!, { key: 's', ctrlKey: true })
+    onCommit.mockClear()
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    await waitFor(() => expect(getEditor()).not.toBeInTheDocument())
+    expect(onCommit).not.toHaveBeenCalled()
+    expect(screen.getByText('Bring extra chairs.')).toBeInTheDocument()
+  })
+
   it('does not offer a numbered-list button - only bullet lists are supported', async () => {
     render(<EditableRichText value={null} onCommit={vi.fn()} placeholder="No notes yet" />)
 

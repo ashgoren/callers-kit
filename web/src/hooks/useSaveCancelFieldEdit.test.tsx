@@ -90,6 +90,61 @@ describe('useSaveCancelFieldEdit', () => {
     expect(result.current.error).toBeNull()
   })
 
+  it('saveWithoutClosing commits like onChange, but stays focused', () => {
+    const onCommit = vi.fn()
+    const { result } = renderHook(() => useSaveCancelFieldEdit<string>({ value: '<p>Hi</p>', onCommit }))
+
+    act(() => result.current.onFocus())
+    act(() => result.current.saveWithoutClosing('<p>Hi there</p>'))
+
+    expect(onCommit).toHaveBeenCalledWith('<p>Hi there</p>')
+    expect(result.current.isFocused).toBe(true)
+    expect(result.current.draft).toBe('<p>Hi there</p>')
+  })
+
+  it('saveWithoutClosing does not call onCommit when the checkpointed value is unchanged', () => {
+    const onCommit = vi.fn()
+    const { result } = renderHook(() => useSaveCancelFieldEdit({ value: '<p>Hi</p>', onCommit }))
+
+    act(() => result.current.onFocus())
+    act(() => result.current.saveWithoutClosing('<p>Hi</p>'))
+
+    expect(onCommit).not.toHaveBeenCalled()
+    expect(result.current.isFocused).toBe(true)
+  })
+
+  it('saveWithoutClosing clears an armed discard warning, since the checkpoint now covers it', () => {
+    const onCommit = vi.fn()
+    const { result } = renderHook(() => useSaveCancelFieldEdit({ value: '<p>Hi</p>', onCommit }))
+
+    act(() => result.current.onFocus())
+    act(() => result.current.attemptCancel('<p>Hi there</p>'))
+    expect(result.current.error).toBe('Discard your changes?')
+
+    act(() => result.current.saveWithoutClosing('<p>Hi there</p>'))
+
+    expect(onCommit).toHaveBeenCalledWith('<p>Hi there</p>')
+    expect(result.current.error).toBeNull()
+    expect(result.current.isFocused).toBe(true)
+  })
+
+  it('a later attemptCancel only compares against the last checkpoint, not the field\'s original value', () => {
+    // Once saveWithoutClosing has committed a checkpoint, it's safely
+    // persisted - Cancel/Escape after that point should only be able to
+    // discard what's changed since, not revert past a save that already
+    // happened, the same way saving partway through any other document
+    // doesn't leave you able to undo past that save point.
+    const onCommit = vi.fn()
+    const { result } = renderHook(() => useSaveCancelFieldEdit({ value: '<p>Hi</p>', onCommit }))
+
+    act(() => result.current.onFocus())
+    act(() => result.current.saveWithoutClosing('<p>Hi there</p>'))
+    act(() => result.current.attemptCancel('<p>Hi there</p>')) // matches the checkpoint, not the original value
+
+    expect(result.current.isFocused).toBe(false)
+    expect(result.current.error).toBeNull()
+  })
+
   it('attemptCancel closes immediately with no warning when the current content is unchanged', () => {
     const onCommit = vi.fn()
     const { result } = renderHook(() => useSaveCancelFieldEdit({ value: '<p>Hi</p>', onCommit }))
