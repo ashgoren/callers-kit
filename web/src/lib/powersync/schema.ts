@@ -1,5 +1,20 @@
 import { column, Schema, Table } from '@powersync/web'
 
+// PowerSync has no jsonb column type - a Postgres jsonb column is mirrored
+// here as plain TEXT holding a JSON-encoded string, decoded back into a
+// real object/array on read. jsonColumn() marks which text columns need
+// that treatment, collected into JSON_COLUMNS as this file is evaluated so
+// the sync connector's upload path (which must undo the same encoding
+// before writing back to Postgres, or the column ends up double-encoded as
+// a JSON string instead of an array/object) can look them up directly from
+// the schema - one place to update when a jsonb column is added, not two.
+export const JSON_COLUMNS: Record<string, string[]> = {}
+
+function jsonColumn(tableName: string, columnName: string): typeof column.text {
+  ;(JSON_COLUMNS[tableName] ??= []).push(columnName)
+  return column.text
+}
+
 const dances = new Table({
   // 'id' is created automatically by PowerSync - do not declare it here
   created_at: column.text, // ISO 8601
@@ -9,7 +24,7 @@ const dances = new Table({
   dance_type: column.text, // enum (e.g. 'Contra')
   formation: column.text, // enum (e.g. 'Duple Minor - Improper)
   progression: column.text, // enum (e.g. 'Single')
-  versions: column.text, // JSON-encoded DanceVersion[]
+  versions: jsonColumn('dances', 'versions'), // JSON-encoded DanceVersion[]
 })
 
 const choreographers = new Table({
@@ -42,7 +57,7 @@ const dances_vibes = new Table({
 const user_table_preferences = new Table({
   table_name: column.text,
   // JSON-encoded {columnVisibility, sorting, columnPinning, columnOrder, columnSizing}
-  column_state: column.text,
+  column_state: jsonColumn('user_table_preferences', 'column_state'),
 })
 
 const programs = new Table({

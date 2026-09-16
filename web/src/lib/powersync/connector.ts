@@ -1,14 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { UpdateType } from '@powersync/web'
+import { JSON_COLUMNS } from './schema'
 import type { CommonPowerSyncDatabase, PowerSyncBackendConnector, PowerSyncCredentials } from '@powersync/web'
-
-// Postgres jsonb has no SQLite equivalent, so schema.ts mirrors every
-// jsonb column as text and op.opData carries it as a JSON string.
-//
-// Every jsonb column in schema.ts belongs in this map.
-const JSON_COLUMNS: Record<string, readonly string[]> = {
-  user_table_preferences: ['column_state'],
-}
 
 // Postgres SQLSTATE classes 22 (data exception) and 23 (integrity
 // constraint violation) - not-null, unique, check, foreign-key violations,
