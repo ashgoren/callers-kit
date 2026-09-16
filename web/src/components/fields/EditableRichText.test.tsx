@@ -20,6 +20,28 @@ describe('EditableRichText', () => {
     expect(getEditor()).not.toBeInTheDocument()
   })
 
+  it('uses the compact prose-sm scale by default, in both view and edit mode', async () => {
+    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} />)
+
+    expect(screen.getByText('Bring extra chairs.').parentElement).toHaveClass('prose-sm')
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('Bring extra chairs.'))
+
+    expect(getEditor()?.parentElement).toHaveClass('prose-sm')
+  })
+
+  it('uses the larger base prose scale when size="base" is passed, in both view and edit mode', async () => {
+    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} size="base" />)
+
+    expect(screen.getByText('Bring extra chairs.').parentElement).not.toHaveClass('prose-sm')
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('Bring extra chairs.'))
+
+    expect(getEditor()?.parentElement).not.toHaveClass('prose-sm')
+  })
+
   it('shows a muted placeholder in view mode when the value is null', () => {
     render(<EditableRichText value={null} onCommit={vi.fn()} placeholder="No notes yet" />)
 

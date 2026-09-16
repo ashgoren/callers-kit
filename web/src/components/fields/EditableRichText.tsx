@@ -161,12 +161,15 @@ function SelectionBubbleMenu({ editor }: { editor: Editor }) {
 // Dance/Program notes and walkthrough. A read-only, sanitized-HTML display
 // until clicked/tapped, then a real Tiptap editor with the toolbar above
 // and an explicit Save/Cancel row below.
-export function EditableRichText({ value, onCommit, placeholder = 'No notes yet', as = 'div', className }: {
+export function EditableRichText({ value, onCommit, placeholder = 'No notes yet', as = 'div', className, size = 'sm' }: {
   value: string | null
   onCommit: (value: string | null) => void
   placeholder?: string
   as?: ElementType
   className?: string
+  // 'sm' (default) is the compact size for Dance/Program notes;
+  // 'base' matches FiguresList's own text-base.
+  size?: 'sm' | 'base'
 }) {
   const normalizedValue = value === '' ? null : value
   const fieldEdit = useSaveCancelFieldEdit({ value: normalizedValue, onCommit })
@@ -181,7 +184,10 @@ export function EditableRichText({ value, onCommit, placeholder = 'No notes yet'
         v === null ? (
           <span className="text-muted-foreground">{placeholder}</span>
         ) : (
-          <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(v) }} />
+          <div
+            className={cn('prose max-w-none', size === 'sm' && 'prose-sm')}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(v) }}
+          />
         )
       }
       renderInput={({ draft, onKeyDown, hasError, errorId }) => (
@@ -195,13 +201,14 @@ export function EditableRichText({ value, onCommit, placeholder = 'No notes yet'
           errorId={errorId}
           placeholder={placeholder}
           className={className}
+          size={size}
         />
       )}
     />
   )
 }
 
-function RichTextEditArea({ draft, onSave, onSaveWithoutClosing, onCancel, onKeyDown, hasError, errorId, placeholder, className }: {
+function RichTextEditArea({ draft, onSave, onSaveWithoutClosing, onCancel, onKeyDown, hasError, errorId, placeholder, className, size }: {
   draft: string | null
   onSave: (value: string | null) => void
   onSaveWithoutClosing: (value: string | null) => void
@@ -211,6 +218,7 @@ function RichTextEditArea({ draft, onSave, onSaveWithoutClosing, onCancel, onKey
   errorId: string
   placeholder: string
   className?: string
+  size: 'sm' | 'base'
 }) {
   const editor = useEditor({
     extensions: EXTENSIONS,
@@ -264,7 +272,10 @@ function RichTextEditArea({ draft, onSave, onSaveWithoutClosing, onCancel, onKey
       <SelectionBubbleMenu editor={editor} />
       <EditorContent
         editor={editor}
-        className="prose prose-sm max-w-none px-2.5 py-1 text-base outline-none [&_.ProseMirror]:outline-none md:text-sm"
+        className={cn(
+          'prose max-w-none px-2.5 py-1 outline-none [&_.ProseMirror]:outline-none',
+          size === 'sm' ? 'prose-sm text-base md:text-sm' : 'text-base',
+        )}
         placeholder={placeholder}
       />
       <SaveCancelButtons editor={editor} draft={draft} hasError={hasError} onSave={onSave} onCancel={onCancel} />

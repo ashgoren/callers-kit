@@ -27,6 +27,24 @@ export function formatFormation(value: string | null): string {
   return value ? value.replace(/^Duple Minor - /, '') : '—'
 }
 
+// The short, combined "what kind of dance is this" label - dance_type and
+// progression are only worth mentioning when they're something other than
+// the overwhelmingly common case (Contra, Single progression), so most
+// dances show just their formation (e.g. "Improper", "Becket").
+export function makeFiguresLabel(dance: {
+  dance_type: string | null
+  formation: string | null
+  progression: string | null
+}): string {
+  return [
+    dance.dance_type && dance.dance_type.toLowerCase() !== 'contra' ? dance.dance_type : null,
+    dance.formation ? formatFormation(dance.formation) : null,
+    dance.progression && dance.progression.toLowerCase() !== 'single' ? `${dance.progression} progression` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
 function renderTagList(value: string[]): ReactNode {
   return value.length > 0 ? sortAlphabetically(value).join(', ') : mutedPlaceholder
 }

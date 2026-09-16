@@ -160,11 +160,6 @@
     margin-bottom: 0;
   }
 
-  .prose p {
-    margin-top: 0;
-    margin-bottom: 0;
-  }
-
   /* A genuinely empty <p></p> (what a deliberate blank line serializes to)
      has no content to give it height, so browsers collapse it to nothing -
      it would read as no line at all rather than the one blank line the

@@ -1,7 +1,5 @@
-import { useState } from 'react'
-import { useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import { z } from 'zod'
-import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog'
 import { Button } from '@/components/ui/button'
 import { EditableRichText } from '@/components/fields/EditableRichText'
 import { EditableText } from '@/components/fields/EditableText'
@@ -9,8 +7,7 @@ import { PageSpinner } from '@/components/PageSpinner'
 import { FieldList } from '@/components/fields/FieldList'
 import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
 import { formatDate, sortAlphabetically } from '@/lib/format'
-import { hasUnsavedRichText } from '@/lib/unsavedRichText'
-import { formatFormation } from './DancesPage.columns'
+import { makeFiguresLabel } from './DancesPage.columns'
 import { useDance } from './DanceDetailPage.data'
 import { danceMetadataFields } from './DanceDetailPage.fields'
 import { FiguresList } from './FiguresList'
@@ -18,37 +15,15 @@ import type { DanceWithJoins } from './DancesPage.columns'
 
 const titleSchema = z.string().min(1, 'Title is required')
 
-function makeFiguresLabel(dance: DanceWithJoins): string {
-  return [
-    dance.dance_type && dance.dance_type.toLowerCase() !== 'contra' ? dance.dance_type : null,
-    dance.formation ? formatFormation(dance.formation) : null,
-    dance.progression && dance.progression.toLowerCase() !== 'single' ? `${dance.progression} progression` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ')
-}
-
 export function DanceDetailPage() {
-  const { id } = useParams()
+  const { id, versionId } = useParams()
+  const navigate = useNavigate()
   const { dance, isLoading } = useDance(id ?? '')
-  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
-  // A version switch clicked while the notes field has unsaved changes open -
-  // held here until the switch is confirmed or cancelled via the dialog.
-  const [pendingVersionId, setPendingVersionId] = useState<string | null>(null)
 
   if (isLoading) return <PageSpinner />
 
   const figuresLabel = dance ? makeFiguresLabel(dance) : ''
-  const selectedVersion = dance?.versions.find((version) => version.id === selectedVersionId) ?? dance?.versions[0]
-
-  function handleSelectVersion(versionId: string) {
-    if (versionId === selectedVersion?.id) return
-    if (hasUnsavedRichText()) {
-      setPendingVersionId(versionId)
-      return
-    }
-    setSelectedVersionId(versionId)
-  }
+  const selectedVersion = dance?.versions.find((version) => version.id === versionId) ?? dance?.versions[0]
 
   return (
     <div className="mx-auto max-w-6xl p-4">
@@ -83,7 +58,7 @@ export function DanceDetailPage() {
                       variant={selectedVersion?.id === version.id ? 'secondary' : 'ghost'}
                       size="sm"
                       aria-pressed={selectedVersion?.id === version.id}
-                      onClick={() => handleSelectVersion(version.id)}
+                      onClick={() => void navigate(`/dances/${dance.id}/versions/${version.id}`)}
                     >
                       {version.label}
                     </Button>
@@ -91,13 +66,27 @@ export function DanceDetailPage() {
                 </div>
               )}
               <div className="rounded-lg border p-4">
-                <div className="space-y-4">
-                  {figuresLabel && (
-                    <p className={figuresLabel === 'Improper' ? 'text-base text-muted-foreground' : 'text-base font-semibold'}>
-                      {figuresLabel}
-                    </p>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-4">
+                    {figuresLabel && (
+                      <p className={figuresLabel === 'Improper' ? 'text-base text-muted-foreground' : 'text-base font-semibold'}>
+                        {figuresLabel}
+                      </p>
+                    )}
+                    <FiguresList items={selectedVersion?.figures ?? []} />
+                  </div>
+                  {selectedVersion && (
+                    <Link
+                      to={
+                        selectedVersion.id === dance.versions[0]?.id
+                          ? `/dances/${dance.id}/walkthrough`
+                          : `/dances/${dance.id}/versions/${selectedVersion.id}/walkthrough`
+                      }
+                      className="text-muted-foreground hover:text-foreground shrink-0 text-sm underline-offset-4 hover:underline"
+                    >
+                      Walkthrough
+                    </Link>
                   )}
-                  <FiguresList items={selectedVersion?.figures ?? []} />
                 </div>
                 {selectedVersion && (
                   <div className="mt-12">
@@ -124,18 +113,6 @@ export function DanceDetailPage() {
           </div>
         </>
       )}
-
-      <UnsavedChangesDialog
-        open={pendingVersionId !== null}
-        title="Switch versions without saving?"
-        description="You have an open note with unsaved changes. Switching versions now will discard them."
-        confirmLabel="Switch"
-        onStay={() => setPendingVersionId(null)}
-        onConfirm={() => {
-          setSelectedVersionId(pendingVersionId)
-          setPendingVersionId(null)
-        }}
-      />
     </div>
   )
 }

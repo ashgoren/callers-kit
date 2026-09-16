@@ -1,9 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { db } from '@/lib/powersync/database' // Actually loads the mock below, not the real module.
-import { setRichTextFieldDirty } from '@/lib/unsavedRichText'
 import { DanceDetailPage } from './DanceDetailPage'
 
 const { useQueryMock } = vi.hoisted(() => ({ useQueryMock: vi.fn() }))
@@ -22,10 +21,16 @@ vi.mock('@/lib/powersync/database', () => ({
 // the :id segment, unlike DancesPage/ProgramsPage's tests, which only need
 // useNavigate() to have somewhere to attach to.
 function renderDanceDetailPage(id = '1') {
-  const router = createMemoryRouter([{ path: '/dances/:id', element: <DanceDetailPage /> }], {
-    initialEntries: [`/dances/${id}`],
-  })
-  return render(<RouterProvider router={router} />)
+  const router = createMemoryRouter(
+    [
+      { path: '/dances/:id', element: <DanceDetailPage /> },
+      { path: '/dances/:id/versions/:versionId', element: <DanceDetailPage /> },
+      { path: '/dances/:id/walkthrough', element: <p>Walkthrough page</p> },
+      { path: '/dances/:id/versions/:versionId/walkthrough', element: <p>Walkthrough page</p> },
+    ],
+    { initialEntries: [`/dances/${id}`] },
+  )
+  return { ...render(<RouterProvider router={router} />), router }
 }
 
 // A single-version dance by default - most tests don't care about the
@@ -50,13 +55,6 @@ function makeDanceRow(overrides: Record<string, unknown> = {}) {
     ...overrides,
   }
 }
-
-afterEach(() => {
-  // The unsaved-content registry is plain module state, not reset between
-  // tests automatically - clean up unconditionally so a failed assertion
-  // mid-test can't leak a "dirty" flag into an unrelated later test.
-  setRichTextFieldDirty('test-field', false)
-})
 
 describe('DanceDetailPage', () => {
   it('shows a loading state while the query is in flight', () => {
@@ -209,6 +207,44 @@ describe('DanceDetailPage', () => {
     expect(screen.getByText('Swing')).toBeInTheDocument()
   })
 
+  it('links to the short /dances/:id/walkthrough form when viewing the primary version', async () => {
+    // Otherwise that short form would never actually be reachable through
+    // this link, since a non-primary version always needs its id spelled out.
+    useQueryMock.mockReturnValue({ data: [makeDanceRow({ id: '42' })], isLoading: false })
+    renderDanceDetailPage('42')
+
+    expect(screen.getByRole('link', { name: 'Walkthrough' })).toHaveAttribute('href', '/dances/42/walkthrough')
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('link', { name: 'Walkthrough' }))
+
+    expect(await screen.findByText('Walkthrough page')).toBeInTheDocument()
+  })
+
+  it('links to that version\'s own qualified walkthrough URL when it is not the primary version', async () => {
+    useQueryMock.mockReturnValue({
+      data: [
+        makeDanceRow({
+          id: '42',
+          versions: JSON.stringify([
+            { id: 'v1', label: 'Choreography', notes: null, figures: [] },
+            { id: 'v2', label: 'Calling', notes: null, figures: [] },
+          ]),
+        }),
+      ],
+      isLoading: false,
+    })
+    renderDanceDetailPage('42')
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Calling' }))
+
+    expect(screen.getByRole('link', { name: 'Walkthrough' })).toHaveAttribute(
+      'href',
+      '/dances/42/versions/v2/walkthrough',
+    )
+  })
+
   it('hides the version selector when a dance has only one version', () => {
     useQueryMock.mockReturnValue({ data: [makeDanceRow()], isLoading: false })
     renderDanceDetailPage()
@@ -293,66 +329,28 @@ describe('DanceDetailPage', () => {
     expect(screen.queryByText('Standard notes.')).not.toBeInTheDocument()
   })
 
-  describe('switching versions with an unsaved rich-text field open', () => {
-    function makeTwoVersionDance() {
-      return makeDanceRow({
-        versions: JSON.stringify([
-          { id: 'v1', label: 'Choreography', notes: 'Standard notes.', figures: [] },
-          { id: 'v2', label: 'Calling', notes: 'Calling notes.', figures: [] },
-        ]),
-      })
-    }
-
-    it('asks for confirmation instead of switching immediately', async () => {
-      setRichTextFieldDirty('test-field', true)
-      useQueryMock.mockReturnValue({ data: [makeTwoVersionDance()], isLoading: false })
-      renderDanceDetailPage()
-
-      const user = userEvent.setup()
-      await user.click(screen.getByRole('button', { name: 'Calling' }))
-
-      expect(screen.getByText('Switch versions without saving?')).toBeInTheDocument()
-      // Still showing version 1 - the switch hasn't happened yet.
-      expect(screen.getByText('Standard notes.')).toBeInTheDocument()
+  it('switching versions navigates to that version\'s own URL, rather than only changing local state', async () => {
+    // A real navigation (not local state) means AppShell's own useBlocker
+    // guard (tested in AppShell.test.tsx) already protects an unsaved note
+    // here for free - nothing version-switch-specific to test for that here.
+    useQueryMock.mockReturnValue({
+      data: [
+        makeDanceRow({
+          id: '42',
+          versions: JSON.stringify([
+            { id: 'v1', label: 'Choreography', notes: 'Standard notes.', figures: [] },
+            { id: 'v2', label: 'Calling', notes: 'Calling notes.', figures: [] },
+          ]),
+        }),
+      ],
+      isLoading: false,
     })
+    const { router } = renderDanceDetailPage('42')
 
-    it('stays on the current version when Stay is chosen', async () => {
-      setRichTextFieldDirty('test-field', true)
-      useQueryMock.mockReturnValue({ data: [makeTwoVersionDance()], isLoading: false })
-      renderDanceDetailPage()
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Calling' }))
 
-      const user = userEvent.setup()
-      await user.click(screen.getByRole('button', { name: 'Calling' }))
-      await user.click(screen.getByRole('button', { name: 'Stay' }))
-
-      expect(screen.queryByText('Switch versions without saving?')).not.toBeInTheDocument()
-      expect(screen.getByText('Standard notes.')).toBeInTheDocument()
-    })
-
-    it('switches versions when Switch is chosen', async () => {
-      setRichTextFieldDirty('test-field', true)
-      useQueryMock.mockReturnValue({ data: [makeTwoVersionDance()], isLoading: false })
-      renderDanceDetailPage()
-
-      const user = userEvent.setup()
-      await user.click(screen.getByRole('button', { name: 'Calling' }))
-      await user.click(screen.getByRole('button', { name: 'Switch' }))
-
-      expect(screen.queryByText('Switch versions without saving?')).not.toBeInTheDocument()
-      expect(screen.getByText('Calling notes.')).toBeInTheDocument()
-      expect(screen.queryByText('Standard notes.')).not.toBeInTheDocument()
-    })
-
-    it('switches immediately, with no prompt, when re-clicking the already-selected version', async () => {
-      setRichTextFieldDirty('test-field', true)
-      useQueryMock.mockReturnValue({ data: [makeTwoVersionDance()], isLoading: false })
-      renderDanceDetailPage()
-
-      const user = userEvent.setup()
-      await user.click(screen.getByRole('button', { name: 'Choreography' }))
-
-      expect(screen.queryByText('Switch versions without saving?')).not.toBeInTheDocument()
-    })
+    expect(router.state.location.pathname).toBe('/dances/42/versions/v2')
   })
 
   describe('figures label', () => {

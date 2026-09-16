@@ -8,7 +8,7 @@ import type { DanceWithJoins } from './DancesPage.columns'
 // aggregated with json_group_array rather than GROUP_CONCAT so a name
 // containing ", " can't be misread as two separate names when split back apart.
 // Table/column names are hardcoded, never user input.
-function tagListSubquery(junctionTable: string, ownerTable: string, foreignKeyColumn: string): string {
+export function tagListSubquery(junctionTable: string, ownerTable: string, foreignKeyColumn: string): string {
   return `
     (
       SELECT json_group_array(name)
