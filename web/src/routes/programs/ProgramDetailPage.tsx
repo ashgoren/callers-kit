@@ -1,17 +1,34 @@
 import { useParams } from 'react-router'
 import { z } from 'zod'
+import { cardRenderDanceList } from './ProgramsPage.columns'
 import { EditableDate } from '@/components/fields/EditableDate'
+import { EditableRichText } from '@/components/fields/EditableRichText'
 import { PageSpinner } from '@/components/PageSpinner'
 import { FieldList } from '@/components/fields/FieldList'
+import { makeDetailFieldDefiner } from '@/components/fields/DetailField'
 import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
 import { useProgram } from './ProgramDetailPage.data'
-import { programDetailFields } from './ProgramDetailPage.fields'
+import type { DetailField } from '@/components/fields/DetailField'
+import type { ProgramWithJoins } from './ProgramsPage.columns'
 
 const dateSchema = z
   .string()
   .min(1, 'Date is required')
   .nullable()
   .refine((value) => value !== null, { message: 'Date is required' })
+
+const defineField = makeDetailFieldDefiner<ProgramWithJoins>()
+
+const programDetailFields: DetailField<ProgramWithJoins>[] = [
+  defineField({ key: 'dances', label: 'Dances', render: cardRenderDanceList }),
+  defineField({
+    key: 'notes',
+    label: 'Notes',
+    render: (value, row) => (
+      <EditableRichText value={value} onCommit={(v) => void commitFieldEdit('programs', row.id, 'notes', v)} />
+    ),
+  }),
+]
 
 export function ProgramDetailPage() {
   const { id } = useParams()

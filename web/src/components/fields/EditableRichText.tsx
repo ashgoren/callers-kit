@@ -1,0 +1,213 @@
+import { EditorContent, useEditor, useEditorState } from '@tiptap/react'
+import Placeholder from '@tiptap/extension-placeholder'
+import StarterKit from '@tiptap/starter-kit'
+import { cn } from 'cn'
+import { BoldIcon, Heading1Icon, Heading2Icon, ItalicIcon, ListIcon, MinusIcon, UnderlineIcon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { useSaveCancelFieldEdit } from '@/hooks/useSaveCancelFieldEdit'
+import { sanitizeHtml } from '@/lib/sanitizeHtml'
+import { InlineEditableField } from './InlineEditableField'
+import type { Editor } from '@tiptap/react'
+import type { ElementType, KeyboardEvent, ReactNode } from 'react'
+
+// The "full" toolbar - Bold, Italic, Underline, H1/H2, list, and a divider.
+const EXTENSIONS = [
+  StarterKit.configure({ heading: { levels: [1, 2] }, orderedList: false, link: { openOnClick: false } }),
+  Placeholder.configure({ placeholder: 'Add a note…' }),
+]
+
+// Tiptap's getHTML() on an empty document returns "<p></p>", not "" -
+// normalized to null here so untouched empty field reads as "nothing to save".
+function currentHtml(editor: Editor): string | null {
+  return editor.isEmpty ? null : sanitizeHtml(editor.getHTML())
+}
+
+function ToolbarButton({
+  editor,
+  active,
+  label,
+  onClick,
+  children,
+}: {
+  editor: Editor
+  active: boolean
+  label: string
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <Button
+      type="button"
+      variant={active ? 'secondary' : 'ghost'}
+      size="icon-sm"
+      aria-label={label}
+      aria-pressed={active}
+      // A click on this button would otherwise blur the editor before the
+      // click handler runs, since the browser moves focus away from the
+      // contentEditable the instant the pointer goes down elsewhere.
+      onMouseDown={(e) => {
+        e.preventDefault()
+        editor.chain().focus()
+      }}
+      onClick={onClick}
+    >
+      {children}
+    </Button>
+  )
+}
+
+function Toolbar({ editor }: { editor: Editor }) {
+  // useEditorState, not editor.isActive(...) called directly in JSX -
+  // editor is a stable reference across renders, so React Compiler's
+  // auto-memoization can otherwise serve a stale active-state result after
+  // a selection/mark change that didn't also change this component's own
+  // props/state.
+  const state = useEditorState({
+    editor,
+    selector: ({ editor: e }) => ({
+      bold: e.isActive('bold'),
+      italic: e.isActive('italic'),
+      underline: e.isActive('underline'),
+      heading1: e.isActive('heading', { level: 1 }),
+      heading2: e.isActive('heading', { level: 2 }),
+      bulletList: e.isActive('bulletList'),
+    }),
+  })
+
+  return (
+    <div className="flex items-center gap-0.5 border-b border-input p-1">
+      <ToolbarButton editor={editor} active={state.bold} label="Bold" onClick={() => editor.chain().focus().toggleBold().run()}>
+        <BoldIcon />
+      </ToolbarButton>
+      <ToolbarButton editor={editor} active={state.italic} label="Italic" onClick={() => editor.chain().focus().toggleItalic().run()}>
+        <ItalicIcon />
+      </ToolbarButton>
+      <ToolbarButton editor={editor} active={state.underline} label="Underline" onClick={() => editor.chain().focus().toggleUnderline().run()}>
+        <UnderlineIcon />
+      </ToolbarButton>
+      <ToolbarButton editor={editor} active={state.heading1} label="Heading 1" onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
+        <Heading1Icon />
+      </ToolbarButton>
+      <ToolbarButton editor={editor} active={state.heading2} label="Heading 2" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
+        <Heading2Icon />
+      </ToolbarButton>
+      <ToolbarButton editor={editor} active={state.bulletList} label="Bullet list" onClick={() => editor.chain().focus().toggleBulletList().run()}>
+        <ListIcon />
+      </ToolbarButton>
+      <ToolbarButton editor={editor} active={false} label="Horizontal rule" onClick={() => editor.chain().focus().setHorizontalRule().run()}>
+        <MinusIcon />
+      </ToolbarButton>
+    </div>
+  )
+}
+
+// A rich-text inline-editable field, for freeform notes-length content -
+// Dance/Program notes and walkthrough. A read-only, sanitized-HTML display
+// until clicked/tapped, then a real Tiptap editor with the toolbar above
+// and an explicit Save/Cancel row below.
+export function EditableRichText({ value, onCommit, placeholder = 'No notes yet', as = 'div', className }: {
+  value: string | null
+  onCommit: (value: string | null) => void
+  placeholder?: string
+  as?: ElementType
+  className?: string
+}) {
+  const fieldEdit = useSaveCancelFieldEdit({ value, onCommit })
+
+  return (
+    <InlineEditableField
+      {...fieldEdit}
+      as={as}
+      className={className}
+      renderDisplay={(v) =>
+        v === null ? (
+          <span className="text-muted-foreground">{placeholder}</span>
+        ) : (
+          <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(v) }} />
+        )
+      }
+      renderInput={({ draft, onKeyDown, hasError, errorId }) => (
+        <RichTextEditArea
+          draft={draft}
+          onSave={fieldEdit.onChange}
+          onCancel={fieldEdit.attemptCancel}
+          onKeyDown={onKeyDown}
+          hasError={hasError}
+          errorId={errorId}
+          placeholder={placeholder}
+          className={className}
+        />
+      )}
+    />
+  )
+}
+
+function RichTextEditArea({
+  draft,
+  onSave,
+  onCancel,
+  onKeyDown,
+  hasError,
+  errorId,
+  placeholder,
+  className,
+}: {
+  draft: string | null
+  onSave: (value: string | null) => void
+  onCancel: (current: string | null) => void
+  onKeyDown: (e: KeyboardEvent) => void
+  hasError: boolean
+  errorId: string
+  placeholder: string
+  className?: string
+}) {
+  const editor = useEditor({
+    extensions: EXTENSIONS,
+    content: draft ?? '',
+    autofocus: 'end',
+    editorProps: {
+      attributes: {
+        'aria-invalid': hasError ? 'true' : 'false',
+        ...(hasError ? { 'aria-describedby': errorId } : {}),
+      },
+    },
+  })
+
+  if (!editor) return null
+
+  function handleKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      onCancel(currentHtml(editor))
+      return
+    }
+    onKeyDown(e)
+  }
+
+  return (
+    <div
+      className={cn('rounded-lg border border-input bg-transparent', className)}
+      onKeyDownCapture={handleKeyDown}
+    >
+      <Toolbar editor={editor} />
+      <EditorContent
+        editor={editor}
+        className="prose prose-sm max-w-none px-2.5 py-1 text-base outline-none [&_.ProseMirror]:outline-none md:text-sm"
+        placeholder={placeholder}
+      />
+      <div className="flex items-center justify-end gap-1.5 border-t border-input p-1.5">
+        <Button
+          type="button"
+          variant={hasError ? 'destructive' : 'ghost'}
+          size="sm"
+          onClick={() => onCancel(currentHtml(editor))}
+        >
+          {hasError ? 'Discard' : 'Cancel'}
+        </Button>
+        <Button type="button" size="sm" onClick={() => onSave(currentHtml(editor))}>
+          Save
+        </Button>
+      </div>
+    </div>
+  )
+}

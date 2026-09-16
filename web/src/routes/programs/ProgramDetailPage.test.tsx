@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
@@ -83,6 +83,29 @@ describe('ProgramDetailPage', () => {
     expect(db.execute).toHaveBeenCalledWith('UPDATE programs SET date = ? WHERE id = ?', ['2026-10-20', '42'])
   })
 
+  it('commits edited notes through commitFieldEdit, by this program\'s own id', async () => {
+    // EditableRichText's own test suite covers the Save/Cancel/Discard
+    // interaction model and sanitization in detail - this only needs to
+    // confirm the wiring in ProgramDetailPage.tsx itself: that
+    // saving actually reaches commitFieldEdit with this row's real id and
+    // the 'notes' column, the same thing the date test above confirms for
+    // the header's date field.
+    useQueryMock.mockReturnValue({ data: [makeProgramRow({ id: '42', notes: null })], isLoading: false })
+    renderProgramDetailPage('42')
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('No notes yet'))
+    const editor = document.querySelector('[contenteditable="true"]')
+    await waitFor(() => expect(editor).toBeInTheDocument())
+    await user.type(editor!, 'Bring extra chairs.')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(db.execute).toHaveBeenCalledWith('UPDATE programs SET notes = ? WHERE id = ?', [
+      '<p>Bring extra chairs.</p>',
+      '42',
+    ])
+  })
+
   it('shows "No date" in the header when date is missing, and omits the location line entirely when it is missing', () => {
     useQueryMock.mockReturnValue({ data: [makeProgramRow({ date: null, location: null })], isLoading: false })
     renderProgramDetailPage()
@@ -98,8 +121,10 @@ describe('ProgramDetailPage', () => {
     })
     renderProgramDetailPage()
 
-    // Dances, Notes - two placeholders (date/location moved to the header,
-    // which has its own no-data handling instead of a placeholder).
-    expect(screen.getAllByText('—')).toHaveLength(2)
+    // Dances - the one remaining plain "—" placeholder (date/location moved
+    // to the header, which has its own no-data handling; Notes is now
+    // editable and shows EditableRichText's own descriptive placeholder).
+    expect(screen.getByText('—')).toBeInTheDocument()
+    expect(screen.getByText('No notes yet')).toBeInTheDocument()
   })
 })

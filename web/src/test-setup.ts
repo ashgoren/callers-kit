@@ -26,3 +26,25 @@ class ResizeObserverStub {
   disconnect() {}
 }
 globalThis.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver
+
+// jsdom doesn't implement real layout, so a Range has no actual client
+// rects to report - Tiptap/ProseMirror (EditableRichText) calls this when
+// focusing/scrolling the selection into view, which otherwise throws
+// ("target.getClientRects is not a function") the moment such an editor
+// mounts in a test. Zeroed stubs are enough since no jsdom-based test can
+// assert on real pixel positions anyway.
+//
+// unbound-method is disabled below because it's flagging lib.dom.d.ts's own
+// declaration of these built-ins (none of which specify `this: void`), not
+// anything about the plain polyfill functions being assigned in - there's
+// no real detached-`this` risk in a top-level prototype assignment.
+/* eslint-disable @typescript-eslint/unbound-method */
+Range.prototype.getClientRects ??= () => ({ length: 0, item: () => null, [Symbol.iterator]: function* () {} }) as unknown as DOMRectList
+Range.prototype.getBoundingClientRect ??= () => ({ top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0, toJSON() {} })
+
+// jsdom doesn't implement elementFromPoint either (same "no real layout"
+// gap) - ProseMirror's mousedown handling calls this to resolve a click
+// into a document position. Returning null is what a genuinely-empty
+// point would report anyway, and ProseMirror falls back gracefully.
+document.elementFromPoint ??= () => null
+/* eslint-enable @typescript-eslint/unbound-method */

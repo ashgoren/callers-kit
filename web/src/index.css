@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -127,6 +128,52 @@
   html {
     @apply font-sans;
     }
+}
+
+/* Points the typography plugin's palette at this app's own tokens instead
+   of its default gray scale, so rendered rich text (Dance/Program notes,
+   figures) matches the rest of the UI - these tokens are already
+   theme-aware (redefined under .dark), so no separate dark:prose-invert is
+   needed on top of this. Must live in the `utilities` layer, not `base` -
+   the typography plugin's own .prose rules are themselves registered in
+   `utilities`, which always wins over `base` regardless of source order,
+   so a base-layer override here would be silently beaten by the plugin's
+   own default (light-mode-oriented) gray palette every time. */
+@layer utilities {
+  .prose {
+    --tw-prose-body: var(--foreground);
+    --tw-prose-headings: var(--foreground);
+    --tw-prose-links: var(--primary);
+    --tw-prose-bold: var(--foreground);
+    --tw-prose-counters: var(--muted-foreground);
+    --tw-prose-bullets: var(--muted-foreground);
+    --tw-prose-hr: var(--border);
+  }
+
+  .prose li {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  .prose li > p {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  .prose p {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  /* A genuinely empty <p></p> (what a deliberate blank line serializes to)
+     has no content to give it height, so browsers collapse it to nothing -
+     it would read as no line at all rather than the one blank line the
+     user actually typed. A non-breaking space via ::before gives it the
+     same height as any other line of text, without altering the saved
+     HTML itself (this is purely a rendered pseudo-element). */
+  .prose p:empty::before {
+    content: '\00a0';
+  }
 }
 
 /* Forces a grabbing cursor everywhere while a column is being dragged
