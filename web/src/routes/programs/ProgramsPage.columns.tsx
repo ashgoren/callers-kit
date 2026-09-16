@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { buildColumns, makeFieldDefiner } from '@/components/table/fieldColumns'
 import { TruncatedTooltipText } from '@/components/table/TruncatedTooltipText'
 import { formatDate, mutedPlaceholder } from '@/lib/format'
+import { htmlToPlainText } from '@/lib/sanitizeHtml'
 import type { ReactNode } from 'react'
 import type { LeafHeader as GenericLeafHeader, TableInstance as GenericTableInstance } from '@/components/table/tableInstance'
 import type { Program } from '@/lib/powersync/schema'
@@ -96,11 +97,15 @@ export const programFields = [
   defineField({
     key: 'notes',
     label: 'Notes',
-    render: (value) => (value ? <TruncatedTooltipText content={value}>{value}</TruncatedTooltipText> : mutedPlaceholder),
-    // Plain text, not the table's hover-tooltip trigger - the card list is
-    // the touch layout, where there's no hover to reveal it.
-    cardRender: (value) => value ? <span>{value}</span> : mutedPlaceholder,
-    sortValue: (value) => value || null, // sorts to the end if missing or empty
+    render: (value) => {
+      const preview = value ? htmlToPlainText(value) : ''
+      return preview ? <TruncatedTooltipText content={preview}>{preview}</TruncatedTooltipText> : mutedPlaceholder
+    },
+    cardRender: (value) => {
+      const preview = value ? htmlToPlainText(value) : ''
+      return preview ? <span>{preview}</span> : mutedPlaceholder
+    },
+    sortValue: (value) => (value ? htmlToPlainText(value) : null), // sorts to the end if missing or empty
     sortFn: sortFn_alphanumeric,
     size: 250,
     maxSize: 500,

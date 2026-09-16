@@ -213,6 +213,18 @@ describe('DancesPage', () => {
     expect(within(row).getByRole('button', { name: 'A classic.' })).toBeInTheDocument()
   })
 
+  it('shows notes as a plain-text preview, not the raw HTML tags', () => {
+    // notes is stored as HTML (see EditableRichText) - this list view can't
+    // sensibly render real markup in a single truncated line, so it should
+    // show a stripped preview, not literal "<p>" tags.
+    mockDances({ data: [makeDance({ notes: '<p>A classic.</p><ul><li>Watch the swing</li></ul>' })], isLoading: false })
+    renderDancesPage()
+
+    const table = screen.getByRole('table')
+    expect(within(table).getByText('A classic. Watch the swing')).toBeInTheDocument()
+    expect(within(table).queryByText(/<p>|<ul>|<li>/)).not.toBeInTheDocument()
+  })
+
   it('shows placeholders for null/empty title, difficulty, formation, and notes', () => {
     mockDances({
       data: [makeDance({ title: '', difficulty: null, formation: null, notes: null })],

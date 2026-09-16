@@ -154,6 +154,21 @@ describe('ProgramsPage', () => {
     expect(within(table).queryByText('3/20/26')).not.toBeInTheDocument()
   })
 
+  it('shows notes as a plain-text preview, not the raw HTML tags', () => {
+    // notes is stored as HTML (see EditableRichText) - this list view can't
+    // sensibly render real markup in a single truncated line, so it should
+    // show a stripped preview, not literal "<p>" tags.
+    mockPrograms({
+      data: [makeProgram({ notes: '<p>Bring extra chairs.</p><ul><li>Snacks</li></ul>' })],
+      isLoading: false,
+    })
+    renderProgramsPage()
+
+    const table = screen.getByRole('table')
+    expect(within(table).getByText('Bring extra chairs. Snacks')).toBeInTheDocument()
+    expect(within(table).queryByText(/<p>|<ul>|<li>/)).not.toBeInTheDocument()
+  })
+
   it('renders every dance distinctly, without a duplicate React key warning, when legacy data has more than one dance sharing the same order value', () => {
     // Some real programs predate this app (see programDancesSubquery's
     // comment) and have more than one dance stuck at order 0 - the lineup
