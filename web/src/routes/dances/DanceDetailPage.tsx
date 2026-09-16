@@ -76,16 +76,22 @@ export function DanceDetailPage() {
                     <FiguresList items={selectedVersion?.figures ?? []} />
                   </div>
                   {selectedVersion && (
-                    <Link
-                      to={
-                        selectedVersion.id === dance.versions[0]?.id
-                          ? `/dances/${dance.id}/walkthrough`
-                          : `/dances/${dance.id}/versions/${selectedVersion.id}/walkthrough`
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0"
+                      render={
+                        <Link
+                          to={
+                            selectedVersion.id === dance.versions[0]?.id
+                              ? `/dances/${dance.id}/walkthrough`
+                              : `/dances/${dance.id}/versions/${selectedVersion.id}/walkthrough`
+                          }
+                        />
                       }
-                      className="text-muted-foreground hover:text-foreground shrink-0 text-sm underline-offset-4 hover:underline"
                     >
                       Walkthrough
-                    </Link>
+                    </Button>
                   )}
                 </div>
                 {selectedVersion && (
