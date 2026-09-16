@@ -176,6 +176,7 @@ export function EditableRichText({ value, onCommit, placeholder = 'No notes yet'
       {...fieldEdit}
       as={as}
       className={className}
+      fullWidth
       renderDisplay={(v) =>
         v === null ? (
           <span className="text-muted-foreground">{placeholder}</span>

@@ -39,11 +39,13 @@ export function InlineEditableField<T>({
   onKeyDown,
   as: As = 'span',
   className,
+  fullWidth = false,
   renderDisplay,
   renderInput,
 }: FieldEditState<T> & {
   as?: ElementType
   className?: string
+  fullWidth?: boolean
   renderDisplay: (value: T) => ReactNode
   renderInput: (props: {
     draft: T
@@ -80,14 +82,15 @@ export function InlineEditableField<T>({
             onFocus()
           }
         }}
-        // inline-block: shrinks the hover/click target to the content
-        // itself, rather than a block element's default full-container
-        // width. border-transparent (not border-0/no border) + the same
-        // px-2.5 py-1 padding Input itself uses: border-*width* and padding
-        // never change between this and the actual input it swaps to, so
-        // the box is exactly the same height in both states.
+        // inline-block shrinks the hover/click target to the content itself;
+        // block instead spans the full width of the container (see the
+        // fullWidth prop above). border-transparent (not border-0/no border)
+        // + the same px-2.5 py-1 padding Input itself uses: border-*width*
+        // and padding never change between this and the actual input it
+        // swaps to, so the box is exactly the same height in both states.
         className={cn(
-          'inline-block cursor-pointer rounded-lg border border-transparent px-2.5 py-1 hover:bg-muted/50',
+          fullWidth ? 'block' : 'inline-block',
+          'cursor-pointer rounded-lg border border-transparent px-2.5 py-1 hover:bg-muted/50',
           className,
         )}
       >
