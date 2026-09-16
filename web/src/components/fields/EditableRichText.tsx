@@ -36,6 +36,7 @@ function ToolbarButton({ editor, active, label, onClick, children }: {
       type="button"
       variant={active ? 'secondary' : 'ghost'}
       size="icon-sm"
+      className="pointer-coarse:size-12"
       aria-label={label}
       aria-pressed={active}
       // A click on this button would otherwise blur the editor before the
