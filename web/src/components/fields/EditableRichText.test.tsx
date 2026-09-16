@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { hasUnsavedRichText } from '@/lib/unsavedRichText'
@@ -281,6 +281,56 @@ describe('EditableRichText', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(onCommit).toHaveBeenCalledWith('<p><strong>Important</strong></p>')
+  })
+
+  it('does not show the selection bubble menu until text is actually selected', async () => {
+    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('Bring extra chairs.'))
+    await waitFor(() => expect(getEditor()).toBeInTheDocument())
+
+    expect(screen.queryByRole('toolbar', { name: 'Selection formatting' })).not.toBeInTheDocument()
+  })
+
+  it('shows a selection bubble menu with the same mark/heading/list actions once text is selected, but not Horizontal rule', async () => {
+    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('Bring extra chairs.'))
+    await waitFor(() => expect(getEditor()).toBeInTheDocument())
+
+    await user.click(getEditor()!)
+    await user.keyboard('{Control>}a{/Control}')
+
+    const bubble = await screen.findByRole('toolbar', { name: 'Selection formatting' })
+    expect(within(bubble).getByRole('button', { name: 'Bold' })).toBeInTheDocument()
+    expect(within(bubble).getByRole('button', { name: 'Italic' })).toBeInTheDocument()
+    expect(within(bubble).getByRole('button', { name: 'Underline' })).toBeInTheDocument()
+    expect(within(bubble).getByRole('button', { name: 'Heading 1' })).toBeInTheDocument()
+    expect(within(bubble).getByRole('button', { name: 'Heading 2' })).toBeInTheDocument()
+    expect(within(bubble).getByRole('button', { name: 'Bullet list' })).toBeInTheDocument()
+    // Inserts a new node rather than acting on a selection, so it doesn't
+    // belong in a menu that only ever appears because text is selected.
+    expect(within(bubble).queryByRole('button', { name: 'Horizontal rule' })).not.toBeInTheDocument()
+  })
+
+  it('toggles bold from the selection bubble menu, reflected in the committed HTML', async () => {
+    const onCommit = vi.fn()
+    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={onCommit} />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('Bring extra chairs.'))
+    await waitFor(() => expect(getEditor()).toBeInTheDocument())
+
+    await user.click(getEditor()!)
+    await user.keyboard('{Control>}a{/Control}')
+    const bubble = await screen.findByRole('toolbar', { name: 'Selection formatting' })
+
+    await user.click(within(bubble).getByRole('button', { name: 'Bold' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(onCommit).toHaveBeenCalledWith('<p><strong>Bring extra chairs.</strong></p>')
   })
 
   it('closes immediately on Cancel with no prompt, when nothing was actually changed', async () => {

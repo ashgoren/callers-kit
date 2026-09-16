@@ -1,4 +1,5 @@
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react'
+import { BubbleMenu } from '@tiptap/react/menus'
 import Placeholder from '@tiptap/extension-placeholder'
 import StarterKit from '@tiptap/starter-kit'
 import { cn } from 'cn'
@@ -10,6 +11,7 @@ import { sanitizeHtml } from '@/lib/sanitizeHtml'
 import { setRichTextFieldDirty } from '@/lib/unsavedRichText'
 import { InlineEditableField } from './InlineEditableField'
 import type { Editor } from '@tiptap/react'
+import type { LucideIcon } from 'lucide-react'
 import type { ElementType, KeyboardEvent, ReactNode } from 'react'
 
 // The "full" toolbar - Bold, Italic, Underline, H1/H2, list, and a divider.
@@ -53,7 +55,21 @@ function ToolbarButton({ editor, active, label, onClick, children }: {
   )
 }
 
-function Toolbar({ editor }: { editor: Editor }) {
+interface ToolbarItem {
+  key: string
+  label: string
+  icon: LucideIcon
+  active: boolean
+  onClick: () => void
+}
+
+// Bold/Italic/Underline/H1/H2/Bullet-list - shared between the fixed
+// toolbar and the selection bubble menu below, so the two don't drift into
+// slightly different button sets. Horizontal rule is deliberately not part
+// of this shared list: it inserts a new node rather than acting on
+// existing content, which fits a fixed toolbar but not a menu that only
+// ever appears because the user has selected some text.
+function useMarkAndBlockItems(editor: Editor): ToolbarItem[] {
   // useEditorState, not editor.isActive(...) called directly in JSX -
   // editor is a stable reference across renders, so React Compiler's
   // auto-memoization can otherwise serve a stale active-state result after
@@ -71,30 +87,73 @@ function Toolbar({ editor }: { editor: Editor }) {
     }),
   })
 
+  return [
+    { key: 'bold', label: 'Bold', icon: BoldIcon, active: state.bold, onClick: () => editor.chain().focus().toggleBold().run() },
+    { key: 'italic', label: 'Italic', icon: ItalicIcon, active: state.italic, onClick: () => editor.chain().focus().toggleItalic().run() },
+    {
+      key: 'underline',
+      label: 'Underline',
+      icon: UnderlineIcon,
+      active: state.underline,
+      onClick: () => editor.chain().focus().toggleUnderline().run(),
+    },
+    {
+      key: 'heading1',
+      label: 'Heading 1',
+      icon: Heading1Icon,
+      active: state.heading1,
+      onClick: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
+    },
+    {
+      key: 'heading2',
+      label: 'Heading 2',
+      icon: Heading2Icon,
+      active: state.heading2,
+      onClick: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
+    },
+    {
+      key: 'bulletList',
+      label: 'Bullet list',
+      icon: ListIcon,
+      active: state.bulletList,
+      onClick: () => editor.chain().focus().toggleBulletList().run(),
+    },
+  ]
+}
+
+function Toolbar({ editor }: { editor: Editor }) {
+  const items = useMarkAndBlockItems(editor)
+
   return (
     <div className="flex items-center gap-0.5 border-b border-input p-1">
-      <ToolbarButton editor={editor} active={state.bold} label="Bold" onClick={() => editor.chain().focus().toggleBold().run()}>
-        <BoldIcon />
-      </ToolbarButton>
-      <ToolbarButton editor={editor} active={state.italic} label="Italic" onClick={() => editor.chain().focus().toggleItalic().run()}>
-        <ItalicIcon />
-      </ToolbarButton>
-      <ToolbarButton editor={editor} active={state.underline} label="Underline" onClick={() => editor.chain().focus().toggleUnderline().run()}>
-        <UnderlineIcon />
-      </ToolbarButton>
-      <ToolbarButton editor={editor} active={state.heading1} label="Heading 1" onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
-        <Heading1Icon />
-      </ToolbarButton>
-      <ToolbarButton editor={editor} active={state.heading2} label="Heading 2" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
-        <Heading2Icon />
-      </ToolbarButton>
-      <ToolbarButton editor={editor} active={state.bulletList} label="Bullet list" onClick={() => editor.chain().focus().toggleBulletList().run()}>
-        <ListIcon />
-      </ToolbarButton>
+      {items.map((item) => (
+        <ToolbarButton key={item.key} editor={editor} active={item.active} label={item.label} onClick={item.onClick}>
+          <item.icon />
+        </ToolbarButton>
+      ))}
       <ToolbarButton editor={editor} active={false} label="Horizontal rule" onClick={() => editor.chain().focus().setHorizontalRule().run()}>
         <MinusIcon />
       </ToolbarButton>
     </div>
+  )
+}
+
+function SelectionBubbleMenu({ editor }: { editor: Editor }) {
+  const items = useMarkAndBlockItems(editor)
+
+  return (
+    <BubbleMenu
+      editor={editor}
+      role="toolbar"
+      aria-label="Selection formatting"
+      className="flex items-center gap-0.5 rounded-lg border bg-popover p-1 text-popover-foreground shadow-md"
+    >
+      {items.map((item) => (
+        <ToolbarButton key={item.key} editor={editor} active={item.active} label={item.label} onClick={item.onClick}>
+          <item.icon />
+        </ToolbarButton>
+      ))}
+    </BubbleMenu>
   )
 }
 
@@ -201,6 +260,7 @@ function RichTextEditArea({ draft, onSave, onSaveWithoutClosing, onCancel, onKey
       onKeyDownCapture={handleKeyDown}
     >
       <Toolbar editor={editor} />
+      <SelectionBubbleMenu editor={editor} />
       <EditorContent
         editor={editor}
         className="prose prose-sm max-w-none px-2.5 py-1 text-base outline-none [&_.ProseMirror]:outline-none md:text-sm"
