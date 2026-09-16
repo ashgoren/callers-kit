@@ -24,7 +24,18 @@ const dances = new Table({
   dance_type: column.text, // enum (e.g. 'Contra')
   formation: column.text, // enum (e.g. 'Duple Minor - Improper)
   progression: column.text, // enum (e.g. 'Single')
-  versions: jsonColumn('dances', 'versions'), // JSON-encoded DanceVersion[]
+})
+
+const dance_versions = new Table({
+  dance_id: column.text,
+  order: column.integer,
+  label: column.text,
+  figures: jsonColumn('dance_versions', 'figures'), // JSON-encoded FigureItem[]
+  notes: column.text,
+  walkthrough: column.text,
+  cues: jsonColumn('dance_versions', 'cues'), // JSON-encoded {cells: Record<string, string>}
+  created_at: column.text, // ISO 8601
+  updated_at: column.text, // ISO 8601
 })
 
 const choreographers = new Table({
@@ -77,6 +88,7 @@ const programs_dances = new Table({
 
 export const AppSchema = new Schema({
   dances,
+  dance_versions,
   choreographers,
   dances_choreographers,
   key_moves,

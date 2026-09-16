@@ -1,8 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { db } from '@/lib/powersync/database' // Actually loads the mock below, not the real module.
+import { setRichTextFieldDirty } from '@/lib/unsavedRichText'
 import { DanceDetailPage } from './DanceDetailPage'
 
 const { useQueryMock } = vi.hoisted(() => ({ useQueryMock: vi.fn() }))
@@ -50,6 +51,13 @@ function makeDanceRow(overrides: Record<string, unknown> = {}) {
   }
 }
 
+afterEach(() => {
+  // The unsaved-content registry is plain module state, not reset between
+  // tests automatically - clean up unconditionally so a failed assertion
+  // mid-test can't leak a "dirty" flag into an unrelated later test.
+  setRichTextFieldDirty('test-field', false)
+})
+
 describe('DanceDetailPage', () => {
   it('shows a loading state while the query is in flight', () => {
     useQueryMock.mockReturnValue({ data: [], isLoading: true })
@@ -79,20 +87,16 @@ describe('DanceDetailPage', () => {
     expect(db.execute).toHaveBeenCalledWith('UPDATE dances SET title = ? WHERE id = ?', ['Money Musk', '42'])
   })
 
-  it('commits edited version notes through commitVersionNotes, writing the whole versions array back with only that version\'s notes changed', async () => {
+  it('commits edited version notes through commitFieldEdit, by that version\'s own id', async () => {
     // EditableRichText's own test suite covers the Save/Cancel/Discard
-    // interaction model and sanitization in detail, and commitVersionNotes
-    // has its own dedicated tests for the read-modify-write shape - this
-    // only needs to confirm the two are actually wired together here, by
-    // this dance's own id and versions array.
+    // interaction model and sanitization in detail - this only needs to
+    // confirm the two are actually wired together here, against the
+    // selected version's own dance_versions row, not the whole dance.
     useQueryMock.mockReturnValue({
       data: [
         makeDanceRow({
           id: '42',
-          versions: JSON.stringify([
-            { id: 'v1', label: 'Choreography', figures: [], notes: null },
-            { id: 'v2', label: 'Calling', figures: [], notes: 'Calling notes.' },
-          ]),
+          versions: JSON.stringify([{ id: 'v1', label: 'Choreography', figures: [], notes: null }]),
         }),
       ],
       isLoading: false,
@@ -106,12 +110,9 @@ describe('DanceDetailPage', () => {
     await user.type(editor!, 'Watch the timing.')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    expect(db.execute).toHaveBeenCalledWith('UPDATE dances SET versions = ? WHERE id = ?', [
-      JSON.stringify([
-        { id: 'v1', label: 'Choreography', figures: [], notes: '<p>Watch the timing.</p>' },
-        { id: 'v2', label: 'Calling', figures: [], notes: 'Calling notes.' },
-      ]),
-      '42',
+    expect(db.execute).toHaveBeenCalledWith('UPDATE dance_versions SET notes = ? WHERE id = ?', [
+      '<p>Watch the timing.</p>',
+      'v1',
     ])
   })
 
@@ -253,6 +254,105 @@ describe('DanceDetailPage', () => {
     expect(screen.queryByText('Standard notes.')).not.toBeInTheDocument()
     expect(screen.getByText('Call it slow')).toBeInTheDocument()
     expect(screen.getByText('Calling notes.')).toBeInTheDocument()
+  })
+
+  it('resets an open, unedited notes field when switching versions, instead of leaving it open on stale content', async () => {
+    // Regression test: EditableRichText's own edit state (isFocused, the
+    // mounted Tiptap editor) previously lived on regardless of which
+    // version's notes it was passed, since switching versions just re-renders
+    // the same element with a new `value` prop rather than remounting it -
+    // an already-open editor kept showing the previous version's content,
+    // and saving from there would have written it into the wrong version's row.
+    // <p>-wrapped, not a bare string - real app-written notes are always
+    // already Tiptap HTML. A bare string here would read as dirty the
+    // instant the field opens (Tiptap's getHTML() always wraps content in
+    // <p>, so it'd never equal an unwrapped draft), which is a fixture
+    // realism issue, not the behavior this test means to exercise.
+    const { default: userEvent } = await import('@testing-library/user-event')
+    useQueryMock.mockReturnValue({
+      data: [
+        makeDanceRow({
+          versions: JSON.stringify([
+            { id: 'v1', label: 'Choreography', notes: '<p>Standard notes.</p>', figures: [] },
+            { id: 'v2', label: 'Calling', notes: '<p>Calling notes.</p>', figures: [] },
+          ]),
+        }),
+      ],
+      isLoading: false,
+    })
+    renderDanceDetailPage()
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('Standard notes.'))
+    await waitFor(() => expect(document.querySelector('[contenteditable="true"]')).toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: 'Calling' }))
+
+    expect(document.querySelector('[contenteditable="true"]')).not.toBeInTheDocument()
+    expect(screen.getByText('Calling notes.')).toBeInTheDocument()
+    expect(screen.queryByText('Standard notes.')).not.toBeInTheDocument()
+  })
+
+  describe('switching versions with an unsaved rich-text field open', () => {
+    function makeTwoVersionDance() {
+      return makeDanceRow({
+        versions: JSON.stringify([
+          { id: 'v1', label: 'Choreography', notes: 'Standard notes.', figures: [] },
+          { id: 'v2', label: 'Calling', notes: 'Calling notes.', figures: [] },
+        ]),
+      })
+    }
+
+    it('asks for confirmation instead of switching immediately', async () => {
+      setRichTextFieldDirty('test-field', true)
+      useQueryMock.mockReturnValue({ data: [makeTwoVersionDance()], isLoading: false })
+      renderDanceDetailPage()
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Calling' }))
+
+      expect(screen.getByText('Switch versions without saving?')).toBeInTheDocument()
+      // Still showing version 1 - the switch hasn't happened yet.
+      expect(screen.getByText('Standard notes.')).toBeInTheDocument()
+    })
+
+    it('stays on the current version when Stay is chosen', async () => {
+      setRichTextFieldDirty('test-field', true)
+      useQueryMock.mockReturnValue({ data: [makeTwoVersionDance()], isLoading: false })
+      renderDanceDetailPage()
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Calling' }))
+      await user.click(screen.getByRole('button', { name: 'Stay' }))
+
+      expect(screen.queryByText('Switch versions without saving?')).not.toBeInTheDocument()
+      expect(screen.getByText('Standard notes.')).toBeInTheDocument()
+    })
+
+    it('switches versions when Switch is chosen', async () => {
+      setRichTextFieldDirty('test-field', true)
+      useQueryMock.mockReturnValue({ data: [makeTwoVersionDance()], isLoading: false })
+      renderDanceDetailPage()
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Calling' }))
+      await user.click(screen.getByRole('button', { name: 'Switch' }))
+
+      expect(screen.queryByText('Switch versions without saving?')).not.toBeInTheDocument()
+      expect(screen.getByText('Calling notes.')).toBeInTheDocument()
+      expect(screen.queryByText('Standard notes.')).not.toBeInTheDocument()
+    })
+
+    it('switches immediately, with no prompt, when re-clicking the already-selected version', async () => {
+      setRichTextFieldDirty('test-field', true)
+      useQueryMock.mockReturnValue({ data: [makeTwoVersionDance()], isLoading: false })
+      renderDanceDetailPage()
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Choreography' }))
+
+      expect(screen.queryByText('Switch versions without saving?')).not.toBeInTheDocument()
+    })
   })
 
   describe('figures label', () => {

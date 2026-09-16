@@ -184,21 +184,21 @@ describe('SupabaseConnector.uploadData', () => {
     expect(upsertMock).toHaveBeenCalledWith({ id: '1', table_name: 'dances', column_state: { sorting: [] } })
   })
 
-  it('parses dances.versions into an array before sending on PATCH', async () => {
-    // versions is jsonb in Postgres but text locally, same as column_state
+  it('parses dance_versions.figures into an array before sending on PATCH', async () => {
+    // figures is jsonb in Postgres but text locally, same as column_state
     // above - this is the exact production bug that motivated the
-    // JSON_COLUMNS/jsonColumn() setup: versions was written correctly to
-    // local SQLite but uploaded to Supabase unparsed, storing a jsonb
-    // string scalar containing the array's JSON text instead of the array
-    // itself.
+    // JSON_COLUMNS/jsonColumn() setup: a version's figures was written
+    // correctly to local SQLite but uploaded to Supabase unparsed, storing a
+    // jsonb string scalar containing the array's JSON text instead of the
+    // array itself.
     const complete = vi.fn(() => Promise.resolve())
     const transaction = new CrudTransaction(
       [
         makeCrudEntry({
           op: UpdateType.PATCH,
-          table: 'dances',
+          table: 'dance_versions',
           id: '1',
-          opData: { versions: '[{"id":"v1","label":"Choreography","figures":[],"notes":null}]' },
+          opData: { figures: '[{"id":"f1","kind":"figure","phrase":"A1","beats":8,"description":"Circle left"}]' },
         }),
       ],
       complete,
@@ -207,7 +207,7 @@ describe('SupabaseConnector.uploadData', () => {
     await connector.uploadData(makeDatabase(transaction))
 
     expect(updateMock).toHaveBeenCalledWith({
-      versions: [{ id: 'v1', label: 'Choreography', figures: [], notes: null }],
+      figures: [{ id: 'f1', kind: 'figure', phrase: 'A1', beats: 8, description: 'Circle left' }],
     })
   })
 

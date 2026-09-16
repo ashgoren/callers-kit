@@ -44,6 +44,21 @@ function dancesProgramsSubquery(): string {
   `
 }
 
+// A dance's primary version is whichever of its dance_versions rows has the
+// lowest order - its notes stand in for "this dance's notes" here, since the
+// table/card list has no way to show more than one version's worth, and
+// every other version's own contents is detail-page-only.
+function primaryVersionNotesSubquery(): string {
+  return `
+    (
+      SELECT notes FROM dance_versions
+      WHERE dance_versions.dance_id = dances.id
+      ORDER BY dance_versions."order"
+      LIMIT 1
+    )
+  `
+}
+
 // The SELECT column list shared by the dances list query and a single
 // dance's detail-page query - each caller supplies its own FROM/WHERE/ORDER
 // BY around this.
@@ -51,10 +66,7 @@ export function danceSelectColumns(): string {
   return `
     dances.id, dances.title, dances.difficulty, dances.dance_type, dances.formation, dances.progression,
     dances.created_at, dances.updated_at,
-    -- The primary (first) version's notes stand in for "this dance's notes"
-    -- here - the table/card list has no way to show more than one version's
-    -- worth, and the full versions array is detail-page-only.
-    json_extract(dances.versions, '$[0].notes') AS notes,
+    ${primaryVersionNotesSubquery()} AS notes,
     ${tagListSubquery('dances_choreographers', 'choreographers', 'choreographer_id')} AS choreographers,
     ${tagListSubquery('dances_key_moves', 'key_moves', 'key_move_id')} AS key_moves,
     ${tagListSubquery('dances_vibes', 'vibes', 'vibe_id')} AS vibes,
@@ -70,9 +82,9 @@ const DANCES_QUERY = `
 
 // The shape of a row as it comes back from either query above, before the
 // tag-list/program-history columns are JSON.parse'd into real arrays below.
-// Omits versions (danceSelectColumns() extracts just its primary notes,
-// aliased back to "notes" - see above) and adds that extracted value back.
-export type DanceQueryRow = Omit<Dance, 'versions'> & {
+// notes isn't a real column on Dance - it's the primary version's own notes,
+// extracted via danceSelectColumns()'s subquery and aliased back to "notes".
+export type DanceQueryRow = Dance & {
   notes: string | null
   choreographers: string
   key_moves: string

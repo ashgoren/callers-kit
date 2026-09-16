@@ -18,6 +18,15 @@ streams:
     auto_subscribe: true
     query: SELECT * FROM choreographers WHERE choreographers.user_id = auth.user_id()
 
+  dance_versions:
+    # No user_id of its own - scoped via join to the owning dance's user_id,
+    # same pattern as dances_choreographers below.
+    auto_subscribe: true
+    query: >
+      SELECT dance_versions.* FROM dance_versions
+      JOIN dances ON dances.id = dance_versions.dance_id
+      WHERE dances.user_id = auth.user_id()
+
   dances_choreographers:
     # Junction table has no user_id of its own - scoped via join to the
     # owning dance's user_id instead, same as the RLS policy on this table.

@@ -143,9 +143,11 @@ describe('DancesPage', () => {
     for (const column of ['title', 'difficulty', 'dance_type', 'formation', 'progression', 'created_at', 'updated_at']) {
       expect(query).toContain(`dances.${column}`)
     }
-    // notes isn't a plain dances.notes column anymore - it's extracted from
-    // the primary version's own notes inside the versions jsonb column.
-    expect(query).toContain("json_extract(dances.versions, '$[0].notes') AS notes")
+    // notes isn't a plain dances.notes column anymore - it's the primary
+    // (lowest-order) dance_versions row's own notes, joined in by dance_id.
+    expect(query).toContain('FROM dance_versions')
+    expect(query).toContain('WHERE dance_versions.dance_id = dances.id')
+    expect(query).toContain('AS notes')
     // Baseline order before any client-side sort is applied (and for any
     // future reader of this query that doesn't go through the table's own
     // sorting state, e.g. a print/export view).

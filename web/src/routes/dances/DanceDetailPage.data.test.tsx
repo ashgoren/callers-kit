@@ -21,7 +21,9 @@ describe('useDance', () => {
     expect(query).toContain('AS key_moves')
     expect(query).toContain('AS vibes')
     expect(query).toContain('AS programs')
-    expect(query).toContain('dances.versions')
+    expect(query).toContain('FROM dance_versions')
+    expect(query).toContain('WHERE dance_versions.dance_id = dances.id')
+    expect(query).toContain('AS versions')
     expect(params).toEqual(['42'])
   })
 
@@ -74,7 +76,7 @@ describe('useDance', () => {
     )
   })
 
-  it('parses versions into an array of {id, label, figures, notes} objects', () => {
+  it('parses versions into an array of {id, order, label, figures, notes, walkthrough, cues} objects', () => {
     useQueryMock.mockReturnValue({
       data: [
         {
@@ -94,11 +96,22 @@ describe('useDance', () => {
           versions: JSON.stringify([
             {
               id: 'v1',
+              order: 0,
               label: 'Choreography',
               figures: [{ id: 'f1', kind: 'figure', phrase: 'A1', beats: 8, description: '<p>Circle left</p>' }],
               notes: 'Danced at half speed.',
+              walkthrough: '<p>Walk it through slowly.</p>',
+              cues: { cells: { 'A1:0:0': 'circle' } },
             },
-            { id: 'v2', label: 'Calling', figures: [{ id: 'c1', kind: 'note', text: '<p>Call it slow</p>' }], notes: null },
+            {
+              id: 'v2',
+              order: 1,
+              label: 'Calling',
+              figures: [{ id: 'c1', kind: 'note', text: '<p>Call it slow</p>' }],
+              notes: null,
+              walkthrough: null,
+              cues: null,
+            },
           ]),
         },
       ],
@@ -110,11 +123,22 @@ describe('useDance', () => {
     expect(result.current.dance?.versions).toEqual([
       {
         id: 'v1',
+        order: 0,
         label: 'Choreography',
         figures: [{ id: 'f1', kind: 'figure', phrase: 'A1', beats: 8, description: '<p>Circle left</p>' }],
         notes: 'Danced at half speed.',
+        walkthrough: '<p>Walk it through slowly.</p>',
+        cues: { cells: { 'A1:0:0': 'circle' } },
       },
-      { id: 'v2', label: 'Calling', figures: [{ id: 'c1', kind: 'note', text: '<p>Call it slow</p>' }], notes: null },
+      {
+        id: 'v2',
+        order: 1,
+        label: 'Calling',
+        figures: [{ id: 'c1', kind: 'note', text: '<p>Call it slow</p>' }],
+        notes: null,
+        walkthrough: null,
+        cues: null,
+      },
     ])
   })
 })

@@ -1,6 +1,16 @@
 import { useState } from 'react'
 import { useParams } from 'react-router'
 import { z } from 'zod'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { EditableRichText } from '@/components/fields/EditableRichText'
 import { EditableText } from '@/components/fields/EditableText'
@@ -8,7 +18,7 @@ import { PageSpinner } from '@/components/PageSpinner'
 import { FieldList } from '@/components/fields/FieldList'
 import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
 import { formatDate, sortAlphabetically } from '@/lib/format'
-import { commitVersionNotes } from './commitVersionNotes'
+import { hasUnsavedRichText } from '@/lib/unsavedRichText'
 import { formatFormation } from './DancesPage.columns'
 import { useDance } from './DanceDetailPage.data'
 import { danceMetadataFields } from './DanceDetailPage.fields'
@@ -31,11 +41,23 @@ export function DanceDetailPage() {
   const { id } = useParams()
   const { dance, isLoading } = useDance(id ?? '')
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
+  // A version switch clicked while the notes field has unsaved changes open -
+  // held here until the switch is confirmed or cancelled via the dialog.
+  const [pendingVersionId, setPendingVersionId] = useState<string | null>(null)
 
   if (isLoading) return <PageSpinner />
 
   const figuresLabel = dance ? makeFiguresLabel(dance) : ''
   const selectedVersion = dance?.versions.find((version) => version.id === selectedVersionId) ?? dance?.versions[0]
+
+  function handleSelectVersion(versionId: string) {
+    if (versionId === selectedVersion?.id) return
+    if (hasUnsavedRichText()) {
+      setPendingVersionId(versionId)
+      return
+    }
+    setSelectedVersionId(versionId)
+  }
 
   return (
     <div className="mx-auto max-w-6xl p-4">
@@ -70,7 +92,7 @@ export function DanceDetailPage() {
                       variant={selectedVersion?.id === version.id ? 'secondary' : 'ghost'}
                       size="sm"
                       aria-pressed={selectedVersion?.id === version.id}
-                      onClick={() => setSelectedVersionId(version.id)}
+                      onClick={() => handleSelectVersion(version.id)}
                     >
                       {version.label}
                     </Button>
@@ -91,8 +113,10 @@ export function DanceDetailPage() {
                     <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Notes</p>
                     <div className="mt-1">
                       <EditableRichText
+                        // Keyed by version id so switching versions fully remounts this field.
+                        key={selectedVersion.id}
                         value={selectedVersion.notes}
-                        onCommit={(value) => void commitVersionNotes(dance.id, dance.versions, selectedVersion.id, value)}
+                        onCommit={(value) => void commitFieldEdit('dance_versions', selectedVersion.id, 'notes', value)}
                       />
                     </div>
                   </div>
@@ -109,6 +133,28 @@ export function DanceDetailPage() {
           </div>
         </>
       )}
+      <AlertDialog open={pendingVersionId !== null} onOpenChange={(open) => { if (!open) setPendingVersionId(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Switch versions without saving?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have an open note with unsaved changes. Switching versions now will discard them.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingVersionId(null)}>Stay</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                setSelectedVersionId(pendingVersionId)
+                setPendingVersionId(null)
+              }}
+            >
+              Switch
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

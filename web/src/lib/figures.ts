@@ -23,13 +23,15 @@ export function isFigureEntry(item: FigureItem): item is FigureEntry {
   return item.kind === 'figure'
 }
 
-// A dance can have more than one version of "how to call it" - e.g. a
-// standard version and a separate calling script, or versions for different
-// skill levels - each a self-contained figures list plus its own notes. The
-// first entry in a dance's versions array is always its primary version.
+// A dance can have more than one version of "how to call it" -
+// each a self-contained figures list, notes, walkthrough, and cue sheet.
+// A dance's primary version is whichever version has the lowest order.
 export interface DanceVersion {
   id: string
+  order: number
   label: string
   figures: FigureItem[]
   notes: string | null
+  walkthrough: string | null
+  cues: unknown // TBD
 }
