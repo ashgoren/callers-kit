@@ -112,7 +112,8 @@ export function EditableRichText({ value, onCommit, placeholder = 'No notes yet'
   as?: ElementType
   className?: string
 }) {
-  const fieldEdit = useSaveCancelFieldEdit({ value, onCommit })
+  const normalizedValue = value === '' ? null : value
+  const fieldEdit = useSaveCancelFieldEdit({ value: normalizedValue, onCommit })
 
   return (
     <InlineEditableField

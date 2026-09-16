@@ -25,6 +25,37 @@ describe('EditableRichText', () => {
     expect(screen.getByText('No notes yet')).toBeInTheDocument()
   })
 
+  it('shows the same placeholder when the value is an empty string, not just null', () => {
+    // Real production data confirmed this isn't hypothetical - the old
+    // app's editor saved '' rather than leaving the column null, so every
+    // dance without notes has an empty string, not a null one. Without
+    // this, the field renders a blank, unclickable-looking area instead of
+    // an inviting "click to add notes" placeholder.
+    render(<EditableRichText value="" onCommit={vi.fn()} placeholder="No notes yet" />)
+
+    expect(screen.getByText('No notes yet')).toBeInTheDocument()
+  })
+
+  it('closes immediately on Cancel with no prompt, when the starting value is an empty string and nothing was typed', async () => {
+    // Guards the same '' vs null gap from the other direction: without
+    // normalizing '' to null up front, attemptCancel would compare the
+    // editor's genuinely-empty current content (null) against the raw ''
+    // prop, see a "change," and wrongly arm a discard prompt for a field
+    // the user never actually touched.
+    const onCommit = vi.fn()
+    render(<EditableRichText value="" onCommit={onCommit} placeholder="No notes yet" />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('No notes yet'))
+    await waitFor(() => expect(getEditor()).toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    await waitFor(() => expect(getEditor()).not.toBeInTheDocument())
+    expect(onCommit).not.toHaveBeenCalled()
+    expect(screen.getByText('No notes yet')).toBeInTheDocument()
+  })
+
   it('becomes an editor with a toolbar and Save/Cancel buttons once clicked', async () => {
     render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} />)
 
