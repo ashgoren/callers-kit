@@ -1,16 +1,7 @@
 import { useState } from 'react'
 import { useParams } from 'react-router'
 import { z } from 'zod'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog'
 import { Button } from '@/components/ui/button'
 import { EditableRichText } from '@/components/fields/EditableRichText'
 import { EditableText } from '@/components/fields/EditableText'
@@ -133,28 +124,18 @@ export function DanceDetailPage() {
           </div>
         </>
       )}
-      <AlertDialog open={pendingVersionId !== null} onOpenChange={(open) => { if (!open) setPendingVersionId(null) }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Switch versions without saving?</AlertDialogTitle>
-            <AlertDialogDescription>
-              You have an open note with unsaved changes. Switching versions now will discard them.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPendingVersionId(null)}>Stay</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={() => {
-                setSelectedVersionId(pendingVersionId)
-                setPendingVersionId(null)
-              }}
-            >
-              Switch
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+
+      <UnsavedChangesDialog
+        open={pendingVersionId !== null}
+        title="Switch versions without saving?"
+        description="You have an open note with unsaved changes. Switching versions now will discard them."
+        confirmLabel="Switch"
+        onStay={() => setPendingVersionId(null)}
+        onConfirm={() => {
+          setSelectedVersionId(pendingVersionId)
+          setPendingVersionId(null)
+        }}
+      />
     </div>
   )
 }

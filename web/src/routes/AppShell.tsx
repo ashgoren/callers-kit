@@ -2,16 +2,7 @@ import { CircleUserRound } from 'lucide-react'
 import { NavLink, Outlet, useBeforeUnload, useBlocker } from 'react-router'
 import { useStatus } from '@powersync/react'
 import { useEffect, useState } from 'react'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -171,27 +162,14 @@ export function AppShell() {
         )}
       </main>
 
-      <AlertDialog
+      <UnsavedChangesDialog
         open={blocker.state === 'blocked'}
-        onOpenChange={(open) => {
-          if (!open) blocker.reset?.()
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Leave without saving?</AlertDialogTitle>
-            <AlertDialogDescription>
-              You have an open note with unsaved changes. Leaving now will discard them.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => blocker.reset?.()}>Stay</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={() => blocker.proceed?.()}>
-              Leave
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title="Leave without saving?"
+        description="You have an open note with unsaved changes. Leaving now will discard them."
+        confirmLabel="Leave"
+        onStay={() => blocker.reset?.()}
+        onConfirm={() => blocker.proceed?.()}
+      />
     </div>
   )
 }
