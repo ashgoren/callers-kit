@@ -22,13 +22,7 @@ function currentHtml(editor: Editor): string | null {
   return editor.isEmpty ? null : sanitizeHtml(editor.getHTML())
 }
 
-function ToolbarButton({
-  editor,
-  active,
-  label,
-  onClick,
-  children,
-}: {
+function ToolbarButton({ editor, active, label, onClick, children }: {
   editor: Editor
   active: boolean
   label: string
@@ -144,17 +138,7 @@ export function EditableRichText({ value, onCommit, placeholder = 'No notes yet'
   )
 }
 
-function RichTextEditArea({
-  draft,
-  onSave,
-  onSaveWithoutClosing,
-  onCancel,
-  onKeyDown,
-  hasError,
-  errorId,
-  placeholder,
-  className,
-}: {
+function RichTextEditArea({ draft, onSave, onSaveWithoutClosing, onCancel, onKeyDown, hasError, errorId, placeholder, className }: {
   draft: string | null
   onSave: (value: string | null) => void
   onSaveWithoutClosing: (value: string | null) => void
@@ -180,8 +164,7 @@ function RichTextEditArea({
   if (!editor) return null
 
   // Cmd/Ctrl-S checkpoints the current content without closing the field -
-  // preventDefault stops the browser's own "Save Page As" dialog from
-  // opening underneath it.
+  // preventDefault stops the browser's own save dialog from opening.
   function handleKeyDown(e: KeyboardEvent) {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
       e.preventDefault()
@@ -207,19 +190,46 @@ function RichTextEditArea({
         className="prose prose-sm max-w-none px-2.5 py-1 text-base outline-none [&_.ProseMirror]:outline-none md:text-sm"
         placeholder={placeholder}
       />
-      <div className="flex items-center justify-end gap-1.5 border-t border-input p-1.5">
-        <Button
-          type="button"
-          variant={hasError ? 'destructive' : 'ghost'}
-          size="sm"
-          onClick={() => onCancel(currentHtml(editor))}
-        >
-          {hasError ? 'Discard' : 'Cancel'}
-        </Button>
-        <Button type="button" size="sm" onClick={() => onSave(currentHtml(editor))}>
-          Save
-        </Button>
-      </div>
+      <SaveCancelButtons editor={editor} draft={draft} hasError={hasError} onSave={onSave} onCancel={onCancel} />
+    </div>
+  )
+}
+
+function SaveCancelButtons({
+  editor,
+  draft,
+  hasError,
+  onSave,
+  onCancel,
+}: {
+  editor: Editor
+  draft: string | null
+  hasError: boolean
+  onSave: (value: string | null) => void
+  onCancel: (current: string | null) => void
+}) {
+  // Reactive, via useEditorState rather than a plain comparison inline in
+  // JSX - the same React-Compiler-staleness concern as the toolbar's
+  // active states above, since editor is a stable reference that changes
+  // on every keystroke without React itself seeing a prop/state change.
+  // Lives in its own component (like Toolbar) rather than inline in
+  // RichTextEditArea, since useEditorState needs a non-null editor and
+  // can't be called after that component's own early `if (!editor)` return.
+  const isDirty = useEditorState({ editor, selector: () => currentHtml(editor) !== draft })
+
+  return (
+    <div className="flex items-center justify-end gap-1.5 border-t border-input p-1.5">
+      <Button
+        type="button"
+        variant={hasError ? 'destructive' : 'ghost'}
+        size="sm"
+        onClick={() => onCancel(currentHtml(editor))}
+      >
+        {hasError ? 'Discard' : 'Cancel'}
+      </Button>
+      <Button type="button" size="sm" disabled={!isDirty} onClick={() => onSave(currentHtml(editor))}>
+        Save
+      </Button>
     </div>
   )
 }

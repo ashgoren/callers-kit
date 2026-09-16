@@ -69,6 +69,41 @@ describe('EditableRichText', () => {
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
   })
 
+  it('disables Save until the content actually differs from the last saved value', async () => {
+    const onCommit = vi.fn()
+    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={onCommit} />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('Bring extra chairs.'))
+    await waitFor(() => expect(getEditor()).toBeInTheDocument())
+
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+
+    await user.type(getEditor()!, ' And cups.')
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+
+    // Deleting back to the original content disables it again - this is a
+    // live comparison against the current value, not a one-time "has this
+    // field been touched at all" flag.
+    await user.keyboard('{Backspace>10/}')
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+  })
+
+  it('re-disables Save after a Cmd/Ctrl-S checkpoint, until something changes again', async () => {
+    const onCommit = vi.fn()
+    render(<EditableRichText value={null} onCommit={onCommit} placeholder="No notes yet" />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('No notes yet'))
+    await waitFor(() => expect(getEditor()).toBeInTheDocument())
+    await user.type(getEditor()!, 'Bring extra chairs.')
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+
+    fireEvent.keyDown(getEditor()!, { key: 's', ctrlKey: true })
+
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+  })
+
   it('does nothing on blur - the field stays open with unsaved content intact', async () => {
     // Unlike every other Editable* field, blurring a large prose field is
     // deliberately a no-op: clicking/tapping outside shouldn't silently
