@@ -3,7 +3,7 @@ import Placeholder from '@tiptap/extension-placeholder'
 import StarterKit from '@tiptap/starter-kit'
 import { cn } from 'cn'
 import { BoldIcon, Heading1Icon, Heading2Icon, ItalicIcon, ListIcon, MinusIcon, UnderlineIcon } from 'lucide-react'
-import { useEffect, useId } from 'react'
+import { useEffect, useId, useLayoutEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { useSaveCancelFieldEdit } from '@/hooks/useSaveCancelFieldEdit'
 import { sanitizeHtml } from '@/lib/sanitizeHtml'
@@ -155,7 +155,6 @@ function RichTextEditArea({ draft, onSave, onSaveWithoutClosing, onCancel, onKey
   const editor = useEditor({
     extensions: EXTENSIONS,
     content: draft ?? '',
-    autofocus: 'end',
     editorProps: {
       attributes: {
         'aria-invalid': hasError ? 'true' : 'false',
@@ -163,6 +162,20 @@ function RichTextEditArea({ draft, onSave, onSaveWithoutClosing, onCancel, onKey
       },
     },
   })
+
+  // Not Tiptap's own `autofocus` option - it defers the actual focus()
+  // call via setTimeout(fn, 0), which runs after the tap that opened this
+  // field has already finished. By then, mobile browsers (particularly
+  // iOS Safari) no longer treat it as a direct result of user interaction
+  // and won't raise the on-screen keyboard. Focusing here instead, runs
+  // synchronously in the same commit the tap already triggered,
+  // with no setTimeout gap - EditorContent's own mount (a class
+  // component's componentDidMount, which fires at the same phase and,
+  // being a child, fires first) has already attached the real
+  // contentEditable node to the document by the time this runs.
+  useLayoutEffect(() => {
+    editor?.commands.focus('end')
+  }, [editor])
 
   if (!editor) return null
 
