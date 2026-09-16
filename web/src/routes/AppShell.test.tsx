@@ -1,7 +1,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest'
-import { createMemoryRouter, RouterProvider } from 'react-router'
+import { createMemoryRouter, Link, RouterProvider } from 'react-router'
+import { setRichTextFieldDirty } from '@/lib/unsavedRichText'
 import { AppShell } from './AppShell'
 
 const { useAuthMock, useThemeMock, useStatusMock } = vi.hoisted(() => ({
@@ -22,9 +23,28 @@ vi.mock('@powersync/react', () => ({
   useStatus: useStatusMock,
 }))
 
+// A second child route plus a real in-app Link, so the navigation-guard
+// tests below can trigger a genuine route transition through useBlocker -
+// existing tests never touch either, so they're unaffected.
 function renderAppShell() {
   const router = createMemoryRouter(
-    [{ element: <AppShell />, children: [{ path: '/', element: <div>Page content</div> }] }],
+    [
+      {
+        element: <AppShell />,
+        children: [
+          {
+            path: '/',
+            element: (
+              <>
+                <div>Page content</div>
+                <Link to="/other">Go elsewhere</Link>
+              </>
+            ),
+          },
+          { path: '/other', element: <div>Other page content</div> },
+        ],
+      },
+    ],
     { initialEntries: ['/'] },
   )
   return render(<RouterProvider router={router} />)
@@ -47,6 +67,11 @@ afterEach(() => {
   // below switches to fake timers, but leaving them faked would silently
   // break userEvent's internal timing in every test that runs after it.
   vi.useRealTimers()
+  // The unsaved-content registry is plain module state, not reset between
+  // tests automatically - only the navigation-guard tests below set it, but
+  // clean up unconditionally so a failed assertion mid-test can't leak a
+  // "dirty" flag into an unrelated later test.
+  setRichTextFieldDirty('test-field', false)
 })
 
 describe('AppShell', () => {
@@ -149,5 +174,64 @@ describe('AppShell', () => {
     fireEvent.click(screen.getByRole('menuitemradio', { name: 'System' }))
 
     expect(setTheme).toHaveBeenCalledWith('system')
+  })
+
+  it('navigates normally, with no prompt, when nothing is unsaved', async () => {
+    renderAppShell()
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('link', { name: 'Go elsewhere' }))
+
+    expect(await screen.findByText('Other page content')).toBeInTheDocument()
+    expect(screen.queryByText('Leave without saving?')).not.toBeInTheDocument()
+  })
+
+  it('blocks in-app navigation and asks for confirmation while a rich-text field is unsaved', async () => {
+    setRichTextFieldDirty('test-field', true)
+    renderAppShell()
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('link', { name: 'Go elsewhere' }))
+
+    expect(await screen.findByText('Leave without saving?')).toBeInTheDocument()
+    expect(screen.getByText('Page content')).toBeInTheDocument()
+    expect(screen.queryByText('Other page content')).not.toBeInTheDocument()
+  })
+
+  it('stays on the current page when Stay is chosen', async () => {
+    setRichTextFieldDirty('test-field', true)
+    renderAppShell()
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('link', { name: 'Go elsewhere' }))
+    await user.click(await screen.findByRole('button', { name: 'Stay' }))
+
+    expect(screen.queryByText('Leave without saving?')).not.toBeInTheDocument()
+    expect(screen.getByText('Page content')).toBeInTheDocument()
+  })
+
+  it('completes the navigation when Leave is chosen', async () => {
+    setRichTextFieldDirty('test-field', true)
+    renderAppShell()
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('link', { name: 'Go elsewhere' }))
+    await user.click(await screen.findByRole('button', { name: 'Leave' }))
+
+    expect(await screen.findByText('Other page content')).toBeInTheDocument()
+    expect(screen.queryByText('Leave without saving?')).not.toBeInTheDocument()
+  })
+
+  it('prevents the native beforeunload event only while something is unsaved', () => {
+    renderAppShell()
+
+    const cleanEvent = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(cleanEvent)
+    expect(cleanEvent.defaultPrevented).toBe(false)
+
+    setRichTextFieldDirty('test-field', true)
+    const dirtyEvent = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(dirtyEvent)
+    expect(dirtyEvent.defaultPrevented).toBe(true)
   })
 })

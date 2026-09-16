@@ -3,9 +3,11 @@ import Placeholder from '@tiptap/extension-placeholder'
 import StarterKit from '@tiptap/starter-kit'
 import { cn } from 'cn'
 import { BoldIcon, Heading1Icon, Heading2Icon, ItalicIcon, ListIcon, MinusIcon, UnderlineIcon } from 'lucide-react'
+import { useEffect, useId } from 'react'
 import { Button } from '@/components/ui/button'
 import { useSaveCancelFieldEdit } from '@/hooks/useSaveCancelFieldEdit'
 import { sanitizeHtml } from '@/lib/sanitizeHtml'
+import { setRichTextFieldDirty } from '@/lib/unsavedRichText'
 import { InlineEditableField } from './InlineEditableField'
 import type { Editor } from '@tiptap/react'
 import type { ElementType, KeyboardEvent, ReactNode } from 'react'
@@ -216,6 +218,17 @@ function SaveCancelButtons({
   // RichTextEditArea, since useEditorState needs a non-null editor and
   // can't be called after that component's own early `if (!editor)` return.
   const isDirty = useEditorState({ editor, selector: () => currentHtml(editor) !== draft })
+
+  // Registers this field's dirtiness with the app-wide tracker AppShell
+  // uses to guard navigation (useBlocker/useBeforeUnload) - this component
+  // only exists while the field is actually open, so mounting/unmounting it
+  // already lines up with "there's something to lose"/"there isn't"
+  // without needing a separate isFocused check here.
+  const id = useId()
+  useEffect(() => {
+    setRichTextFieldDirty(id, isDirty)
+    return () => setRichTextFieldDirty(id, false)
+  }, [id, isDirty])
 
   return (
     <div className="flex items-center justify-end gap-1.5 border-t border-input p-1.5">

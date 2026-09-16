@@ -1,7 +1,17 @@
 import { CircleUserRound } from 'lucide-react'
-import { NavLink, Outlet } from 'react-router'
+import { NavLink, Outlet, useBeforeUnload, useBlocker } from 'react-router'
 import { useStatus } from '@powersync/react'
 import { useEffect, useState } from 'react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +29,7 @@ import {
 import { Spinner } from '@/components/ui/spinner'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
+import { hasUnsavedRichText } from '@/lib/unsavedRichText'
 import type { Theme } from '@/contexts/ThemeContext'
 
 const THEMES: Theme[] = ['light', 'dark', 'system']
@@ -55,6 +66,22 @@ export function AppShell() {
   // slow first sync (or a real connection problem) - never for that brief,
   // ordinary-refresh flash.
   const [showSlowSyncMessage, setShowSlowSyncMessage] = useState(false)
+
+  // Guards against navigating away while a large Tiptap field (notes/
+  // walkthrough) has unsaved changes open - those fields use an explicit
+  // Save/Cancel model specifically so nothing commits without the user
+  // asking for it, which means (unlike every blur-commit field, where
+  // leaving already triggers a real commit) there's a genuine window where
+  // leaving would silently lose an edit. hasUnsavedRichText() is a plain,
+  // non-reactive registry (see src/lib/unsavedRichText.ts) - both hooks
+  // below re-check it live at the moment a navigation is actually
+  // attempted, not from some snapshot taken when AppShell last rendered.
+  const blocker = useBlocker(() => hasUnsavedRichText())
+  useBeforeUnload((event) => {
+    if (hasUnsavedRichText()) {
+      event.preventDefault()
+    }
+  })
 
   useEffect(() => {
     if (hasSynced) return undefined
@@ -143,6 +170,28 @@ export function AppShell() {
           </div>
         )}
       </main>
+
+      <AlertDialog
+        open={blocker.state === 'blocked'}
+        onOpenChange={(open) => {
+          if (!open) blocker.reset?.()
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave without saving?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have an open note with unsaved changes. Leaving now will discard them.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => blocker.reset?.()}>Stay</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={() => blocker.proceed?.()}>
+              Leave
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

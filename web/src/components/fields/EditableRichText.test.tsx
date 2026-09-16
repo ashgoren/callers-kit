@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
+import { hasUnsavedRichText } from '@/lib/unsavedRichText'
 import { EditableRichText } from './EditableRichText'
 
 // A plain contenteditable div doesn't get an implicit ARIA textbox role
@@ -102,6 +103,45 @@ describe('EditableRichText', () => {
     fireEvent.keyDown(getEditor()!, { key: 's', ctrlKey: true })
 
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+  })
+
+  it('registers with the app-wide unsaved-content tracker while dirty, and deregisters once saved or closed', async () => {
+    // AppShell's navigation guard (useBlocker/useBeforeUnload) reads this
+    // same registry - this only needs to confirm EditableRichText holds up
+    // its end of that contract, not re-test the registry's own logic
+    // (covered directly in unsavedRichText.test.ts) or AppShell's behavior
+    // (covered in AppShell.test.tsx).
+    const onCommit = vi.fn()
+    render(<EditableRichText value={null} onCommit={onCommit} placeholder="No notes yet" />)
+    expect(hasUnsavedRichText()).toBe(false)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('No notes yet'))
+    await waitFor(() => expect(getEditor()).toBeInTheDocument())
+    expect(hasUnsavedRichText()).toBe(false) // opened, but nothing typed yet
+
+    await user.type(getEditor()!, 'Bring extra chairs.')
+    expect(hasUnsavedRichText()).toBe(true)
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(hasUnsavedRichText()).toBe(false)
+  })
+
+  it('deregisters from the unsaved-content tracker when a dirty field is discarded, not just saved', async () => {
+    const onCommit = vi.fn()
+    render(<EditableRichText value={null} onCommit={onCommit} placeholder="No notes yet" />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('No notes yet'))
+    await waitFor(() => expect(getEditor()).toBeInTheDocument())
+    await user.type(getEditor()!, 'Abandoned edit')
+    expect(hasUnsavedRichText()).toBe(true)
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' })) // arms the discard prompt
+    await user.click(screen.getByRole('button', { name: 'Discard' }))
+
+    await waitFor(() => expect(getEditor()).not.toBeInTheDocument())
+    expect(hasUnsavedRichText()).toBe(false)
   })
 
   it('does nothing on blur - the field stays open with unsaved content intact', async () => {
