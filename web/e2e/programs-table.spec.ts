@@ -68,6 +68,13 @@ test('clicking a program row opens its detail page, showing the same real data',
   await page.getByRole('row', { name: new RegExp(programLocation) }).click()
 
   await expect(page).toHaveURL(/\/programs\/.+/)
+  // The URL updates before React Router actually swaps the rendered page -
+  // asserting on it alone isn't enough, since the programs list (including
+  // its off-screen sm:hidden mobile-card markup, which repeats the
+  // location text in "date @ location" form) can still be mounted for a
+  // moment afterward, making an unscoped getByText ambiguous. Waiting for
+  // the list's own table to actually disappear avoids that race.
+  await expect(page.getByRole('table')).not.toBeVisible()
   // Location is its own line below the date heading now, not combined into
   // the heading text itself.
   await expect(page.getByText(programLocation)).toBeVisible()
