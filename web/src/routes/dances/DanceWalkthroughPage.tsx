@@ -4,7 +4,7 @@ import { EditableRichText } from '@/components/fields/EditableRichText'
 import { PageSpinner } from '@/components/PageSpinner'
 import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
 import { sortAlphabetically } from '@/lib/format'
-import { makeFiguresLabel, makeMobileEditTitle } from './DancesPage.columns'
+import { makeFiguresLabel } from './DancesPage.columns'
 import { useDanceVersionWalkthrough } from './DanceWalkthroughPage.data'
 
 export function DanceWalkthroughPage() {
@@ -14,15 +14,6 @@ export function DanceWalkthroughPage() {
   if (isLoading) return <PageSpinner />
 
   const figuresLabel = version ? makeFiguresLabel(version) : ''
-  const mobileTitle = version
-    ? makeMobileEditTitle({
-        action: 'Walkthrough',
-        title: version.dance_title,
-        choreographers: version.choreographers,
-        figuresLabel,
-        versionLabel: version.version_count > 1 ? version.label : null,
-      })
-    : ''
   const backToDance = version
     ? version.order === 0
       ? `/dances/${version.dance_id}`
@@ -30,8 +21,11 @@ export function DanceWalkthroughPage() {
     : ''
 
   return (
-    // flex h-full gives the walkthrough editor room to grow up to whatever's left of the viewport
-    <div className="mx-auto flex h-full max-w-3xl flex-col p-4">
+    // sm:flex sm:h-full gives the walkthrough editor room to grow up to
+    // whatever's left of the viewport - desktop (AppShell's own <main> is
+    // only a fixed, bounded height at sm: and up too) only, so the page
+    // grows normally with its content and the whole page scrolls on mobile.
+    <div className="mx-auto max-w-3xl p-4 sm:flex sm:h-full sm:flex-col">
       {!version ? (
         <p className="text-sm text-muted-foreground">Dance version not found.</p>
       ) : (
@@ -63,13 +57,12 @@ export function DanceWalkthroughPage() {
               <p className="mt-1 text-base text-muted-foreground">Version: {version.label}</p>
             )}
           </div>
-          <div className="mt-6 min-h-0 flex-1">
+          <div className="mt-6 sm:min-h-0 sm:flex-1">
             <EditableRichText
               value={version.walkthrough}
               onCommit={(value) => void commitFieldEdit('dance_versions', version.id, 'walkthrough', value)}
               size="base"
               fillHeight
-              mobileTitle={mobileTitle}
             />
           </div>
         </>
