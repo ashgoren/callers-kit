@@ -2,7 +2,7 @@ import { EditorContent, useEditor, useEditorState } from '@tiptap/react'
 import Placeholder from '@tiptap/extension-placeholder'
 import StarterKit from '@tiptap/starter-kit'
 import { cn } from 'cn'
-import { useEffect, useId, useLayoutEffect } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { useSaveCancelFieldEdit } from '@/hooks/useSaveCancelFieldEdit'
 import { sanitizeHtml } from '@/lib/sanitizeHtml'
@@ -104,6 +104,7 @@ function RichTextEditArea({ draft, onSave, onSaveWithoutClosing, onCancel, onKey
   className?: string
   size: 'sm' | 'base'
 }) {
+  const wrapperRef = useRef<HTMLDivElement>(null)
   const editor = useEditor({
     extensions: EXTENSIONS,
     content: draft ?? '',
@@ -127,6 +128,13 @@ function RichTextEditArea({ draft, onSave, onSaveWithoutClosing, onCancel, onKey
   // contentEditable node to the document by the time this runs.
   useLayoutEffect(() => {
     editor?.commands.focus('end')
+
+    // Content this long can grow the whole box (toolbar + content +
+    // Save/Cancel) taller than what was on screen at the point of the
+    // click that opened it, pushing Save/Cancel below the fold - block:
+    // 'nearest' only scrolls the minimum amount needed to reveal whatever
+    // part is cut off.
+    wrapperRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   }, [editor])
 
   if (!editor) return null
@@ -149,6 +157,7 @@ function RichTextEditArea({ draft, onSave, onSaveWithoutClosing, onCancel, onKey
 
   return (
     <div
+      ref={wrapperRef}
       className={cn('rounded-lg border border-input bg-transparent', className)}
       onKeyDownCapture={handleKeyDown}
     >
@@ -156,8 +165,11 @@ function RichTextEditArea({ draft, onSave, onSaveWithoutClosing, onCancel, onKey
       <SelectionBubbleMenu editor={editor} />
       <EditorContent
         editor={editor}
+        // max-h + overflow-y-auto bounds only the content itself;
+        // the toolbar above and save/cancel below stay are always visible.
+        // Without this, a long note just grows the whole box.
         className={cn(
-          'prose max-w-none px-2.5 py-1 outline-none [&_.ProseMirror]:outline-none',
+          'prose max-h-96 max-w-none overflow-y-auto px-2.5 py-1 outline-none [&_.ProseMirror]:outline-none',
           size === 'sm' ? 'prose-sm text-base md:text-sm' : 'text-base',
         )}
         placeholder={placeholder}

@@ -47,4 +47,10 @@ Range.prototype.getBoundingClientRect ??= () => ({ top: 0, left: 0, right: 0, bo
 // into a document position. Returning null is what a genuinely-empty
 // point would report anyway, and ProseMirror falls back gracefully.
 document.elementFromPoint ??= () => null
+
+// jsdom doesn't implement scrollIntoView either (same "no real layout" gap,
+// same reasoning as the Range stubs above) - EditableRichText calls this to
+// keep Save/Cancel visible on a tall note. A no-op is enough since no
+// jsdom-based test can assert on real scroll position anyway.
+Element.prototype.scrollIntoView ??= () => {}
 /* eslint-enable @typescript-eslint/unbound-method */
