@@ -1,11 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 import { expect, test } from '@playwright/test'
 
-// Skipped: title editing moved out of the table/card view (now read-only,
-// see DancesPage.tsx) into the not-yet-built detail view, so there's
-// currently no UI path to trigger the edit this test drives through.
-// Re-enable once that view has a real editable field.
-test.skip('editing a dance offline syncs to Supabase once back online', async ({
+// Title editing moved from the table/card view (now read-only, see
+// DancesPage.tsx) to the dance detail view (DanceDetailPage.tsx) - this
+// drives the edit through there instead, via EditableText's own "click a
+// heading to edit it" interaction rather than a button.
+test('editing a dance offline syncs to Supabase once back online', async ({
   page,
   context,
 }) => {
@@ -33,21 +33,23 @@ test.skip('editing a dance offline syncs to Supabase once back online', async ({
     await page.getByLabel('Email').fill(email)
     await page.getByLabel('Password').fill(password)
     await page.getByRole('button', { name: 'Sign in' }).click()
-    await expect(page.getByText(email)).toBeVisible()
+    await expect(page).toHaveURL('/dances')
 
-    const titleButton = page.getByRole('button', { name: startingTitle })
-    await expect(titleButton).toBeVisible()
+    await page.goto(`/dances/${danceId}`)
+
+    const titleHeading = page.getByRole('heading', { name: startingTitle })
+    await expect(titleHeading).toBeVisible()
 
     await context.setOffline(true)
 
-    await titleButton.click()
+    await titleHeading.click()
     const input = page.getByRole('textbox')
     await input.fill(newTitle)
     await input.blur()
 
     // Still offline: the new value must already be reflected locally —
     // this is the actual point of local-first writes.
-    await expect(page.getByRole('button', { name: newTitle })).toBeVisible()
+    await expect(page.getByRole('heading', { name: newTitle })).toBeVisible()
 
     await context.setOffline(false)
 
