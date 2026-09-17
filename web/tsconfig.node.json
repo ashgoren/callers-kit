@@ -2,7 +2,13 @@
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
     "target": "es2023",
-    "lib": ["ES2023"],
+    // DOM: e2e/**/*.ts (also covered by this config) runs Node code that
+    // calls Playwright's page/locator.evaluate(), whose callback body
+    // actually executes in a real browser - it needs DOM types (Element,
+    // HTMLElement, etc.) to type-check that callback's parameter, even
+    // though vite.config.ts/playwright.config.ts themselves never
+    // reference any DOM global.
+    "lib": ["ES2023", "DOM"],
     "types": ["node"],
     "skipLibCheck": true,
 

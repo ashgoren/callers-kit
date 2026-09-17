@@ -42,6 +42,43 @@ describe('EditableRichText', () => {
     expect(getEditor()?.parentElement).not.toHaveClass('prose-sm')
   })
 
+  // These only confirm the right classes land on the right elements given
+  // the prop - jsdom has no real layout engine, so it can't verify the box
+  // actually bounds/scrolls in a browser the way it's meant to (that's
+  // covered separately in e2e). What this guards against is a future
+  // refactor silently breaking the conditional itself - e.g. dropping
+  // min-h-0 somewhere in the chain, which would compile and pass every
+  // other test here but quietly stop the whole thing from working.
+  it('bounds edit-mode content with a fixed max-height by default, not a fill-height flex layout', async () => {
+    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('Bring extra chairs.'))
+
+    expect(getEditor()?.parentElement).toHaveClass('max-h-96', 'overflow-y-auto')
+    expect(getEditor()?.parentElement).not.toHaveClass('flex-1')
+    expect(getEditor()?.parentElement?.parentElement).not.toHaveClass('flex')
+  })
+
+  it('fills and scrolls within its container instead when fillHeight is passed', async () => {
+    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} fillHeight />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('Bring extra chairs.'))
+
+    // EditorContent's own wrapper: fills the remaining flex space and
+    // scrolls internally, instead of a fixed max-height.
+    expect(getEditor()?.parentElement).toHaveClass('flex-1', 'min-h-0', 'overflow-y-auto')
+    expect(getEditor()?.parentElement).not.toHaveClass('max-h-96')
+    // RichTextEditArea's own root: a flex column so that fill-height child
+    // actually has something to fill.
+    expect(getEditor()?.parentElement?.parentElement).toHaveClass('flex', 'min-h-0', 'flex-1', 'flex-col')
+    // InlineEditableField's edit-mode wrapper (via editModeClassName): the
+    // outermost link in the chain, giving the above a definite height to
+    // reference in the first place.
+    expect(getEditor()?.parentElement?.parentElement?.parentElement).toHaveClass('flex', 'h-full', 'flex-col')
+  })
+
   it('shows a muted placeholder in view mode when the value is null', () => {
     render(<EditableRichText value={null} onCommit={vi.fn()} placeholder="No notes yet" />)
 

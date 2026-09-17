@@ -47,13 +47,14 @@ function SelectionBubbleMenu({ editor }: { editor: Editor }) {
 // Dance/Program notes and walkthrough. A read-only, sanitized-HTML display
 // until clicked/tapped, then a real Tiptap editor with the toolbar above
 // and an explicit Save/Cancel row below.
-export function EditableRichText({ value, onCommit, placeholder = 'No notes yet', as = 'div', className, size = 'sm' }: {
+export function EditableRichText({ value, onCommit, placeholder = 'No notes yet', as = 'div', className, size = 'sm', fillHeight = false }: {
   value: string | null
   onCommit: (value: string | null) => void
   placeholder?: string
   as?: ElementType
   className?: string
   size?: 'sm' | 'base'
+  fillHeight?: boolean
 }) {
   const normalizedValue = value === '' ? null : value
   const fieldEdit = useSaveCancelFieldEdit({ value: normalizedValue, onCommit })
@@ -63,6 +64,7 @@ export function EditableRichText({ value, onCommit, placeholder = 'No notes yet'
       {...fieldEdit}
       as={as}
       className={className}
+      editModeClassName={fillHeight ? 'flex h-full flex-col' : undefined}
       fullWidth
       renderDisplay={(v) =>
         v === null ? (
@@ -86,13 +88,14 @@ export function EditableRichText({ value, onCommit, placeholder = 'No notes yet'
           placeholder={placeholder}
           className={className}
           size={size}
+          fillHeight={fillHeight}
         />
       )}
     />
   )
 }
 
-function RichTextEditArea({ draft, onSave, onSaveWithoutClosing, onCancel, onKeyDown, hasError, errorId, placeholder, className, size }: {
+function RichTextEditArea({ draft, onSave, onSaveWithoutClosing, onCancel, onKeyDown, hasError, errorId, placeholder, className, size, fillHeight }: {
   draft: string | null
   onSave: (value: string | null) => void
   onSaveWithoutClosing: (value: string | null) => void
@@ -103,6 +106,7 @@ function RichTextEditArea({ draft, onSave, onSaveWithoutClosing, onCancel, onKey
   placeholder: string
   className?: string
   size: 'sm' | 'base'
+  fillHeight: boolean
 }) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const editor = useEditor({
@@ -158,18 +162,22 @@ function RichTextEditArea({ draft, onSave, onSaveWithoutClosing, onCancel, onKey
   return (
     <div
       ref={wrapperRef}
-      className={cn('rounded-lg border border-input bg-transparent', className)}
+      className={cn(
+        'rounded-lg border border-input bg-transparent',
+        fillHeight && 'flex min-h-0 flex-1 flex-col',
+        className,
+      )}
       onKeyDownCapture={handleKeyDown}
     >
       <FullToolbar editor={editor} />
       <SelectionBubbleMenu editor={editor} />
       <EditorContent
         editor={editor}
-        // max-h + overflow-y-auto bounds only the content itself;
-        // the toolbar above and save/cancel below stay are always visible.
-        // Without this, a long note just grows the whole box.
+        // Content-only bounding: the toolbar above and Save/Cancel below
+        // stay outside this scroll container in normal flow.
         className={cn(
-          'prose max-h-96 max-w-none overflow-y-auto px-2.5 py-1 outline-none [&_.ProseMirror]:outline-none',
+          'prose max-w-none px-2.5 py-1 outline-none [&_.ProseMirror]:outline-none',
+          fillHeight ? 'min-h-0 flex-1 overflow-y-auto' : 'max-h-96 overflow-y-auto',
           size === 'sm' ? 'prose-sm text-base md:text-sm' : 'text-base',
         )}
         placeholder={placeholder}

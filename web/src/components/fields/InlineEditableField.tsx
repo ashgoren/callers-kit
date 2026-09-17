@@ -39,12 +39,14 @@ export function InlineEditableField<T>({
   onKeyDown,
   as: As = 'span',
   className,
+  editModeClassName,
   fullWidth = false,
   renderDisplay,
   renderInput,
 }: FieldEditState<T> & {
   as?: ElementType
   className?: string
+  editModeClassName?: string // needed by EditableRichText's fillHeight to be in flex layout
   fullWidth?: boolean
   renderDisplay: (value: T) => ReactNode
   renderInput: (props: {
@@ -100,7 +102,7 @@ export function InlineEditableField<T>({
   }
 
   return (
-    <div>
+    <div className={editModeClassName}>
       {renderInput({ draft, onChange, onBlur, onKeyDown, hasError: error !== null, errorId, ref: inputRef })}
       {error !== null && (
         <p id={errorId} className="mt-1 text-xs text-destructive">

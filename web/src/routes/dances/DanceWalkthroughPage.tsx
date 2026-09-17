@@ -21,7 +21,8 @@ export function DanceWalkthroughPage() {
     : ''
 
   return (
-    <div className="mx-auto max-w-3xl p-4">
+    // flex h-full gives the walkthrough editor room to grow up to whatever's left of the viewport
+    <div className="mx-auto flex h-full max-w-3xl flex-col p-4">
       {!version ? (
         <p className="text-sm text-muted-foreground">Dance version not found.</p>
       ) : (
@@ -53,11 +54,12 @@ export function DanceWalkthroughPage() {
               <p className="mt-1 text-base text-muted-foreground">Version: {version.label}</p>
             )}
           </div>
-          <div className="mt-6">
+          <div className="mt-6 min-h-0 flex-1">
             <EditableRichText
               value={version.walkthrough}
               onCommit={(value) => void commitFieldEdit('dance_versions', version.id, 'walkthrough', value)}
               size="base"
+              fillHeight
             />
           </div>
         </>

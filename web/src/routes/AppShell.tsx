@@ -87,7 +87,7 @@ export function AppShell() {
   }, [hasSynced])
 
   return (
-    <div className="flex min-h-svh flex-col">
+    <div className="flex h-svh flex-col">
       <header className="grid grid-cols-3 items-center border-b px-4 py-2">
         <span className="text-sm font-light">Caller's Kit</span>
 
@@ -147,7 +147,7 @@ export function AppShell() {
         </DropdownMenu>
       </header>
 
-      <main className="flex-1">
+      <main className="min-h-0 flex-1 overflow-y-auto">
         {hasSynced ? (
           <Outlet />
         ) : (
