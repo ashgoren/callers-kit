@@ -1,18 +1,16 @@
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react'
-import { BubbleMenu } from '@tiptap/react/menus'
 import Placeholder from '@tiptap/extension-placeholder'
 import StarterKit from '@tiptap/starter-kit'
 import { cn } from 'cn'
-import { BoldIcon, Heading1Icon, Heading2Icon, ItalicIcon, ListIcon, MinusIcon, UnderlineIcon } from 'lucide-react'
 import { useEffect, useId, useLayoutEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { useSaveCancelFieldEdit } from '@/hooks/useSaveCancelFieldEdit'
 import { sanitizeHtml } from '@/lib/sanitizeHtml'
 import { setRichTextFieldDirty } from '@/lib/unsavedRichText'
 import { InlineEditableField } from './InlineEditableField'
-import { currentHtml, ToolbarButton } from './tiptapShared'
+import { buildHorizontalRuleItem, useBoldItalicUnderlineItems, useHeadingAndListItems } from './toolbarItems'
+import { currentHtml, Toolbar, ToolbarBubbleMenu } from './tiptapShared'
 import type { Editor } from '@tiptap/react'
-import type { LucideIcon } from 'lucide-react'
 import type { ElementType, KeyboardEvent } from 'react'
 
 // The "full" toolbar - Bold, Italic, Underline, H1/H2, list, and a divider.
@@ -21,105 +19,27 @@ const EXTENSIONS = [
   Placeholder.configure({ placeholder: 'Add a note…' }),
 ]
 
-interface ToolbarItem {
-  key: string
-  label: string
-  icon: LucideIcon
-  active: boolean
-  onClick: () => void
-}
-
-// Bold/Italic/Underline/H1/H2/Bullet-list - shared between the fixed
-// toolbar and the selection bubble menu below, so the two don't drift into
-// slightly different button sets. Horizontal rule is deliberately not part
-// of this shared list: it inserts a new node rather than acting on
-// existing content, which fits a fixed toolbar but not a menu that only
-// ever appears because the user has selected some text.
-function useMarkAndBlockItems(editor: Editor): ToolbarItem[] {
-  // useEditorState, not editor.isActive(...) called directly in JSX -
-  // editor is a stable reference across renders, so React Compiler's
-  // auto-memoization can otherwise serve a stale active-state result after
-  // a selection/mark change that didn't also change this component's own
-  // props/state.
-  const state = useEditorState({
-    editor,
-    selector: ({ editor: e }) => ({
-      bold: e.isActive('bold'),
-      italic: e.isActive('italic'),
-      underline: e.isActive('underline'),
-      heading1: e.isActive('heading', { level: 1 }),
-      heading2: e.isActive('heading', { level: 2 }),
-      bulletList: e.isActive('bulletList'),
-    }),
-  })
-
-  return [
-    { key: 'bold', label: 'Bold', icon: BoldIcon, active: state.bold, onClick: () => editor.chain().focus().toggleBold().run() },
-    { key: 'italic', label: 'Italic', icon: ItalicIcon, active: state.italic, onClick: () => editor.chain().focus().toggleItalic().run() },
-    {
-      key: 'underline',
-      label: 'Underline',
-      icon: UnderlineIcon,
-      active: state.underline,
-      onClick: () => editor.chain().focus().toggleUnderline().run(),
-    },
-    {
-      key: 'heading1',
-      label: 'Heading 1',
-      icon: Heading1Icon,
-      active: state.heading1,
-      onClick: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
-    },
-    {
-      key: 'heading2',
-      label: 'Heading 2',
-      icon: Heading2Icon,
-      active: state.heading2,
-      onClick: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
-    },
-    {
-      key: 'bulletList',
-      label: 'Bullet list',
-      icon: ListIcon,
-      active: state.bulletList,
-      onClick: () => editor.chain().focus().toggleBulletList().run(),
-    },
-  ]
-}
-
-function Toolbar({ editor }: { editor: Editor }) {
-  const items = useMarkAndBlockItems(editor)
-
+function FullToolbar({ editor }: { editor: Editor }) {
+  const markItems = useBoldItalicUnderlineItems(editor)
+  const blockItems = useHeadingAndListItems(editor)
   return (
-    <div className="flex items-center gap-0.5 border-b border-input p-1">
-      {items.map((item) => (
-        <ToolbarButton key={item.key} editor={editor} active={item.active} label={item.label} onClick={item.onClick}>
-          <item.icon />
-        </ToolbarButton>
-      ))}
-      <ToolbarButton editor={editor} active={false} label="Horizontal rule" onClick={() => editor.chain().focus().setHorizontalRule().run()}>
-        <MinusIcon />
-      </ToolbarButton>
-    </div>
+    <Toolbar
+      editor={editor}
+      groups={[markItems, blockItems, [buildHorizontalRuleItem(editor)]]}
+      className="border-b border-input p-1"
+    />
   )
 }
 
 function SelectionBubbleMenu({ editor }: { editor: Editor }) {
-  const items = useMarkAndBlockItems(editor)
-
+  const markItems = useBoldItalicUnderlineItems(editor)
+  const blockItems = useHeadingAndListItems(editor)
   return (
-    <BubbleMenu
+    <ToolbarBubbleMenu
       editor={editor}
-      role="toolbar"
-      aria-label="Selection formatting"
-      className="flex items-center gap-0.5 rounded-lg border bg-popover p-1 text-popover-foreground shadow-md"
-    >
-      {items.map((item) => (
-        <ToolbarButton key={item.key} editor={editor} active={item.active} label={item.label} onClick={item.onClick}>
-          <item.icon />
-        </ToolbarButton>
-      ))}
-    </BubbleMenu>
+      groups={[markItems, blockItems]}
+      ariaLabel="Selection formatting"
+    />
   )
 }
 
@@ -133,8 +53,6 @@ export function EditableRichText({ value, onCommit, placeholder = 'No notes yet'
   placeholder?: string
   as?: ElementType
   className?: string
-  // 'sm' (default) is the compact size for Dance/Program notes;
-  // 'base' matches FiguresList's own text-base.
   size?: 'sm' | 'base'
 }) {
   const normalizedValue = value === '' ? null : value
@@ -234,7 +152,7 @@ function RichTextEditArea({ draft, onSave, onSaveWithoutClosing, onCancel, onKey
       className={cn('rounded-lg border border-input bg-transparent', className)}
       onKeyDownCapture={handleKeyDown}
     >
-      <Toolbar editor={editor} />
+      <FullToolbar editor={editor} />
       <SelectionBubbleMenu editor={editor} />
       <EditorContent
         editor={editor}

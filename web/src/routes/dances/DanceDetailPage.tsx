@@ -1,4 +1,5 @@
 import { cn } from 'cn'
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { z } from 'zod'
 import { buttonVariants } from '@/components/ui/button'
@@ -13,7 +14,9 @@ import { commitFigureItemEdit } from './commitFigureItemEdit'
 import { makeFiguresLabel } from './DancesPage.columns'
 import { useDance } from './DanceDetailPage.data'
 import { danceMetadataFields } from './DanceDetailPage.fields'
+import { FigureToolbar } from './FigureToolbar'
 import { FiguresList } from './FiguresList'
+import type { Editor } from '@tiptap/react'
 import type { DanceWithJoins } from './DancesPage.columns'
 
 const titleSchema = z.string().min(1, 'Title is required')
@@ -22,6 +25,7 @@ export function DanceDetailPage() {
   const { id, versionId } = useParams()
   const navigate = useNavigate()
   const { dance, isLoading } = useDance(id ?? '')
+  const [activeFigureEditor, setActiveFigureEditor] = useState<Editor | null>(null)
 
   if (isLoading) return <PageSpinner />
 
@@ -74,16 +78,21 @@ export function DanceDetailPage() {
                 )}
               >
                 <div className="space-y-4">
-                  {figuresLabel && (
-                    <p className={figuresLabel === 'Improper' ? 'text-base text-muted-foreground' : 'text-base font-semibold'}>
-                      {figuresLabel}
-                    </p>
-                  )}
+                  {/* min-h-7 matches the toolbar's height */}
+                  <div className="flex min-h-7 items-center gap-4">
+                    {figuresLabel && (
+                      <p className={figuresLabel === 'Improper' ? 'text-base text-muted-foreground' : 'text-base font-semibold'}>
+                        {figuresLabel}
+                      </p>
+                    )}
+                    {activeFigureEditor && <FigureToolbar editor={activeFigureEditor} className="ml-auto" />}
+                  </div>
                   <FiguresList
                     items={selectedVersion?.figures ?? []}
                     onEditItem={(itemId, value) =>
                       selectedVersion && void commitFigureItemEdit(selectedVersion.id, selectedVersion.figures, itemId, value)
                     }
+                    onActiveEditorChange={setActiveFigureEditor}
                   />
                 </div>
                 {selectedVersion && (

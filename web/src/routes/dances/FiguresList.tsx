@@ -3,6 +3,7 @@ import { Fragment } from 'react'
 import { EditableFigureText } from '@/components/fields/EditableFigureText'
 import { isFigureEntry } from '@/lib/figures'
 import { mutedPlaceholder } from '@/lib/format'
+import type { Editor } from '@tiptap/react'
 import type { FigureItem } from '@/lib/figures'
 
 // Pairs each item with whether its phrase heading should show - a figure's
@@ -27,7 +28,11 @@ function withPhraseHeadings(items: FigureItem[]): { item: FigureItem; showPhrase
 // All cells are direct grid children (not nested per-row wrappers) so a
 // single grid-template-columns applies down the whole list rather than
 // resetting per row.
-export function FiguresList({ items, onEditItem }: { items: FigureItem[]; onEditItem?: (itemId: string, value: string) => void }) {
+export function FiguresList({ items, onEditItem, onActiveEditorChange }: {
+  items: FigureItem[]
+  onEditItem?: (itemId: string, value: string) => void
+  onActiveEditorChange?: (editor: Editor | null) => void
+}) {
   if (items.length === 0) return mutedPlaceholder
 
   return (
@@ -39,6 +44,7 @@ export function FiguresList({ items, onEditItem }: { items: FigureItem[]; onEdit
               <EditableFigureText
                 value={item.text}
                 onCommit={(value) => onEditItem?.(item.id, value ?? '')}
+                onActiveChange={onActiveEditorChange}
                 placeholder="Add a note…"
               />
             </div>
@@ -58,6 +64,7 @@ export function FiguresList({ items, onEditItem }: { items: FigureItem[]; onEdit
             <EditableFigureText
               value={item.description}
               onCommit={(value) => onEditItem?.(item.id, value ?? '')}
+              onActiveChange={onActiveEditorChange}
               placeholder="Add a figure…"
               className={showPhraseHeading ? 'pt-3' : undefined}
             />

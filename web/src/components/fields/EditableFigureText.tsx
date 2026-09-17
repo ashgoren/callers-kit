@@ -1,24 +1,28 @@
-import { EditorContent, useEditor, useEditorState } from '@tiptap/react'
-import { BubbleMenu } from '@tiptap/react/menus'
+import { EditorContent, useEditor } from '@tiptap/react'
 import { cn } from 'cn'
-import { BoldIcon, ItalicIcon, UnderlineIcon } from 'lucide-react'
 import { useLayoutEffect } from 'react'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useDraftFieldEdit } from '@/hooks/useDraftFieldEdit'
 import { sanitizeHtml } from '@/lib/sanitizeHtml'
-import { COMPACT_TEXT_EXTENSIONS, FONT_SIZE_EM, fontSizeOptionFor } from './compactTextExtensions'
+import { COMPACT_TEXT_EXTENSIONS } from './compactTextExtensions'
 import { InlineEditableField } from './InlineEditableField'
-import { currentHtml, ToolbarButton } from './tiptapShared'
+import { currentHtml } from './tiptapShared'
 import type { Editor } from '@tiptap/react'
-import type { FontSizeOption } from './compactTextExtensions'
 import type { ElementType, KeyboardEvent, RefObject } from 'react'
 
 // A rich-text inline-editable field for a figure's description/note text -
 // a single short line, not a whole paragraph. Blur/Enter-commits like other
-// short fields. Formatting is a selection-triggered bubble menu.
-export function EditableFigureText({ value, onCommit, placeholder = 'Add text…', as = 'span', className }: {
+// short fields. Has no formatting controls of its own - onActiveChange
+// reports the live editor instance up to a shared toolbar rendered
+// elsewhere (see FigureToolbar), since only one figure is ever mid-edit at
+// a time and a single fixed toolbar can serve them all rather than each
+// field carrying its own bubble menu. Every control in FigureToolbar is
+// a plain button that returns focus here immediately, so from this field's
+// perspective a toolbar click never looks any different from clicking
+// nothing at all.
+export function EditableFigureText({ value, onCommit, onActiveChange, placeholder = 'Add text…', as = 'span', className }: {
   value: string | null
   onCommit: (value: string | null) => void
+  onActiveChange?: (editor: Editor | null) => void
   placeholder?: string
   as?: ElementType
   className?: string
@@ -44,6 +48,7 @@ export function EditableFigureText({ value, onCommit, placeholder = 'Add text…
           onChange={onChange}
           onBlur={onBlur}
           onKeyDown={onKeyDown}
+          onActiveChange={onActiveChange}
           placeholder={placeholder}
           className={className}
           ref={ref}
@@ -53,11 +58,12 @@ export function EditableFigureText({ value, onCommit, placeholder = 'Add text…
   )
 }
 
-function FigureTextEditArea({ draft, onChange, onBlur, onKeyDown, placeholder, className, ref }: {
+function FigureTextEditArea({ draft, onChange, onBlur, onKeyDown, onActiveChange, placeholder, className, ref }: {
   draft: string | null
   onChange: (value: string | null) => void
   onBlur: () => void
   onKeyDown: (e: KeyboardEvent) => void
+  onActiveChange?: (editor: Editor | null) => void
   placeholder: string
   className?: string
   ref: RefObject<HTMLElement | null>
@@ -81,9 +87,19 @@ function FigureTextEditArea({ draft, onChange, onBlur, onKeyDown, placeholder, c
   // Shift+Enter must reach Tiptap's own hard-break handling untouched -
   // only a plain Enter commits (matching every other short field, where
   // Enter finishing the edit is expected, not starting a new line).
+  // useDraftFieldEdit's own Enter/Escape handling (invoked below via
+  // onKeyDown) closes the field directly, without ever firing a native
+  // blur on this div - so this is the only place that sees it happen and
+  // can tell the toolbar to go away too.
   function handleKeyDown(e: KeyboardEvent) {
     if (e.key === 'Enter' && e.shiftKey) return
+    if (e.key === 'Enter' || e.key === 'Escape') onActiveChange?.(null)
     onKeyDown(e)
+  }
+
+  function handleBlur() {
+    onActiveChange?.(null)
+    onBlur()
   }
 
   return (
@@ -91,65 +107,10 @@ function FigureTextEditArea({ draft, onChange, onBlur, onKeyDown, placeholder, c
       ref={ref as RefObject<HTMLDivElement | null>}
       className={cn('rounded-lg border border-input bg-transparent px-2.5 py-1', className)}
       onKeyDownCapture={handleKeyDown}
-      onBlur={onBlur}
+      onFocus={() => onActiveChange?.(editor)}
+      onBlur={handleBlur}
     >
-      <FigureTextBubbleMenu editor={editor} />
       <EditorContent editor={editor} className="outline-none [&_.ProseMirror]:outline-none" placeholder={placeholder} />
     </div>
-  )
-}
-
-function FigureTextBubbleMenu({ editor }: { editor: Editor }) {
-  const state = useEditorState({
-    editor,
-    selector: ({ editor: e }) => ({
-      bold: e.isActive('bold'),
-      italic: e.isActive('italic'),
-      underline: e.isActive('underline'),
-      fontSize: fontSizeOptionFor(e.getAttributes('textStyle').fontSize as string | null | undefined),
-    }),
-  })
-
-  function applyFontSize(option: FontSizeOption | null) {
-    const em = option ? FONT_SIZE_EM[option] : null
-    if (em === null) {
-      editor.chain().focus().unsetFontSize().run()
-    } else {
-      editor.chain().focus().setFontSize(em).run()
-    }
-  }
-
-  return (
-    <BubbleMenu
-      editor={editor}
-      role="toolbar"
-      aria-label="Text formatting"
-      className="flex items-center gap-0.5 rounded-lg border bg-popover p-1 text-popover-foreground shadow-md"
-    >
-      <ToolbarButton editor={editor} active={state.bold} label="Bold" onClick={() => editor.chain().focus().toggleBold().run()}>
-        <BoldIcon />
-      </ToolbarButton>
-      <ToolbarButton editor={editor} active={state.italic} label="Italic" onClick={() => editor.chain().focus().toggleItalic().run()}>
-        <ItalicIcon />
-      </ToolbarButton>
-      <ToolbarButton
-        editor={editor}
-        active={state.underline}
-        label="Underline"
-        onClick={() => editor.chain().focus().toggleUnderline().run()}
-      >
-        <UnderlineIcon />
-      </ToolbarButton>
-      <Select value={state.fontSize} onValueChange={applyFontSize}>
-        <SelectTrigger className="h-7 w-18 px-2 text-xs">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="Small">Small</SelectItem>
-          <SelectItem value="Normal">Normal</SelectItem>
-          <SelectItem value="Large">Large</SelectItem>
-        </SelectContent>
-      </Select>
-    </BubbleMenu>
   )
 }
