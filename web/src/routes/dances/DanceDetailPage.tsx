@@ -1,6 +1,8 @@
+import { cn } from 'cn'
 import { Link, useNavigate, useParams } from 'react-router'
 import { z } from 'zod'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
+import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs'
 import { EditableRichText } from '@/components/fields/EditableRichText'
 import { EditableText } from '@/components/fields/EditableText'
 import { PageSpinner } from '@/components/PageSpinner'
@@ -52,50 +54,54 @@ export function DanceDetailPage() {
           <div className="mt-6 grid grid-cols-1 gap-8 sm:grid-cols-[3fr_1fr]">
             <div>
               {dance.versions.length > 1 && (
-                <div className="mb-4 flex flex-wrap gap-1">
-                  {dance.versions.map((version) => (
-                    <Button
-                      key={version.id}
-                      variant={selectedVersion?.id === version.id ? 'secondary' : 'ghost'}
-                      size="sm"
-                      aria-pressed={selectedVersion?.id === version.id}
-                      onClick={() => void navigate(`/dances/${dance.id}/versions/${version.id}`)}
-                    >
-                      {version.label}
-                    </Button>
-                  ))}
-                </div>
+                <Tabs
+                  value={selectedVersion?.id}
+                  onValueChange={(value: string) => void navigate(`/dances/${dance.id}/versions/${value}`)}
+                >
+                  <TabsList>
+                    {dance.versions.map((version) => (
+                      <TabsTab key={version.id} value={version.id}>
+                        {version.label}
+                      </TabsTab>
+                    ))}
+                  </TabsList>
+                </Tabs>
               )}
-              <div className="rounded-lg border p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-4">
-                    {figuresLabel && (
-                      <p className={figuresLabel === 'Improper' ? 'text-base text-muted-foreground' : 'text-base font-semibold'}>
-                        {figuresLabel}
-                      </p>
-                    )}
-                    <FiguresList
-                      items={selectedVersion?.figures ?? []}
-                      onEditItem={(itemId, value) =>
-                        selectedVersion && void commitFigureItemEdit(selectedVersion.id, selectedVersion.figures, itemId, value)
-                      }
-                    />
-                  </div>
-                  {selectedVersion && (
+              <div
+                className={cn(
+                  'rounded-lg border p-4',
+                  dance.versions.length > 1 && 'rounded-t-none border-t-0',
+                )}
+              >
+                <div className="space-y-4">
+                  {figuresLabel && (
+                    <p className={figuresLabel === 'Improper' ? 'text-base text-muted-foreground' : 'text-base font-semibold'}>
+                      {figuresLabel}
+                    </p>
+                  )}
+                  <FiguresList
+                    items={selectedVersion?.figures ?? []}
+                    onEditItem={(itemId, value) =>
+                      selectedVersion && void commitFigureItemEdit(selectedVersion.id, selectedVersion.figures, itemId, value)
+                    }
+                  />
+                </div>
+                {selectedVersion && (
+                  <div className="mt-8 flex flex-wrap gap-2 border-t pt-8">
                     <Link
                       to={
                         selectedVersion.id === dance.versions[0]?.id
                           ? `/dances/${dance.id}/walkthrough`
                           : `/dances/${dance.id}/versions/${selectedVersion.id}/walkthrough`
                       }
-                      className={buttonVariants({ variant: 'outline', size: 'sm', className: 'shrink-0' })}
+                      className={buttonVariants({ variant: 'outline' })}
                     >
                       Walkthrough
                     </Link>
-                  )}
-                </div>
+                  </div>
+                )}
                 {selectedVersion && (
-                  <div className="mt-12">
+                  <div className="mt-8 border-t pt-8">
                     <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Notes</p>
                     <div className="mt-1">
                       <EditableRichText

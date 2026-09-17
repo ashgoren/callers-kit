@@ -237,7 +237,7 @@ describe('DanceDetailPage', () => {
     renderDanceDetailPage('42')
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'Calling' }))
+    await user.click(screen.getByRole('tab', { name: 'Calling' }))
 
     expect(screen.getByRole('link', { name: 'Walkthrough' })).toHaveAttribute(
       'href',
@@ -249,7 +249,7 @@ describe('DanceDetailPage', () => {
     useQueryMock.mockReturnValue({ data: [makeDanceRow()], isLoading: false })
     renderDanceDetailPage()
 
-    expect(screen.queryByRole('button', { name: 'Choreography' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Choreography' })).not.toBeInTheDocument()
   })
 
   it('shows a version selector button per version, and switches which one\'s figures/notes are shown', async () => {
@@ -284,7 +284,7 @@ describe('DanceDetailPage', () => {
     expect(screen.queryByText('Calling notes.')).not.toBeInTheDocument()
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'Calling' }))
+    await user.click(screen.getByRole('tab', { name: 'Calling' }))
 
     expect(screen.queryByText('Circle left')).not.toBeInTheDocument()
     expect(screen.queryByText('Standard notes.')).not.toBeInTheDocument()
@@ -322,7 +322,7 @@ describe('DanceDetailPage', () => {
     await user.click(screen.getByText('Standard notes.'))
     await waitFor(() => expect(document.querySelector('[contenteditable="true"]')).toBeInTheDocument())
 
-    await user.click(screen.getByRole('button', { name: 'Calling' }))
+    await user.click(screen.getByRole('tab', { name: 'Calling' }))
 
     expect(document.querySelector('[contenteditable="true"]')).not.toBeInTheDocument()
     expect(screen.getByText('Calling notes.')).toBeInTheDocument()
@@ -348,7 +348,7 @@ describe('DanceDetailPage', () => {
     const { router } = renderDanceDetailPage('42')
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'Calling' }))
+    await user.click(screen.getByRole('tab', { name: 'Calling' }))
 
     expect(router.state.location.pathname).toBe('/dances/42/versions/v2')
   })
