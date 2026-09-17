@@ -305,6 +305,21 @@ describe('EditableRichText', () => {
     expect(onCommit).toHaveBeenCalledWith('<p><strong>Important</strong></p>')
   })
 
+  it('inserts a horizontal rule from the toolbar', async () => {
+    const onCommit = vi.fn()
+    render(<EditableRichText value={null} onCommit={onCommit} placeholder="No notes yet" />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('No notes yet'))
+    await waitFor(() => expect(getEditor()).toBeInTheDocument())
+
+    await user.type(getEditor()!, 'Before')
+    await user.click(screen.getByRole('button', { name: 'Horizontal rule' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(onCommit).toHaveBeenCalledWith('<p>Before</p><hr><p></p>')
+  })
+
   it('does not show the selection bubble menu until text is actually selected', async () => {
     render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} />)
 
