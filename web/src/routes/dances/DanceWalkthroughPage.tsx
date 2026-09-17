@@ -4,7 +4,7 @@ import { EditableRichText } from '@/components/fields/EditableRichText'
 import { PageSpinner } from '@/components/PageSpinner'
 import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
 import { sortAlphabetically } from '@/lib/format'
-import { makeFiguresLabel } from './DancesPage.columns'
+import { makeFiguresLabel, makeMobileEditTitle } from './DancesPage.columns'
 import { useDanceVersionWalkthrough } from './DanceWalkthroughPage.data'
 
 export function DanceWalkthroughPage() {
@@ -14,6 +14,15 @@ export function DanceWalkthroughPage() {
   if (isLoading) return <PageSpinner />
 
   const figuresLabel = version ? makeFiguresLabel(version) : ''
+  const mobileTitle = version
+    ? makeMobileEditTitle({
+        action: 'Walkthrough',
+        title: version.dance_title,
+        choreographers: version.choreographers,
+        figuresLabel,
+        versionLabel: version.version_count > 1 ? version.label : null,
+      })
+    : ''
   const backToDance = version
     ? version.order === 0
       ? `/dances/${version.dance_id}`
@@ -60,6 +69,7 @@ export function DanceWalkthroughPage() {
               onCommit={(value) => void commitFieldEdit('dance_versions', version.id, 'walkthrough', value)}
               size="base"
               fillHeight
+              mobileTitle={mobileTitle}
             />
           </div>
         </>

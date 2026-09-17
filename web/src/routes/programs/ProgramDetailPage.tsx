@@ -1,6 +1,6 @@
 import { useParams } from 'react-router'
 import { z } from 'zod'
-import { cardRenderDanceList } from './ProgramsPage.columns'
+import { cardRenderDanceList, formatProgramLabel } from './ProgramsPage.columns'
 import { EditableDate } from '@/components/fields/EditableDate'
 import { EditableRichText } from '@/components/fields/EditableRichText'
 import { PageSpinner } from '@/components/PageSpinner'
@@ -25,7 +25,11 @@ const programDetailFields: DetailField<ProgramWithJoins>[] = [
     key: 'notes',
     label: 'Notes',
     render: (value, row) => (
-      <EditableRichText value={value} onCommit={(v) => void commitFieldEdit('programs', row.id, 'notes', v)} />
+      <EditableRichText
+        value={value}
+        onCommit={(v) => void commitFieldEdit('programs', row.id, 'notes', v)}
+        mobileTitle={`Note for ${formatProgramLabel(row)}`}
+      />
     ),
   }),
 ]

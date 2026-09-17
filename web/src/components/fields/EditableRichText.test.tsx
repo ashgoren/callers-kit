@@ -43,40 +43,53 @@ describe('EditableRichText', () => {
   })
 
   // These only confirm the right classes land on the right elements given
-  // the prop - jsdom has no real layout engine, so it can't verify the box
-  // actually bounds/scrolls in a browser the way it's meant to (that's
-  // covered separately in e2e). What this guards against is a future
-  // refactor silently breaking the conditional itself - e.g. dropping
-  // min-h-0 somewhere in the chain, which would compile and pass every
-  // other test here but quietly stop the whole thing from working.
-  it('bounds edit-mode content with a fixed max-height by default, not a fill-height flex layout', async () => {
+  // the prop - jsdom has no real layout engine (and doesn't evaluate media
+  // queries at all), so it can't verify the box actually bounds/scrolls in
+  // a browser at either breakpoint the way it's meant to (that's covered
+  // separately in e2e). What this guards against is a future refactor
+  // silently breaking the conditional itself - e.g. dropping min-h-0
+  // somewhere in the chain, which would compile and pass every other test
+  // here but quietly stop the whole thing from working.
+  //
+  // Below sm:, every EditableRichText is a full-screen mobile takeover
+  // regardless of fillHeight - only the sm: and up behavior differs
+  // between a fixed max-height (default) and filling the page (fillHeight).
+  it('bounds edit-mode content with a fixed max-height at sm: and up by default, not a fill-height flex layout', async () => {
     render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} />)
 
     const user = userEvent.setup()
     await user.click(screen.getByText('Bring extra chairs.'))
 
-    expect(getEditor()?.parentElement).toHaveClass('max-h-96', 'overflow-y-auto')
-    expect(getEditor()?.parentElement).not.toHaveClass('flex-1')
-    expect(getEditor()?.parentElement?.parentElement).not.toHaveClass('flex')
+    // Mobile: always fills the full-screen takeover, same regardless of
+    // fillHeight - there's no surrounding page for a fixed max-height to
+    // make sense against below sm:.
+    expect(getEditor()?.parentElement).toHaveClass('flex-1', 'min-h-0', 'overflow-y-auto')
+    // sm: and up: a fixed bound instead, since fillHeight wasn't passed.
+    expect(getEditor()?.parentElement).toHaveClass('sm:max-h-96', 'sm:flex-none')
+    expect(getEditor()?.parentElement?.parentElement?.parentElement).toHaveClass('sm:block')
+    expect(getEditor()?.parentElement?.parentElement?.parentElement).not.toHaveClass('sm:flex')
   })
 
-  it('fills and scrolls within its container instead when fillHeight is passed', async () => {
+  it('fills and scrolls within its container at sm: and up too when fillHeight is passed', async () => {
     render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} fillHeight />)
 
     const user = userEvent.setup()
     await user.click(screen.getByText('Bring extra chairs.'))
 
     // EditorContent's own wrapper: fills the remaining flex space and
-    // scrolls internally, instead of a fixed max-height.
+    // scrolls internally at every width - no sm:max-h-96 override.
     expect(getEditor()?.parentElement).toHaveClass('flex-1', 'min-h-0', 'overflow-y-auto')
-    expect(getEditor()?.parentElement).not.toHaveClass('max-h-96')
+    expect(getEditor()?.parentElement).not.toHaveClass('sm:max-h-96')
     // RichTextEditArea's own root: a flex column so that fill-height child
     // actually has something to fill.
     expect(getEditor()?.parentElement?.parentElement).toHaveClass('flex', 'min-h-0', 'flex-1', 'flex-col')
     // InlineEditableField's edit-mode wrapper (via editModeClassName): the
-    // outermost link in the chain, giving the above a definite height to
-    // reference in the first place.
-    expect(getEditor()?.parentElement?.parentElement?.parentElement).toHaveClass('flex', 'h-full', 'flex-col')
+    // outermost link in the chain. Always a full-screen mobile takeover
+    // below sm: (fixed/inset-0/h-dvh), and now also a flex column filling
+    // the page at sm: and up, instead of reverting to a plain block.
+    const outerWrapper = getEditor()?.parentElement?.parentElement?.parentElement
+    expect(outerWrapper).toHaveClass('fixed', 'inset-0', 'h-dvh')
+    expect(outerWrapper).toHaveClass('sm:flex', 'sm:h-full', 'sm:flex-col')
   })
 
   it('shows a muted placeholder in view mode when the value is null', () => {

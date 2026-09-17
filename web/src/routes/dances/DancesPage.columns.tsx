@@ -45,6 +45,23 @@ export function makeFiguresLabel(dance: {
     .join(' · ')
 }
 
+export function makeMobileEditTitle({ action, title, choreographers, figuresLabel, versionLabel }: {
+  action: 'Note' | 'Walkthrough'
+  title: string | null
+  choreographers: string[]
+  figuresLabel: string
+  versionLabel: string | null
+}): string {
+  return [
+    `${action} for ${title ?? 'Untitled'}`,
+    choreographers.length > 0 ? `by ${sortAlphabetically(choreographers).join(', ')}` : null,
+    figuresLabel ? `(${figuresLabel})` : null,
+    versionLabel ? `- ${versionLabel}` : null,
+  ]
+    .filter(Boolean)
+    .join(' ')
+}
+
 function renderTagList(value: string[]): ReactNode {
   return value.length > 0 ? sortAlphabetically(value).join(', ') : mutedPlaceholder
 }

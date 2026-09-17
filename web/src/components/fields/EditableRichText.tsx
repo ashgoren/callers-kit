@@ -4,6 +4,7 @@ import StarterKit from '@tiptap/starter-kit'
 import { cn } from 'cn'
 import { useEffect, useId, useLayoutEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
+import { useKeyboardSafeViewportHeight } from '@/hooks/useKeyboardSafeViewportHeight'
 import { useSaveCancelFieldEdit } from '@/hooks/useSaveCancelFieldEdit'
 import { sanitizeHtml } from '@/lib/sanitizeHtml'
 import { setRichTextFieldDirty } from '@/lib/unsavedRichText'
@@ -11,7 +12,7 @@ import { InlineEditableField } from './InlineEditableField'
 import { buildHorizontalRuleItem, useBoldItalicUnderlineItems, useHeadingAndListItems } from './toolbarItems'
 import { currentHtml, Toolbar, ToolbarBubbleMenu } from './tiptapShared'
 import type { Editor } from '@tiptap/react'
-import type { ElementType, KeyboardEvent } from 'react'
+import type { ElementType, KeyboardEvent, ReactNode } from 'react'
 
 // The "full" toolbar - Bold, Italic, Underline, H1/H2, list, and a divider.
 const EXTENSIONS = [
@@ -47,7 +48,16 @@ function SelectionBubbleMenu({ editor }: { editor: Editor }) {
 // Dance/Program notes and walkthrough. A read-only, sanitized-HTML display
 // until clicked/tapped, then a real Tiptap editor with the toolbar above
 // and an explicit Save/Cancel row below.
-export function EditableRichText({ value, onCommit, placeholder = 'No notes yet', as = 'div', className, size = 'sm', fillHeight = false }: {
+export function EditableRichText({
+  value,
+  onCommit,
+  placeholder = 'No notes yet',
+  as = 'div',
+  className,
+  size = 'sm',
+  fillHeight = false,
+  mobileTitle,
+}: {
   value: string | null
   onCommit: (value: string | null) => void
   placeholder?: string
@@ -55,16 +65,34 @@ export function EditableRichText({ value, onCommit, placeholder = 'No notes yet'
   className?: string
   size?: 'sm' | 'base'
   fillHeight?: boolean
+  mobileTitle?: ReactNode
 }) {
   const normalizedValue = value === '' ? null : value
   const fieldEdit = useSaveCancelFieldEdit({ value: normalizedValue, onCommit })
+
+  // h-dvh below still matters as the initial/fallback value (before the
+  // first real reading, or in a browser without visualViewport support at
+  // all) - but dvh doesn't actually shrink for the on-screen keyboard on
+  // many mobile browsers, which just overlay it instead of resizing the
+  // layout viewport dvh is computed against. This inline style, once a
+  // real reading exists, overrides it with the actual visible height
+  // (see the hook's own comment for why that's a real, separate value).
+  const { height: visualViewportHeight, isMobile } = useKeyboardSafeViewportHeight()
+  const editModeStyle = isMobile && visualViewportHeight !== undefined ? { height: visualViewportHeight } : undefined
 
   return (
     <InlineEditableField
       {...fieldEdit}
       as={as}
       className={className}
-      editModeClassName={fillHeight ? 'flex h-full flex-col' : undefined}
+      // Below sm: full-screen takeover
+      // Above sm: normal flow
+      editModeClassName={cn(
+        'fixed inset-0 z-50 flex h-dvh flex-col bg-background',
+        'sm:static sm:inset-auto sm:z-auto sm:h-auto',
+        fillHeight ? 'sm:flex sm:h-full sm:flex-col' : 'sm:block',
+      )}
+      editModeStyle={editModeStyle}
       fullWidth
       renderDisplay={(v) =>
         v === null ? (
@@ -89,13 +117,27 @@ export function EditableRichText({ value, onCommit, placeholder = 'No notes yet'
           className={className}
           size={size}
           fillHeight={fillHeight}
+          mobileTitle={mobileTitle}
         />
       )}
     />
   )
 }
 
-function RichTextEditArea({ draft, onSave, onSaveWithoutClosing, onCancel, onKeyDown, hasError, errorId, placeholder, className, size, fillHeight }: {
+function RichTextEditArea({
+  draft,
+  onSave,
+  onSaveWithoutClosing,
+  onCancel,
+  onKeyDown,
+  hasError,
+  errorId,
+  placeholder,
+  className,
+  size,
+  fillHeight,
+  mobileTitle,
+}: {
   draft: string | null
   onSave: (value: string | null) => void
   onSaveWithoutClosing: (value: string | null) => void
@@ -107,6 +149,7 @@ function RichTextEditArea({ draft, onSave, onSaveWithoutClosing, onCancel, onKey
   className?: string
   size: 'sm' | 'base'
   fillHeight: boolean
+  mobileTitle?: ReactNode
 }) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const editor = useEditor({
@@ -163,21 +206,43 @@ function RichTextEditArea({ draft, onSave, onSaveWithoutClosing, onCancel, onKey
     <div
       ref={wrapperRef}
       className={cn(
-        'rounded-lg border border-input bg-transparent',
-        fillHeight && 'flex min-h-0 flex-1 flex-col',
+        // flex flex-col unconditionally: below sm: this always needs to be
+        // a flex column filling the mobile full-screen editModeClassName
+        // wrapper (mobileTitle/toolbar/content/Save-Cancel stacked, with
+        // content as the one growing/scrolling piece) - harmless when it
+        // isn't needed (fillHeight false, sm: and up), since a flex-col
+        // container's children stack the same as plain block children
+        // whenever none of them actually grow.
+        'flex min-h-0 flex-1 flex-col',
+        // The boxed look is desktop-only - mobile is a full-screen
+        // takeover with nothing to box in. flex-1/min-h-0 above are inert
+        // on a non-fillHeight desktop box anyway (its parent isn't a flex
+        // container at that breakpoint - see editModeClassName), so no
+        // separate override is needed here for that case.
+        'sm:rounded-lg sm:border sm:border-input sm:bg-transparent',
         className,
       )}
       onKeyDownCapture={handleKeyDown}
     >
+      {mobileTitle && (
+        <div className="border-b border-input px-3 py-2 text-sm font-medium sm:hidden">{mobileTitle}</div>
+      )}
       <FullToolbar editor={editor} />
       <SelectionBubbleMenu editor={editor} />
       <EditorContent
         editor={editor}
         // Content-only bounding: the toolbar above and Save/Cancel below
-        // stay outside this scroll container in normal flow.
+        // stay outside this scroll container in normal flow. Below sm:
+        // this always fills (and scrolls within) the full-screen
+        // takeover's remaining space, regardless of fillHeight - a fixed
+        // max-height would be meaningless there, since the takeover has no
+        // surrounding page for a fixed box to sit within in the first
+        // place. At sm: and up, fillHeight decides between filling the
+        // page's own remaining height or a fixed max-height, same as before.
         className={cn(
           'prose max-w-none px-2.5 py-1 outline-none [&_.ProseMirror]:outline-none',
-          fillHeight ? 'min-h-0 flex-1 overflow-y-auto' : 'max-h-96 overflow-y-auto',
+          'min-h-0 flex-1 overflow-y-auto',
+          !fillHeight && 'sm:max-h-96 sm:flex-none',
           size === 'sm' ? 'prose-sm text-base md:text-sm' : 'text-base',
         )}
         placeholder={placeholder}

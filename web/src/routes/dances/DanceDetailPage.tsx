@@ -11,7 +11,7 @@ import { FieldList } from '@/components/fields/FieldList'
 import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
 import { formatDate, sortAlphabetically } from '@/lib/format'
 import { commitFigureItemEdit } from './commitFigureItemEdit'
-import { makeFiguresLabel } from './DancesPage.columns'
+import { makeFiguresLabel, makeMobileEditTitle } from './DancesPage.columns'
 import { useDance } from './DanceDetailPage.data'
 import { danceMetadataFields } from './DanceDetailPage.fields'
 import { FigureToolbar } from './FigureToolbar'
@@ -31,6 +31,15 @@ export function DanceDetailPage() {
 
   const figuresLabel = dance ? makeFiguresLabel(dance) : ''
   const selectedVersion = dance?.versions.find((version) => version.id === versionId) ?? dance?.versions[0]
+  const notesMobileTitle = dance
+    ? makeMobileEditTitle({
+        action: 'Note',
+        title: dance.title,
+        choreographers: dance.choreographers,
+        figuresLabel,
+        versionLabel: dance.versions.length > 1 ? (selectedVersion?.label ?? null) : null,
+      })
+    : ''
 
   return (
     <div className="mx-auto max-w-6xl p-4">
@@ -118,6 +127,7 @@ export function DanceDetailPage() {
                         key={selectedVersion.id}
                         value={selectedVersion.notes}
                         onCommit={(value) => void commitFieldEdit('dance_versions', selectedVersion.id, 'notes', value)}
+                        mobileTitle={notesMobileTitle}
                       />
                     </div>
                   </div>

@@ -3,7 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- interactive-widget=resizes-content: on supporting browsers (recent
+         Chrome/Safari), the on-screen keyboard actually shrinks the layout
+         viewport instead of just overlaying it - without this, 100dvh (and
+         every height computed from it) stays the same whether the keyboard
+         is up or not, which is what let the mobile full-screen editor
+         overlay's own height cover content the keyboard was hiding. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
     <title>Caller's Kit</title>
     <script>
       // Applies the saved/system theme before React mounts - without this,
