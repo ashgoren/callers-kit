@@ -1,12 +1,13 @@
 import { Link, useNavigate, useParams } from 'react-router'
 import { z } from 'zod'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { EditableRichText } from '@/components/fields/EditableRichText'
 import { EditableText } from '@/components/fields/EditableText'
 import { PageSpinner } from '@/components/PageSpinner'
 import { FieldList } from '@/components/fields/FieldList'
 import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
 import { formatDate, sortAlphabetically } from '@/lib/format'
+import { commitFigureItemEdit } from './commitFigureItemEdit'
 import { makeFiguresLabel } from './DancesPage.columns'
 import { useDance } from './DanceDetailPage.data'
 import { danceMetadataFields } from './DanceDetailPage.fields'
@@ -73,25 +74,24 @@ export function DanceDetailPage() {
                         {figuresLabel}
                       </p>
                     )}
-                    <FiguresList items={selectedVersion?.figures ?? []} />
+                    <FiguresList
+                      items={selectedVersion?.figures ?? []}
+                      onEditItem={(itemId, value) =>
+                        selectedVersion && void commitFigureItemEdit(selectedVersion.id, selectedVersion.figures, itemId, value)
+                      }
+                    />
                   </div>
                   {selectedVersion && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0"
-                      render={
-                        <Link
-                          to={
-                            selectedVersion.id === dance.versions[0]?.id
-                              ? `/dances/${dance.id}/walkthrough`
-                              : `/dances/${dance.id}/versions/${selectedVersion.id}/walkthrough`
-                          }
-                        />
+                    <Link
+                      to={
+                        selectedVersion.id === dance.versions[0]?.id
+                          ? `/dances/${dance.id}/walkthrough`
+                          : `/dances/${dance.id}/versions/${selectedVersion.id}/walkthrough`
                       }
+                      className={buttonVariants({ variant: 'outline', size: 'sm', className: 'shrink-0' })}
                     >
                       Walkthrough
-                    </Button>
+                    </Link>
                   )}
                 </div>
                 {selectedVersion && (
