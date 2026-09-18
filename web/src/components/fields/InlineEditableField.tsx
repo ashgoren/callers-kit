@@ -1,6 +1,6 @@
 import { cn } from 'cn'
 import { useId, useLayoutEffect, useRef } from 'react'
-import type { ElementType, KeyboardEvent, ReactNode, RefObject } from 'react'
+import type { ElementType, KeyboardEvent, MouseEvent, ReactNode, RefObject } from 'react'
 
 // What this shell needs to drive the view/edit toggle - deliberately not
 // specific to any one commit model. useDraftFieldEdit (a local draft,
@@ -41,13 +41,15 @@ export function InlineEditableField<T>({
   className,
   editModeClassName,
   fullWidth = false,
+  onMouseDown,
   renderDisplay,
   renderInput,
 }: FieldEditState<T> & {
   as?: ElementType
   className?: string
-  editModeClassName?: string // needed by EditableRichText's fillHeight to be in flex layout
+  editModeClassName?: string
   fullWidth?: boolean
+  onMouseDown?: (e: MouseEvent) => void
   renderDisplay: (value: T) => ReactNode
   renderInput: (props: {
     draft: T
@@ -78,6 +80,7 @@ export function InlineEditableField<T>({
       <As
         tabIndex={0}
         onClick={onFocus}
+        onMouseDown={onMouseDown}
         onKeyDown={(e: KeyboardEvent) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault()

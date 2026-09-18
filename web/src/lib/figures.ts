@@ -1,3 +1,5 @@
+import type { CuesData } from './cues'
+
 // A dance version's figures list mixes two kinds of entry: a `figure` (a
 // move tied to a phrase/section like "A1" and an optional beat count) and a
 // `note` (a freeform annotation with no phrase/beats of its own, interspersed
@@ -33,5 +35,5 @@ export interface DanceVersion {
   figures: FigureItem[]
   notes: string | null
   walkthrough: string | null
-  cues: unknown // TBD
+  cues: CuesData | null
 }

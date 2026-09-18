@@ -1,5 +1,5 @@
 import { useEditorState } from '@tiptap/react'
-import { BoldIcon, Heading1Icon, Heading2Icon, ItalicIcon, ListIcon, MinusIcon, UnderlineIcon } from 'lucide-react'
+import { BoldIcon, Heading1Icon, Heading2Icon, ItalicIcon, ListIcon, MinusIcon, PanelRightDashedIcon, UnderlineIcon } from 'lucide-react'
 import { FONT_SIZE_EM, fontSizeOptionFor } from './compactTextExtensions'
 import type { Editor } from '@tiptap/react'
 import type { FontSizeOption } from './compactTextExtensions'
@@ -104,6 +104,20 @@ export function buildHorizontalRuleItem(editor: Editor): ToolbarItem {
     icon: <MinusIcon />,
     active: false,
     onClick: () => editor.chain().focus().setHorizontalRule().run(),
+  }
+}
+
+// Toggles a cue grid cell's "separator" (a grouping divider line after it)
+// A plain function, like buildHorizontalRuleItem: not a Tiptap command at all
+// (it doesn't touch the editor's own content), so hasSeparator/onToggleSeparator
+// are passed straight in rather than derived from the editor via useEditorState.
+export function buildSeparatorItem(hasSeparator: boolean, onToggleSeparator: () => void): ToolbarItem {
+  return {
+    key: 'separator',
+    label: hasSeparator ? 'Remove separator' : 'Add separator',
+    icon: <PanelRightDashedIcon />,
+    active: hasSeparator,
+    onClick: onToggleSeparator,
   }
 }
 

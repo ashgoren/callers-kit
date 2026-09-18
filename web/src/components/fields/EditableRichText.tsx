@@ -9,9 +9,10 @@ import { sanitizeHtml } from '@/lib/sanitizeHtml'
 import { setRichTextFieldDirty } from '@/lib/unsavedRichText'
 import { InlineEditableField } from './InlineEditableField'
 import { buildHorizontalRuleItem, useBoldItalicUnderlineItems, useHeadingAndListItems } from './toolbarItems'
-import { currentHtml, Toolbar, ToolbarBubbleMenu } from './tiptapShared'
+import { currentHtml, Toolbar, ToolbarBubbleMenu, useCapturedClickPosition, useFocusAtClickPosition } from './tiptapShared'
 import type { Editor } from '@tiptap/react'
-import type { ElementType, KeyboardEvent } from 'react'
+import type { ElementType, KeyboardEvent, RefObject } from 'react'
+import type { ClickPosition } from './tiptapShared'
 
 // The "full" toolbar - Bold, Italic, Underline, H1/H2, list, and a divider.
 const EXTENSIONS = [
@@ -76,6 +77,7 @@ export function EditableRichText({
 }) {
   const normalizedValue = value === '' ? null : value
   const fieldEdit = useSaveCancelFieldEdit({ value: normalizedValue, onCommit })
+  const { clickPositionRef, handleMouseDown } = useCapturedClickPosition()
 
   return (
     <InlineEditableField
@@ -84,6 +86,7 @@ export function EditableRichText({
       className={className}
       editModeClassName={fillHeight ? 'sm:flex sm:h-full sm:flex-col' : undefined}
       fullWidth
+      onMouseDown={handleMouseDown}
       renderDisplay={(v) =>
         v === null ? (
           <span className="text-muted-foreground">{placeholder}</span>
@@ -107,6 +110,7 @@ export function EditableRichText({
           className={className}
           size={size}
           fillHeight={fillHeight}
+          clickPositionRef={clickPositionRef}
         />
       )}
     />
@@ -125,6 +129,7 @@ function RichTextEditArea({
   className,
   size,
   fillHeight,
+  clickPositionRef,
 }: {
   draft: string | null
   onSave: (value: string | null) => void
@@ -137,6 +142,7 @@ function RichTextEditArea({
   className?: string
   size: 'sm' | 'base'
   fillHeight: boolean
+  clickPositionRef: RefObject<ClickPosition>
 }) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const editor = useEditor({
@@ -150,18 +156,18 @@ function RichTextEditArea({
     },
   })
 
-  // Not Tiptap's own `autofocus` option - it defers the actual focus()
-  // call via setTimeout(fn, 0), which runs after the tap that opened this
-  // field has already finished. By then, mobile browsers (particularly
-  // iOS Safari) no longer treat it as a direct result of user interaction
-  // and won't raise the on-screen keyboard. Focusing here instead, runs
-  // synchronously in the same commit the tap already triggered,
-  // with no setTimeout gap - EditorContent's own mount (a class
-  // component's componentDidMount, which fires at the same phase and,
-  // being a child, fires first) has already attached the real
-  // contentEditable node to the document by the time this runs.
+  // Focuses at the clicked character (see tiptapShared.tsx's own comment on
+  // useFocusAtClickPosition for why this needs to happen in a layout effect
+  // rather than via Tiptap's own `autofocus` option, which defers the
+  // actual focus() call too late.
+  useFocusAtClickPosition(editor, clickPositionRef)
+
+  // Content this long can grow the whole box (toolbar + content +
+  // Save/Cancel) taller than what was on screen at the point of the click
+  // that opened it, pushing Save/Cancel below the fold - block: 'nearest'
+  // only scrolls the minimum amount needed to reveal whatever part is cut
+  // off. Desktop (sm: and up) only because it doesn't work on mobile.
   useLayoutEffect(() => {
-    editor?.commands.focus('end')
     if (window.matchMedia?.('(min-width: 640px)')?.matches) {
       wrapperRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
     }

@@ -107,6 +107,16 @@ export function DanceDetailPage() {
                     >
                       Walkthrough
                     </Link>
+                    <Link
+                      to={
+                        selectedVersion.id === dance.versions[0]?.id
+                          ? `/dances/${dance.id}/cues`
+                          : `/dances/${dance.id}/versions/${selectedVersion.id}/cues`
+                      }
+                      className={buttonVariants({ variant: 'outline' })}
+                    >
+                      Cues
+                    </Link>
                   </div>
                 )}
                 {selectedVersion && (

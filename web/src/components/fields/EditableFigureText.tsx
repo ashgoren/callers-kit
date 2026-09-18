@@ -1,13 +1,13 @@
 import { EditorContent, useEditor } from '@tiptap/react'
 import { cn } from 'cn'
-import { useLayoutEffect } from 'react'
 import { useDraftFieldEdit } from '@/hooks/useDraftFieldEdit'
 import { sanitizeHtml } from '@/lib/sanitizeHtml'
 import { COMPACT_TEXT_EXTENSIONS } from './compactTextExtensions'
 import { InlineEditableField } from './InlineEditableField'
-import { currentHtml } from './tiptapShared'
+import { currentHtml, preventBlurOnWrapperClick, useCapturedClickPosition, useFocusAtClickPosition } from './tiptapShared'
 import type { Editor } from '@tiptap/react'
 import type { ElementType, KeyboardEvent, RefObject } from 'react'
+import type { ClickPosition } from './tiptapShared'
 
 // A rich-text inline-editable field for a figure's description/note text -
 // a single short line, not a whole paragraph. Blur/Enter-commits like other
@@ -19,22 +19,34 @@ import type { ElementType, KeyboardEvent, RefObject } from 'react'
 // a plain button that returns focus here immediately, so from this field's
 // perspective a toolbar click never looks any different from clicking
 // nothing at all.
-export function EditableFigureText({ value, onCommit, onActiveChange, placeholder = 'Add text…', as = 'span', className }: {
+export function EditableFigureText({
+  value,
+  onCommit,
+  onActiveChange,
+  placeholder = 'Add text…',
+  as = 'span',
+  className,
+  contentWidth,
+}: {
   value: string | null
   onCommit: (value: string | null) => void
   onActiveChange?: (editor: Editor | null) => void
   placeholder?: string
   as?: ElementType
   className?: string
+  contentWidth?: number // used by cues grid
 }) {
   const normalizedValue = value === '' ? null : value
   const fieldEdit = useDraftFieldEdit({ value: normalizedValue, onCommit })
+  const { clickPositionRef, handleMouseDown } = useCapturedClickPosition()
 
   return (
     <InlineEditableField
       {...fieldEdit}
       as={as}
       className={className}
+      editModeClassName="h-full"
+      onMouseDown={handleMouseDown}
       renderDisplay={(v) =>
         v === null ? (
           <span className="text-muted-foreground">{placeholder}</span>
@@ -51,6 +63,8 @@ export function EditableFigureText({ value, onCommit, onActiveChange, placeholde
           onActiveChange={onActiveChange}
           placeholder={placeholder}
           className={className}
+          contentWidth={contentWidth}
+          clickPositionRef={clickPositionRef}
           ref={ref}
         />
       )}
@@ -58,7 +72,7 @@ export function EditableFigureText({ value, onCommit, onActiveChange, placeholde
   )
 }
 
-function FigureTextEditArea({ draft, onChange, onBlur, onKeyDown, onActiveChange, placeholder, className, ref }: {
+function FigureTextEditArea({ draft, onChange, onBlur, onKeyDown, onActiveChange, placeholder, className, contentWidth, clickPositionRef, ref }: {
   draft: string | null
   onChange: (value: string | null) => void
   onBlur: () => void
@@ -66,31 +80,26 @@ function FigureTextEditArea({ draft, onChange, onBlur, onKeyDown, onActiveChange
   onActiveChange?: (editor: Editor | null) => void
   placeholder: string
   className?: string
+  contentWidth?: number
+  clickPositionRef: RefObject<ClickPosition>
   ref: RefObject<HTMLElement | null>
 }) {
   const editor = useEditor({
     extensions: COMPACT_TEXT_EXTENSIONS,
     content: draft ?? '',
+    editorProps: {
+      attributes: {
+        // Overrides Tiptap's default CSS that causes issues for cues grid cells.
+        style: `overflow-wrap: normal; word-break: normal; white-space: normal; font-variant-ligatures: normal; font-feature-settings: normal;${contentWidth !== undefined ? ` width: ${contentWidth}px;` : ''}`,
+      },
+    },
     onUpdate: ({ editor }) => onChange(currentHtml(editor)),
   })
 
-  // Same reasoning as EditableRichText's own identical effect - runs
-  // synchronously in the same commit as the tap that opened this field, so
-  // mobile browsers still treat the resulting focus as a direct result of
-  // user interaction and raise the on-screen keyboard.
-  useLayoutEffect(() => {
-    editor?.commands.focus('end')
-  }, [editor])
+  useFocusAtClickPosition(editor, clickPositionRef)
 
   if (!editor) return null
 
-  // Shift+Enter must reach Tiptap's own hard-break handling untouched -
-  // only a plain Enter commits (matching every other short field, where
-  // Enter finishing the edit is expected, not starting a new line).
-  // useDraftFieldEdit's own Enter/Escape handling (invoked below via
-  // onKeyDown) closes the field directly, without ever firing a native
-  // blur on this div - so this is the only place that sees it happen and
-  // can tell the toolbar to go away too.
   function handleKeyDown(e: KeyboardEvent) {
     if (e.key === 'Enter' && e.shiftKey) return
     if (e.key === 'Enter' || e.key === 'Escape') onActiveChange?.(null)
@@ -109,8 +118,13 @@ function FigureTextEditArea({ draft, onChange, onBlur, onKeyDown, onActiveChange
       onKeyDownCapture={handleKeyDown}
       onFocus={() => onActiveChange?.(editor)}
       onBlur={handleBlur}
+      onMouseDown={preventBlurOnWrapperClick}
     >
-      <EditorContent editor={editor} className="outline-none [&_.ProseMirror]:outline-none" placeholder={placeholder} />
+      <EditorContent
+        editor={editor}
+        className="w-full outline-none [&_.ProseMirror]:w-full [&_.ProseMirror]:outline-none"
+        placeholder={placeholder}
+      />
     </div>
   )
 }
