@@ -7,7 +7,7 @@ describe('useDragBodyClass', () => {
     const { result } = renderHook(() => useDragBodyClass())
 
     expect(result.current[0]).toBe(false)
-    expect(document.body.classList.contains('is-dragging-column')).toBe(false)
+    expect(document.body.classList.contains('is-dragging')).toBe(false)
   })
 
   it('adds the body class once set true, and removes it once set back to false', () => {
@@ -17,13 +17,13 @@ describe('useDragBodyClass', () => {
       result.current[1](true)
     })
     expect(result.current[0]).toBe(true)
-    expect(document.body.classList.contains('is-dragging-column')).toBe(true)
+    expect(document.body.classList.contains('is-dragging')).toBe(true)
 
     act(() => {
       result.current[1](false)
     })
     expect(result.current[0]).toBe(false)
-    expect(document.body.classList.contains('is-dragging-column')).toBe(false)
+    expect(document.body.classList.contains('is-dragging')).toBe(false)
   })
 
   it('removes the body class on unmount, even mid-drag', () => {
@@ -32,10 +32,10 @@ describe('useDragBodyClass', () => {
     act(() => {
       result.current[1](true)
     })
-    expect(document.body.classList.contains('is-dragging-column')).toBe(true)
+    expect(document.body.classList.contains('is-dragging')).toBe(true)
 
     unmount()
 
-    expect(document.body.classList.contains('is-dragging-column')).toBe(false)
+    expect(document.body.classList.contains('is-dragging')).toBe(false)
   })
 })

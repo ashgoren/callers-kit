@@ -171,9 +171,9 @@
   }
 }
 
-/* Forces a grabbing cursor everywhere while a column is being dragged
-   (DancesPage's manage-columns menu), including over descendants
-   that set their own cursor. */
-body.is-dragging-column * {
+/* Forces a grabbing cursor everywhere while any drag-to-reorder is in
+   progress (column headers, the manage-columns menu, a figures list),
+   including over descendants that set their own cursor. */
+body.is-dragging * {
   cursor: grabbing !important;
 }
