@@ -76,7 +76,7 @@ describe('useDance', () => {
     )
   })
 
-  it('parses versions into an array of {id, order, label, figures, notes, walkthrough, cues} objects', () => {
+  it('parses versions into an array of {id, order, label, figures, notes, walkthrough, cues, manual_phrasing} objects, coercing manual_phrasing from SQLite\'s 0/1 to a real boolean', () => {
     useQueryMock.mockReturnValue({
       data: [
         {
@@ -102,6 +102,7 @@ describe('useDance', () => {
               notes: 'Danced at half speed.',
               walkthrough: '<p>Walk it through slowly.</p>',
               cues: { cells: { 'A1:0:0': 'circle' } },
+              manual_phrasing: 0,
             },
             {
               id: 'v2',
@@ -111,6 +112,7 @@ describe('useDance', () => {
               notes: null,
               walkthrough: null,
               cues: null,
+              manual_phrasing: 1,
             },
           ]),
         },
@@ -129,6 +131,7 @@ describe('useDance', () => {
         notes: 'Danced at half speed.',
         walkthrough: '<p>Walk it through slowly.</p>',
         cues: { cells: { 'A1:0:0': 'circle' } },
+        manual_phrasing: false,
       },
       {
         id: 'v2',
@@ -138,6 +141,7 @@ describe('useDance', () => {
         notes: null,
         walkthrough: null,
         cues: null,
+        manual_phrasing: true,
       },
     ])
   })

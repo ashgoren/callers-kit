@@ -23,11 +23,12 @@ function danceVersionsSubquery(): string {
           'figures', json(figures),
           'notes', notes,
           'walkthrough', walkthrough,
-          'cues', json(cues)
+          'cues', json(cues),
+          'manual_phrasing', manual_phrasing
         )
       )
       FROM (
-        SELECT id, "order", label, figures, notes, walkthrough, cues
+        SELECT id, "order", label, figures, notes, walkthrough, cues, manual_phrasing
         FROM dance_versions
         WHERE dance_versions.dance_id = dances.id
         ORDER BY dance_versions."order"
@@ -52,9 +53,11 @@ export interface DanceDetail extends DanceWithJoins {
 // a single dance's full row, so the versions parsing has one definition
 // rather than living inline in the hook body.
 function parseDanceDetailRow(row: DanceDetailQueryRow): DanceDetail {
+  const versions = JSON.parse(row.versions) as DanceVersion[]
   return {
     ...parseDanceRow(row),
-    versions: JSON.parse(row.versions) as DanceVersion[],
+    // manual_phrasing comes back from powersync as int; coerce to boolean for the rest of the app's use.
+    versions: versions.map((version) => ({ ...version, manual_phrasing: Boolean(version.manual_phrasing) })),
   }
 }
 

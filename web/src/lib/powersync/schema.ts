@@ -34,6 +34,7 @@ const dance_versions = new Table({
   notes: column.text,
   walkthrough: column.text,
   cues: jsonColumn('dance_versions', 'cues'), // JSON-encoded {cells: Record<string, string>}
+  manual_phrasing: column.integer, // SQLite has no boolean type - 0/1
   created_at: column.text, // ISO 8601
   updated_at: column.text, // ISO 8601
 })
