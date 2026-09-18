@@ -82,25 +82,29 @@ export function DanceDetailPage() {
                 )}
               >
                 <div className="space-y-4">
-                  {/* min-h-7 matches the toolbar's height */}
-                  <div className="flex min-h-7 items-center gap-4">
+                  <div className="flex flex-wrap items-center gap-4">
                     {figuresLabel && (
                       <p className={figuresLabel === 'Improper' ? 'text-base text-muted-foreground' : 'text-base font-semibold'}>
                         {figuresLabel}
                       </p>
                     )}
-                    <div className="ml-auto flex items-center gap-4">
-                      {activeFigureEditor && <FigureToolbar editor={activeFigureEditor} />}
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={isEditingFigures ? 'Done editing figures' : 'Edit figures'}
-                        onClick={() => setIsEditingFigures((current) => !current)}
-                      >
-                        {isEditingFigures ? <Eye className="size-4" /> : <Pencil className="size-4" />}
-                      </Button>
-                    </div>
+                    {isEditingFigures && (
+                      // order-3 + w-full: wraps to its own full-width line below the label/edit-toggle line on mobile,
+                      // where the toolbar's touch-sized buttons don't fit alongside them.
+                      <div className="order-3 min-h-7 w-full pointer-coarse:min-h-12 sm:order-2 sm:ml-auto sm:w-auto">
+                        {activeFigureEditor && <FigureToolbar editor={activeFigureEditor} />}
+                      </div>
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      className="order-2 ml-auto sm:order-3"
+                      aria-label={isEditingFigures ? 'Done editing figures' : 'Edit figures'}
+                      onClick={() => setIsEditingFigures((current) => !current)}
+                    >
+                      {isEditingFigures ? <Eye className="size-4" /> : <Pencil className="size-4" />}
+                    </Button>
                   </div>
                   <FiguresList
                     items={selectedVersion?.figures ?? []}
