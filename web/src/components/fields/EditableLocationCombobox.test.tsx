@@ -99,6 +99,30 @@ describe('EditableLocationCombobox', () => {
     expect(onCommit).toHaveBeenCalledWith('loc-new')
   })
 
+  it('commits the exact (case-insensitive) match on Enter, without needing to pick it from the list', async () => {
+    const onCommit = vi.fn()
+    render(<EditableLocationCombobox value={null} onCommit={onCommit} />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('—'))
+    await user.type(await screen.findByRole('combobox'), 'grange hall{Enter}')
+
+    expect(onCommit).toHaveBeenCalledWith('loc-1')
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    expect(screen.getByText('Grange Hall')).toBeInTheDocument()
+  })
+
+  it('does not commit anything on Enter when the typed text only partially matches', async () => {
+    const onCommit = vi.fn()
+    render(<EditableLocationCombobox value={null} onCommit={onCommit} />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('—'))
+    await user.type(await screen.findByRole('combobox'), 'Gr{Enter}')
+
+    expect(onCommit).not.toHaveBeenCalled()
+  })
+
   it('closes without committing when dismissed via Escape, rather than picking anything', async () => {
     const onCommit = vi.fn()
     render(<EditableLocationCombobox value="loc-1" onCommit={onCommit} />)

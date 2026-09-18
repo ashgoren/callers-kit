@@ -53,9 +53,23 @@ export function EditableLocationCombobox({ value, onCommit, as, className }: {
       renderInput={({ draft, onBlur }) => (
         <div
           onKeyDownCapture={(event) => {
-            if (event.key !== 'Escape') return
-            event.stopPropagation()
-            onBlur()
+            if (event.key === 'Escape') {
+              event.stopPropagation()
+              onBlur()
+              return
+            }
+            // Base UI's own Enter handling only confirms a highlighted item,
+            // but if the user has typed a name that already exactly matches an
+            // existing location, commit that one outright on Enter.
+            if (event.key === 'Enter') {
+              const exactMatch = options.find((option) => option.label.toLowerCase() === query.trim().toLowerCase())
+              if (exactMatch) {
+                event.stopPropagation()
+                event.preventDefault()
+                void handleValueChange(exactMatch.id)
+                onBlur()
+              }
+            }
           }}
         >
           <Combobox
