@@ -6,14 +6,14 @@ import { EditableText } from './EditableText'
 
 describe('EditableText', () => {
   it('renders the value as plain text, not yet as a textbox', () => {
-    render(<EditableText value="Chorus Jig" onCommit={vi.fn()} />)
+    render(<EditableText fullWidth={false} value="Chorus Jig" onCommit={vi.fn()} />)
 
     expect(screen.getByText('Chorus Jig')).toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 
   it('becomes a textbox once clicked, focused and pre-filled with the current value', async () => {
-    render(<EditableText value="Chorus Jig" onCommit={vi.fn()} />)
+    render(<EditableText fullWidth={false} value="Chorus Jig" onCommit={vi.fn()} />)
 
     const user = userEvent.setup()
     await user.click(screen.getByText('Chorus Jig'))
@@ -25,7 +25,7 @@ describe('EditableText', () => {
 
   it('commits the typed value on blur, and returns to plain-text display', async () => {
     const onCommit = vi.fn()
-    render(<EditableText value="Chorus Jig" onCommit={onCommit} />)
+    render(<EditableText fullWidth={false} value="Chorus Jig" onCommit={onCommit} />)
 
     const user = userEvent.setup()
     await user.click(screen.getByText('Chorus Jig'))
@@ -40,7 +40,7 @@ describe('EditableText', () => {
 
   it('reverts to the original value on Escape, without committing', async () => {
     const onCommit = vi.fn()
-    render(<EditableText value="Chorus Jig" onCommit={onCommit} />)
+    render(<EditableText fullWidth={false} value="Chorus Jig" onCommit={onCommit} />)
 
     const user = userEvent.setup()
     await user.click(screen.getByText('Chorus Jig'))
@@ -55,7 +55,7 @@ describe('EditableText', () => {
 
   it('shows a validation error and stays a textbox when the schema rejects the value', async () => {
     const onCommit = vi.fn()
-    render(<EditableText value="Chorus Jig" onCommit={onCommit} schema={z.string().min(1, 'Title is required')} />)
+    render(<EditableText fullWidth={false} value="Chorus Jig" onCommit={onCommit} schema={z.string().min(1, 'Title is required')} />)
 
     const user = userEvent.setup()
     await user.click(screen.getByText('Chorus Jig'))
@@ -71,7 +71,7 @@ describe('EditableText', () => {
 
   it('keeps real focus on the textbox after a blur-triggered validation failure, so Escape reverts without clicking again', async () => {
     const onCommit = vi.fn()
-    render(<EditableText value="Chorus Jig" onCommit={onCommit} schema={z.string().min(1, 'Title is required')} />)
+    render(<EditableText fullWidth={false} value="Chorus Jig" onCommit={onCommit} schema={z.string().min(1, 'Title is required')} />)
 
     const user = userEvent.setup()
     await user.click(screen.getByText('Chorus Jig'))
@@ -89,14 +89,14 @@ describe('EditableText', () => {
   })
 
   it('shows a muted placeholder in the plain-text display when the value is empty', () => {
-    render(<EditableText value="" onCommit={vi.fn()} placeholder="Untitled" />)
+    render(<EditableText fullWidth={false} value="" onCommit={vi.fn()} placeholder="Untitled" />)
 
     expect(screen.getByText('Untitled')).toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 
   it('keeps the wrapper\'s data-value attribute (the ghost\'s sizing content) in sync as the draft changes', async () => {
-    render(<EditableText value="Chorus Jig" onCommit={vi.fn()} />)
+    render(<EditableText fullWidth={false} value="Chorus Jig" onCommit={vi.fn()} />)
 
     const user = userEvent.setup()
     await user.click(screen.getByText('Chorus Jig'))
@@ -113,7 +113,7 @@ describe('EditableText', () => {
   })
 
   it('falls back to the placeholder for the wrapper\'s data-value when both the draft and placeholder are empty', async () => {
-    render(<EditableText value="" onCommit={vi.fn()} placeholder="Untitled" />)
+    render(<EditableText fullWidth={false} value="" onCommit={vi.fn()} placeholder="Untitled" />)
 
     const user = userEvent.setup()
     await user.click(screen.getByText('Untitled'))
@@ -122,7 +122,7 @@ describe('EditableText', () => {
   })
 
   it('activates edit mode on Enter when focused via keyboard', async () => {
-    render(<EditableText value="Chorus Jig" onCommit={vi.fn()} />)
+    render(<EditableText fullWidth={false} value="Chorus Jig" onCommit={vi.fn()} />)
 
     const user = userEvent.setup()
     await user.tab()
@@ -131,5 +131,42 @@ describe('EditableText', () => {
     await user.keyboard('{Enter}')
 
     expect(screen.getByRole('textbox')).toBeInTheDocument()
+  })
+
+  describe('fullWidth mode', () => {
+    it('renders the value as plain text, not yet as a textbox', () => {
+      render(<EditableText fullWidth value="A1" onCommit={vi.fn()} />)
+
+      expect(screen.getByText('A1')).toBeInTheDocument()
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    })
+
+    it('becomes a textbox once clicked, pre-filled with the current value, and commits on blur', async () => {
+      const onCommit = vi.fn()
+      render(<EditableText fullWidth value="A1" onCommit={onCommit} />)
+
+      const user = userEvent.setup()
+      await user.click(screen.getByText('A1'))
+      const input = screen.getByRole('textbox')
+      expect(input).toHaveValue('A1')
+
+      await user.clear(input)
+      await user.type(input, 'Verse')
+      await user.tab()
+
+      expect(onCommit).toHaveBeenCalledWith('Verse')
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    })
+
+    it('skips the content-sizing ghost wrapper entirely - the input has no sizing-related parent element', async () => {
+      render(<EditableText fullWidth value="A1" onCommit={vi.fn()} />)
+
+      await userEvent.setup().click(screen.getByText('A1'))
+
+      // Content-sized mode's input sits inside a div carrying data-value
+      // (the ghost-sizing wrapper) - fullWidth mode has no such wrapper at all.
+      expect(screen.getByRole('textbox')).not.toHaveAttribute('data-value')
+      expect(screen.getByRole('textbox').parentElement).not.toHaveAttribute('data-value')
+    })
   })
 })

@@ -1,14 +1,14 @@
 import { cn } from 'cn'
+import { Eye, Pencil } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { z } from 'zod'
-import { buttonVariants } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs'
 import { EditableRichText } from '@/components/fields/EditableRichText'
 import { EditableText } from '@/components/fields/EditableText'
 import { PageSpinner } from '@/components/PageSpinner'
 import { FieldList } from '@/components/fields/FieldList'
-import { Switch } from '@/components/ui/switch'
 import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
 import { formatDate, sortAlphabetically } from '@/lib/format'
 import { getDefaultSkeleton } from '@/lib/phraseSkeleton'
@@ -27,6 +27,7 @@ export function DanceDetailPage() {
   const navigate = useNavigate()
   const { dance, isLoading } = useDance(id ?? '')
   const [activeFigureEditor, setActiveFigureEditor] = useState<Editor | null>(null)
+  const [isEditingFigures, setIsEditingFigures] = useState(false)
 
   if (isLoading) return <PageSpinner />
 
@@ -47,6 +48,7 @@ export function DanceDetailPage() {
               schema={titleSchema}
               placeholder="Untitled"
               as="h1"
+              fullWidth={false}
               className="font-semibold text-4xl md:text-4xl"
               // Extra md:text-4xl needed for edit mode since Input has default text-sm className.
             />
@@ -89,25 +91,27 @@ export function DanceDetailPage() {
                     )}
                     <div className="ml-auto flex items-center gap-4">
                       {activeFigureEditor && <FigureToolbar editor={activeFigureEditor} />}
-                      {skeleton && selectedVersion && (
-                        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                          Manual phrasing
-                          <Switch
-                            checked={selectedVersion.manual_phrasing}
-                            onCheckedChange={(checked) =>
-                              void commitFieldEdit('dance_versions', selectedVersion.id, 'manual_phrasing', checked ? 1 : 0)
-                            }
-                          />
-                        </label>
-                      )}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={isEditingFigures ? 'Done editing figures' : 'Edit figures'}
+                        onClick={() => setIsEditingFigures((current) => !current)}
+                      >
+                        {isEditingFigures ? <Eye className="size-4" /> : <Pencil className="size-4" />}
+                      </Button>
                     </div>
                   </div>
                   <FiguresList
                     items={selectedVersion?.figures ?? []}
                     skeleton={skeleton}
                     manualPhrasing={selectedVersion?.manual_phrasing ?? true}
+                    isEditing={isEditingFigures}
                     onChange={(newFigures) =>
                       selectedVersion && void commitFieldEdit('dance_versions', selectedVersion.id, 'figures', JSON.stringify(newFigures))
+                    }
+                    onToggleManualPhrasing={(checked) =>
+                      selectedVersion && void commitFieldEdit('dance_versions', selectedVersion.id, 'manual_phrasing', checked ? 1 : 0)
                     }
                     onActiveEditorChange={setActiveFigureEditor}
                   />

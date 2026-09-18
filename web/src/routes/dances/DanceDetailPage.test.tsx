@@ -200,13 +200,50 @@ describe('DanceDetailPage', () => {
     // its own beats count regardless of whether its phrase label repeats.
     expect(screen.getAllByText('A1')).toHaveLength(1)
     expect(screen.getByText('A2')).toBeInTheDocument()
-    // Beats is now an editable field (EditableNumber), rendered as a plain
-    // number rather than the old read-only "(8)" parenthesized text.
-    expect(screen.getAllByText('8')).toHaveLength(3)
+    // The page renders FiguresList in view mode by default - plain
+    // parenthesized beats, not the editable-mode plain number.
+    expect(screen.getAllByText('(8)')).toHaveLength(3)
     expect(screen.getByText('Circle left')).toBeInTheDocument()
     expect(screen.getByText('Circle right')).toBeInTheDocument()
     expect(screen.getByText('Watch the timing here')).toBeInTheDocument()
     expect(screen.getByText('Swing')).toBeInTheDocument()
+  })
+
+  it('toggles the figures list between view and edit mode via the Edit figures button, showing Manual phrasing only in edit mode', async () => {
+    useQueryMock.mockReturnValue({
+      data: [
+        makeDanceRow({
+          dance_type: 'Contra',
+          versions: JSON.stringify([
+            {
+              id: 'v1',
+              label: 'Choreography',
+              notes: null,
+              manual_phrasing: 0,
+              figures: [{ id: 'f1', kind: 'figure', phrase: 'A1', beats: 8, description: '<p>Circle left</p>' }],
+            },
+          ]),
+        }),
+      ],
+      isLoading: false,
+    })
+    renderDanceDetailPage()
+
+    // View mode by default: no reorder/remove affordances, no Manual phrasing switch.
+    expect(screen.queryByRole('button', { name: 'Reorder figure' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Edit figures' }))
+
+    expect(screen.getByRole('button', { name: 'Reorder figure' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add figure' })).toBeInTheDocument()
+    expect(screen.getByRole('switch')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Done editing figures' }))
+
+    expect(screen.queryByRole('button', { name: 'Reorder figure' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
   })
 
   it('links to the short /dances/:id/walkthrough form when viewing the primary version', async () => {
