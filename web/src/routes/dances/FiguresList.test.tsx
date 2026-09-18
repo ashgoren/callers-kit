@@ -369,5 +369,47 @@ describe('FiguresList', () => {
 
       expect(onToggleManualPhrasing).toHaveBeenCalledWith(true, expect.anything())
     })
+
+    it('shows a mutation immediately, bridging the gap before the items prop catches up with the commit', async () => {
+      // onChange here never actually updates `items` (mirroring the real
+      // async gap between a commit and the reactive query noticing it) -
+      // this is what a rendered mutation would look like stuck mid-flight.
+      const items: FigureItem[] = [{ id: 'f1', kind: 'figure', phrase: 'A1', beats: 8, description: 'Circle left' }]
+      const onChange = vi.fn()
+      const { rerender } = render(
+        <FiguresList onToggleManualPhrasing={vi.fn()} items={items} skeleton={contraSkeleton} manualPhrasing={false} isEditing onChange={onChange} />,
+      )
+
+      await userEvent.setup().click(screen.getByRole('button', { name: 'Add figure' }))
+
+      expect(screen.getAllByRole('button', { name: 'Remove figure' })).toHaveLength(2)
+
+      // A re-render with the same still-stale prop (the commit still in
+      // flight) keeps showing the optimistic result rather than reverting.
+      rerender(
+        <FiguresList onToggleManualPhrasing={vi.fn()} items={items} skeleton={contraSkeleton} manualPhrasing={false} isEditing onChange={onChange} />,
+      )
+      expect(screen.getAllByRole('button', { name: 'Remove figure' })).toHaveLength(2)
+
+      // Once the real items prop actually catches up (matches what onChange
+      // was called with), the override clears - proven here by then passing
+      // a third, different items array and confirming the render reflects
+      // that instead of a stale optimistic cache.
+      const committedItems = onChange.mock.calls[0][0] as FigureItem[]
+      rerender(
+        <FiguresList
+          onToggleManualPhrasing={vi.fn()}
+          items={committedItems}
+          skeleton={contraSkeleton}
+          manualPhrasing={false}
+          isEditing
+          onChange={onChange}
+        />,
+      )
+      rerender(
+        <FiguresList onToggleManualPhrasing={vi.fn()} items={[]} skeleton={contraSkeleton} manualPhrasing={false} isEditing onChange={onChange} />,
+      )
+      expect(screen.queryAllByRole('button', { name: 'Remove figure' })).toHaveLength(0)
+    })
   })
 })

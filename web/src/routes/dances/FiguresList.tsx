@@ -4,7 +4,7 @@ import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } 
 import { CSS } from '@dnd-kit/utilities'
 import { cn } from 'cn'
 import { GripVertical, Plus, X } from 'lucide-react'
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import { EditableFigureText } from '@/components/fields/EditableFigureText'
 import { EditableNumber } from '@/components/fields/EditableNumber'
 import { EditableText } from '@/components/fields/EditableText'
@@ -49,8 +49,22 @@ export function FiguresList({ items, skeleton, manualPhrasing, isEditing, onChan
   onToggleManualPhrasing: (checked: boolean) => void
   onActiveEditorChange?: (editor: Editor | null) => void
 }) {
+  // Every commit here (reorder especially) is a PowerSync write that only
+  // reaches this component's own `items` prop once the reactive query
+  // round-trips and re-renders - a real gap, even for a local-only write.
+  const [optimisticItems, setOptimisticItems] = useState<FigureItem[] | null>(null)
+  if (optimisticItems && JSON.stringify(items) === JSON.stringify(optimisticItems)) {
+    setOptimisticItems(null)
+  }
+  const displayItems = optimisticItems ?? items
+
+  function handleChange(newItems: FigureItem[]) {
+    setOptimisticItems(newItems)
+    onChange(newItems)
+  }
+
   const phraseEditable = manualPhrasing || skeleton === null
-  const rows = withPhraseHeadings(withComputedPhrases(items, phraseEditable ? null : skeleton))
+  const rows = withPhraseHeadings(withComputedPhrases(displayItems, phraseEditable ? null : skeleton))
 
   if (!isEditing) {
     return <FiguresReadOnlyList rows={rows} />
@@ -58,12 +72,12 @@ export function FiguresList({ items, skeleton, manualPhrasing, isEditing, onChan
 
   return (
     <FiguresEditableList
-      items={items}
+      items={displayItems}
       rows={rows}
       skeleton={skeleton}
       manualPhrasing={manualPhrasing}
       phraseEditable={phraseEditable}
-      onChange={onChange}
+      onChange={handleChange}
       onToggleManualPhrasing={onToggleManualPhrasing}
       onActiveEditorChange={onActiveEditorChange}
     />
