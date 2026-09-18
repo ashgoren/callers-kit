@@ -61,7 +61,8 @@ export function DanceCuesPage() {
               placeholder="No notes yet"
             />
           </div>
-          <div className="mt-6">
+          {/* -mx-4 cancels this page's p-4 below sm */}
+          <div className="mt-6 -mx-4 sm:mx-0">
             <CuesGrid
               cues={version.cues}
               onEditCell={(key, value) => void commitCueCellEdit(version.id, version.cues, key, value)}

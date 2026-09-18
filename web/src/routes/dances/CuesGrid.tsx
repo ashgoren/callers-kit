@@ -20,16 +20,24 @@ import type { CuesData } from '@/lib/cues'
 // transform to fit whatever width its container actually has - this keeps
 // beat columns and cell text shrinking together under one scale factor, so
 // how much text wraps onto one line stays identical at any screen size.
-function useScaleToFit(naturalWidth: number, chrome: number) {
+//
+// chrome varies by breakpoint (see the BOX_CHROME_* constants below) since
+// the visible box's own border is itself conditional on the same sm:
+// breakpoint - its padding, unlike its border, applies at every breakpoint.
+function useScaleToFit(naturalWidth: number) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
+  const [chrome, setChrome] = useState(BOX_CHROME_BASE)
 
   useLayoutEffect(() => {
     const el = containerRef.current
     if (!el) return undefined
 
     function updateScale(containerWidth: number) {
-      setScale(Math.min(1, (containerWidth - chrome) / naturalWidth))
+      const isSmAndUp = window.matchMedia?.('(min-width: 640px)')?.matches ?? false
+      const currentChrome = BOX_CHROME_BASE + (isSmAndUp ? BOX_CHROME_SM_BORDER : 0)
+      setChrome(currentChrome)
+      setScale(Math.min(1, (containerWidth - currentChrome) / naturalWidth))
     }
 
     const observer = new ResizeObserver(([entry]) => {
@@ -37,13 +45,17 @@ function useScaleToFit(naturalWidth: number, chrome: number) {
     })
     observer.observe(el)
     return () => observer.disconnect()
-  }, [naturalWidth, chrome])
+  }, [naturalWidth])
 
-  return { containerRef, scale }
+  return { containerRef, scale, chrome }
 }
 
-// The outer grid box's own padding + border, in pixels.
-const BOX_CHROME = 16 /* p-2 */ + 2 /* border */
+// The outer grid box's own padding, in pixels - applied at every breakpoint
+// (see the box's own className below, p-2 unconditionally). The border,
+// only added at sm: and up, is kept as a separate constant so mobile's
+// chrome budget doesn't have to pay for a border it never renders.
+const BOX_CHROME_BASE = 16 /* p-2 */
+const BOX_CHROME_SM_BORDER = 2 /* border, sm: and up only */
 
 // Each cell's own chrome, subtracted from COL_WIDTH to get the actual text
 // content width - Passed to EditableFigureText as contentWidth to pin its
@@ -69,7 +81,7 @@ export function CuesGrid({ cues, onEditCell, onToggleSeparator }: {
   onToggleSeparator: (key: string) => void
 }) {
   const [activeCell, setActiveCell] = useState<ActiveCell | null>(null)
-  const { containerRef, scale } = useScaleToFit(GRID_NATURAL_WIDTH, BOX_CHROME)
+  const { containerRef, scale, chrome } = useScaleToFit(GRID_NATURAL_WIDTH)
 
   const cells = cues?.cells ?? {}
   const separators = new Set(cues?.separators ?? [])
@@ -125,7 +137,7 @@ export function CuesGrid({ cues, onEditCell, onToggleSeparator }: {
           bordered box - that box's own width is set explicitly to match its
           (scaled) content exactly, rather than a CSS width: fit-content. */}
       <div ref={containerRef} className="w-full">
-        <div className="overflow-x-auto overflow-y-hidden rounded-lg border p-2" style={{ width: GRID_NATURAL_WIDTH * scale + BOX_CHROME }}>
+        <div className="overflow-x-auto overflow-y-hidden p-2 sm:rounded-lg sm:border" style={{ width: GRID_NATURAL_WIDTH * scale + chrome }}>
           {/* CSS transform doesn't change an element's own layout size, only
               how it's painted - without this box clipping its child (which
               is still declared at the full, unscaled GRID_NATURAL_WIDTH),
