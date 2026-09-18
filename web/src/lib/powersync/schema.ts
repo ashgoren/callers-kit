@@ -56,6 +56,10 @@ const vibes = new Table({
   name: column.text,
 })
 
+const locations = new Table({
+  name: column.text,
+})
+
 const dances_key_moves = new Table({
   dance_id: column.text,
   key_move_id: column.text,
@@ -76,7 +80,7 @@ const programs = new Table({
   created_at: column.text, // ISO 8601
   updated_at: column.text, // ISO 8601
   date: column.text, // ISO 8601 date only (no time component)
-  location: column.text,
+  location_id: column.text,
   notes: column.text,
   share_token: column.text,
 })
@@ -94,6 +98,7 @@ export const AppSchema = new Schema({
   dances_choreographers,
   key_moves,
   vibes,
+  locations,
   dances_key_moves,
   dances_vibes,
   user_table_preferences,
@@ -106,4 +111,5 @@ export type Dance = Database['dances']
 export type Choreographer = Database['choreographers']
 export type KeyMove = Database['key_moves']
 export type Vibe = Database['vibes']
+export type Location = Database['locations']
 export type Program = Database['programs']

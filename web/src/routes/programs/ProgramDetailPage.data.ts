@@ -6,6 +6,7 @@ import type { ProgramWithJoins } from './ProgramsPage.columns'
 const PROGRAM_QUERY = `
   SELECT ${programSelectColumns()}
   FROM programs
+  LEFT JOIN locations ON locations.id = programs.location_id
   WHERE programs.id = ?
 `
 

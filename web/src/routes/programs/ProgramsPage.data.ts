@@ -35,9 +35,11 @@ function programDancesSubquery(): string {
 // The SELECT column list shared by the programs list query and a single
 // program's detail-page query - each caller supplies its own FROM/WHERE/
 // ORDER BY around this.
+// location is a LEFT JOIN, not an inner join, so a program with no
+// location_id yet still comes back as a row (with location null).
 export function programSelectColumns(): string {
   return `
-    programs.id, programs.date, programs.location, programs.notes,
+    programs.id, programs.date, programs.location_id, locations.name AS location, programs.notes,
     programs.created_at, programs.updated_at,
     ${programDancesSubquery()} AS dances
   `
@@ -46,12 +48,15 @@ export function programSelectColumns(): string {
 const PROGRAMS_QUERY = `
   SELECT ${programSelectColumns()}
   FROM programs
+  LEFT JOIN locations ON locations.id = programs.location_id
   ORDER BY programs.date DESC
 `
 
 // The shape of a row as it comes back from either query above, before the
-// dances column is JSON.parse'd into a real array below.
-export type ProgramQueryRow = Program & { dances: string }
+// dances column is JSON.parse'd into a real array below. location is a
+// joined-in value (the matching locations row's name), not a raw programs
+// column.
+export type ProgramQueryRow = Program & { dances: string; location: string | null }
 
 // Shared by both the list and detail-page hooks, so they can't drift apart.
 export function parseProgramRow(p: ProgramQueryRow): ProgramWithJoins {

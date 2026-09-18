@@ -18,6 +18,7 @@ export interface ProgramDance {
 
 export interface ProgramWithJoins extends Program {
   dances: ProgramDance[]
+  location: string | null // joined location's row name
 }
 
 export interface ProgramSummary {

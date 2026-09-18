@@ -68,12 +68,17 @@ beforeEach(() => {
 
 // The mocked useQuery stands in for ProgramsPage.data.ts's raw SQL result,
 // so `dances` here is the pre-parse JSON array *string* (matching
-// json_group_array/json_object's real output), not a real array.
-function makeProgram(overrides: Partial<Program> & { dances?: string } = {}): Program & { dances: string } {
+// json_group_array/json_object's real output), not a real array. `location`
+// is likewise the row shape's joined-in locations.name, not a raw Program
+// column - see ProgramQueryRow in ProgramsPage.data.ts.
+function makeProgram(
+  overrides: Partial<Program> & { dances?: string; location?: string | null } = {},
+): Program & { dances: string; location: string | null } {
   return {
     id: '1',
     date: '2026-09-13',
     location: 'Grange Hall',
+    location_id: null,
     notes: 'Bring extra chairs.',
     // Noon UTC, not midnight - keeps the formatted calendar date stable
     // across the timezone a test happens to run in.

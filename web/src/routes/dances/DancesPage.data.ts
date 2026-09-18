@@ -34,9 +34,10 @@ function dancesProgramsSubquery(): string {
     (
       SELECT json_group_array(json_object('id', id, 'date', date, 'location', location))
       FROM (
-        SELECT programs.id AS id, programs.date AS date, programs.location AS location
+        SELECT programs.id AS id, programs.date AS date, locations.name AS location
         FROM programs_dances
         JOIN programs ON programs.id = programs_dances.program_id
+        LEFT JOIN locations ON locations.id = programs.location_id
         WHERE programs_dances.dance_id = dances.id
         ORDER BY programs.date DESC
       )

@@ -51,6 +51,11 @@ streams:
     auto_subscribe: true
     query: SELECT * FROM vibes WHERE vibes.user_id = auth.user_id()
 
+  locations:
+    # Owner table with its own user_id column, same pattern as choreographers above
+    auto_subscribe: true
+    query: SELECT * FROM locations WHERE locations.user_id = auth.user_id()
+
   dances_key_moves:
     # Junction table has no user_id of its own - scoped via join to the
     # owning dance's user_id instead, same as dances_choreographers above.
