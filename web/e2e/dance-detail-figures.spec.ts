@@ -18,7 +18,7 @@ test('the dance detail page renders real figures data', async ({ page }) => {
   await page.goto(`/dances/${danceId}`)
 
   await expect(page.getByText(phrase)).toBeVisible()
-  await expect(page.getByText(`(${beats})`)).toBeVisible()
+  await expect(page.getByText(beats)).toBeVisible()
   await expect(page.getByText(description)).toBeVisible()
 })
 

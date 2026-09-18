@@ -200,7 +200,9 @@ describe('DanceDetailPage', () => {
     // its own beats count regardless of whether its phrase label repeats.
     expect(screen.getAllByText('A1')).toHaveLength(1)
     expect(screen.getByText('A2')).toBeInTheDocument()
-    expect(screen.getAllByText('(8)')).toHaveLength(3)
+    // Beats is now an editable field (EditableNumber), rendered as a plain
+    // number rather than the old read-only "(8)" parenthesized text.
+    expect(screen.getAllByText('8')).toHaveLength(3)
     expect(screen.getByText('Circle left')).toBeInTheDocument()
     expect(screen.getByText('Circle right')).toBeInTheDocument()
     expect(screen.getByText('Watch the timing here')).toBeInTheDocument()

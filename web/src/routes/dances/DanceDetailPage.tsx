@@ -8,9 +8,10 @@ import { EditableRichText } from '@/components/fields/EditableRichText'
 import { EditableText } from '@/components/fields/EditableText'
 import { PageSpinner } from '@/components/PageSpinner'
 import { FieldList } from '@/components/fields/FieldList'
+import { Switch } from '@/components/ui/switch'
 import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
 import { formatDate, sortAlphabetically } from '@/lib/format'
-import { commitFigureItemEdit } from './commitFigureItemEdit'
+import { getDefaultSkeleton } from '@/lib/phraseSkeleton'
 import { makeFiguresLabel } from './DancesPage.columns'
 import { useDance } from './DanceDetailPage.data'
 import { danceMetadataFields } from './DanceDetailPage.fields'
@@ -31,6 +32,7 @@ export function DanceDetailPage() {
 
   const figuresLabel = dance ? makeFiguresLabel(dance) : ''
   const selectedVersion = dance?.versions.find((version) => version.id === versionId) ?? dance?.versions[0]
+  const skeleton = getDefaultSkeleton(dance?.dance_type ?? null)
 
   return (
     <div className="mx-auto max-w-6xl p-4">
@@ -85,12 +87,27 @@ export function DanceDetailPage() {
                         {figuresLabel}
                       </p>
                     )}
-                    {activeFigureEditor && <FigureToolbar editor={activeFigureEditor} className="ml-auto" />}
+                    <div className="ml-auto flex items-center gap-4">
+                      {activeFigureEditor && <FigureToolbar editor={activeFigureEditor} />}
+                      {skeleton && selectedVersion && (
+                        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                          Manual phrasing
+                          <Switch
+                            checked={selectedVersion.manual_phrasing}
+                            onCheckedChange={(checked) =>
+                              void commitFieldEdit('dance_versions', selectedVersion.id, 'manual_phrasing', checked ? 1 : 0)
+                            }
+                          />
+                        </label>
+                      )}
+                    </div>
                   </div>
                   <FiguresList
                     items={selectedVersion?.figures ?? []}
-                    onEditItem={(itemId, value) =>
-                      selectedVersion && void commitFigureItemEdit(selectedVersion.id, selectedVersion.figures, itemId, value)
+                    skeleton={skeleton}
+                    manualPhrasing={selectedVersion?.manual_phrasing ?? true}
+                    onChange={(newFigures) =>
+                      selectedVersion && void commitFieldEdit('dance_versions', selectedVersion.id, 'figures', JSON.stringify(newFigures))
                     }
                     onActiveEditorChange={setActiveFigureEditor}
                   />

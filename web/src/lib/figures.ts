@@ -77,3 +77,19 @@ export function appendFigure(items: FigureItem[], skeleton: PhraseSpan[] | null)
 export function appendNote(items: FigureItem[]): FigureItem[] {
   return [...items, { id: crypto.randomUUID(), kind: 'note', text: '' }]
 }
+
+// Pairs each item with the phrase it displays under - computed live from
+// the running beat total against `skeleton` when one applies, or the
+// item's own stored `phrase` field when phrasing is manual for this
+// version (skeleton is null either because manual_phrasing is on, or
+// because this dance_type has no default skeleton at all). A note has no
+// phrase of its own either way.
+export function withComputedPhrases(items: FigureItem[], skeleton: PhraseSpan[] | null): { item: FigureItem; phrase: string | null }[] {
+  let cumulativeBeats = 0
+  return items.map((item) => {
+    if (!isFigureEntry(item)) return { item, phrase: null }
+    const phrase = skeleton ? computePhraseLabel(cumulativeBeats, skeleton) : item.phrase
+    cumulativeBeats += item.beats ?? 0
+    return { item, phrase }
+  })
+}

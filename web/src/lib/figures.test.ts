@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendFigure, appendNote, removeFigureItem, updateFigureItem } from './figures'
+import { appendFigure, appendNote, removeFigureItem, updateFigureItem, withComputedPhrases } from './figures'
 import { getDefaultSkeleton } from './phraseSkeleton'
 import type { FigureItem } from './figures'
 
@@ -51,7 +51,7 @@ describe('appendNote', () => {
     const result = appendNote(makeFigures())
     expect(result).toHaveLength(3)
     expect(result[2]).toMatchObject({ kind: 'note', text: '' })
-    expect(result[2]!.id).toBeTruthy()
+    expect(result[2].id).toBeTruthy()
   })
 })
 
@@ -87,5 +87,43 @@ describe('appendFigure', () => {
     ]
     const result = appendFigure(figures, contraSkeleton)
     expect(result[2]).toMatchObject({ phrase: 'A2', beats: 16 })
+  })
+})
+
+describe('withComputedPhrases', () => {
+  const contraSkeleton = getDefaultSkeleton('Contra')
+
+  it('computes each figure\'s phrase live from the running beat total, ignoring its own stored phrase field', () => {
+    const figures: FigureItem[] = [
+      { id: 'f1', kind: 'figure', phrase: 'wrong-on-purpose', beats: 16, description: 'Circle left' },
+      { id: 'f2', kind: 'figure', phrase: 'also-wrong', beats: 16, description: 'Swing' },
+    ]
+    expect(withComputedPhrases(figures, contraSkeleton)).toEqual([
+      { item: figures[0], phrase: 'A1' },
+      { item: figures[1], phrase: 'A2' },
+    ])
+  })
+
+  it('gives a note a null phrase regardless of skeleton', () => {
+    const notes: FigureItem[] = [{ id: 'n1', kind: 'note', text: 'A note' }]
+    expect(withComputedPhrases(notes, contraSkeleton)).toEqual([{ item: notes[0], phrase: null }])
+  })
+
+  it('falls back to each figure\'s own stored phrase when no skeleton applies', () => {
+    const figures: FigureItem[] = [{ id: 'f1', kind: 'figure', phrase: 'Verse', beats: 8, description: 'Circle left' }]
+    expect(withComputedPhrases(figures, null)).toEqual([{ item: figures[0], phrase: 'Verse' }])
+  })
+
+  it('skips a note when accumulating beats for the figures around it', () => {
+    const items: FigureItem[] = [
+      { id: 'f1', kind: 'figure', phrase: 'A1', beats: 16, description: 'Circle left' },
+      { id: 'n1', kind: 'note', text: 'A note' },
+      { id: 'f2', kind: 'figure', phrase: 'A1', beats: 16, description: 'Swing' },
+    ]
+    expect(withComputedPhrases(items, contraSkeleton)).toEqual([
+      { item: items[0], phrase: 'A1' },
+      { item: items[1], phrase: null },
+      { item: items[2], phrase: 'A2' },
+    ])
   })
 })
