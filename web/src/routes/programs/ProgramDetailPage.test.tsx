@@ -44,7 +44,7 @@ function makeProgramRow(overrides: Record<string, unknown> = {}) {
 const GRANGE_HALL = { id: 'loc-1', name: 'Grange Hall' }
 
 // EditableLocationCombobox issues its own separate useQuery call (via
-// useLocations) alongside useProgram()'s program-row query, both routed
+// useOwnerTableOptions) alongside useProgram()'s program-row query, both routed
 // through the same mocked useQuery - so, like ProgramsPage.test.tsx's
 // mockPrograms(), this has to branch on the SQL text rather than return one
 // fixed result for every call.

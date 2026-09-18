@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { db } from './database' // Actually loads the mock below, not the real module.
-import { createLocation, useLocations } from './useLocations'
+import { createOwnerTableOption, useOwnerTableOptions } from './useOwnerTableOptions'
 
 const { useQueryMock } = vi.hoisted(() => ({ useQueryMock: vi.fn() }))
 
@@ -13,8 +13,8 @@ vi.mock('./database', () => ({
   db: { execute: vi.fn() },
 }))
 
-describe('useLocations', () => {
-  it('queries every location alphabetically by name', () => {
+describe('useOwnerTableOptions', () => {
+  it('queries the given table, alphabetically by name', () => {
     useQueryMock.mockReturnValue({
       data: [
         { id: 'loc-1', name: 'Grange Hall' },
@@ -23,26 +23,34 @@ describe('useLocations', () => {
       isLoading: false,
     })
 
-    const { result } = renderHook(() => useLocations())
+    const { result } = renderHook(() => useOwnerTableOptions('locations'))
 
     expect(useQueryMock).toHaveBeenCalledWith('SELECT id, name FROM locations ORDER BY name')
-    expect(result.current.locations).toEqual([
+    expect(result.current.options).toEqual([
       { id: 'loc-1', name: 'Grange Hall' },
       { id: 'loc-2', name: 'Town Hall' },
     ])
     expect(result.current.isLoading).toBe(false)
   })
+
+  it('interpolates a different table name for a different owner table', () => {
+    useQueryMock.mockReturnValue({ data: [], isLoading: true })
+
+    renderHook(() => useOwnerTableOptions('key_moves'))
+
+    expect(useQueryMock).toHaveBeenCalledWith('SELECT id, name FROM key_moves ORDER BY name')
+  })
 })
 
-describe('createLocation', () => {
+describe('createOwnerTableOption', () => {
   beforeEach(() => {
     vi.mocked(db.execute).mockClear()
   })
 
-  it('inserts a new row with a generated id and the given name, and returns that id', async () => {
-    const id = await createLocation('Grange Hall')
+  it('inserts a new row into the given table with a generated id, and returns that id', async () => {
+    const id = await createOwnerTableOption('choreographers', 'Bob Isaacs')
 
     expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
-    expect(db.execute).toHaveBeenCalledWith('INSERT INTO locations (id, name) VALUES (?, ?)', [id, 'Grange Hall'])
+    expect(db.execute).toHaveBeenCalledWith('INSERT INTO choreographers (id, name) VALUES (?, ?)', [id, 'Bob Isaacs'])
   })
 })

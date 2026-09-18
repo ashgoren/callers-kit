@@ -4,7 +4,7 @@ import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, 
 import { useSelectFieldEdit } from '@/hooks/useSelectFieldEdit'
 import { buildCreatableComboboxItems, CREATE_OPTION_ID } from '@/lib/comboboxOptions'
 import { mutedPlaceholder } from '@/lib/format'
-import { createLocation, useLocations } from '@/lib/powersync/useLocations'
+import { createOwnerTableOption, useOwnerTableOptions } from '@/lib/powersync/useOwnerTableOptions'
 import { InlineEditableField } from './InlineEditableField'
 import type { ElementType } from 'react'
 import type { ComboboxOption } from '@/lib/comboboxOptions'
@@ -23,11 +23,15 @@ export function EditableLocationCombobox({ value, onCommit, as, className }: {
   as?: ElementType
   className?: string
 }) {
-  const { locations } = useLocations()
+  const { options: locationRows } = useOwnerTableOptions('locations')
   const fieldEdit = useSelectFieldEdit({ value, onCommit })
   const [query, setQuery] = useState('')
+  // Tracks whether an item is currently highlighted via arrow-key
+  // navigation (or hover) - see the Enter handling below for why this
+  // matters.
+  const [highlightedId, setHighlightedId] = useState<string | null>(null)
 
-  const options: ComboboxOption[] = locations.map((location) => ({ id: location.id, label: location.name ?? '' }))
+  const options: ComboboxOption[] = locationRows.map((location) => ({ id: location.id, label: location.name ?? '' }))
   const optionsByID = new Map(options.map((option) => [option.id, option.label]))
   const items = buildCreatableComboboxItems(options, query, fieldEdit.draft)
 
@@ -36,7 +40,7 @@ export function EditableLocationCombobox({ value, onCommit, as, className }: {
       fieldEdit.onChange(next)
       return
     }
-    const id = await createLocation(query.trim())
+    const id = await createOwnerTableOption('locations', query.trim())
     fieldEdit.onChange(id)
   }
 
@@ -45,6 +49,7 @@ export function EditableLocationCombobox({ value, onCommit, as, className }: {
       {...fieldEdit}
       onFocus={() => {
         setQuery('')
+        setHighlightedId(null)
         fieldEdit.onFocus()
       }}
       as={as}
@@ -58,17 +63,18 @@ export function EditableLocationCombobox({ value, onCommit, as, className }: {
               onBlur()
               return
             }
-            // Base UI's own Enter handling only confirms a highlighted item,
-            // but if the user has typed a name that already exactly matches an
-            // existing location, commit that one outright on Enter.
-            if (event.key === 'Enter') {
+            // With something explicitly arrow-key-highlighted, this is a
+            // deliberate confirm gesture (an existing location, or the
+            // "Create ..." entry) - let Base UI's own Enter handling
+            // confirm it, same as a click would.
+            if (event.key === 'Enter' && highlightedId === null) {
+              event.stopPropagation()
+              event.preventDefault()
               const exactMatch = options.find((option) => option.label.toLowerCase() === query.trim().toLowerCase())
               if (exactMatch) {
-                event.stopPropagation()
-                event.preventDefault()
                 void handleValueChange(exactMatch.id)
-                onBlur()
               }
+              onBlur()
             }
           }}
         >
@@ -79,6 +85,7 @@ export function EditableLocationCombobox({ value, onCommit, as, className }: {
             onValueChange={(next) => void handleValueChange(next)}
             inputValue={query}
             onInputValueChange={setQuery}
+            onItemHighlighted={(highlighted) => setHighlightedId(highlighted ?? null)}
             itemToStringLabel={(id) => (id === CREATE_OPTION_ID ? query.trim() : (optionsByID.get(id) ?? ''))}
             defaultOpen
             onOpenChange={(open) => {

@@ -3,14 +3,14 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { EditableLocationCombobox } from './EditableLocationCombobox'
 
-const { useLocationsMock, createLocationMock } = vi.hoisted(() => ({
-  useLocationsMock: vi.fn(),
-  createLocationMock: vi.fn(),
+const { useOwnerTableOptionsMock, createOwnerTableOptionMock } = vi.hoisted(() => ({
+  useOwnerTableOptionsMock: vi.fn(),
+  createOwnerTableOptionMock: vi.fn(),
 }))
 
-vi.mock('@/lib/powersync/useLocations', () => ({
-  useLocations: useLocationsMock,
-  createLocation: createLocationMock,
+vi.mock('@/lib/powersync/useOwnerTableOptions', () => ({
+  useOwnerTableOptions: useOwnerTableOptionsMock,
+  createOwnerTableOption: createOwnerTableOptionMock,
 }))
 
 const LOCATIONS = [
@@ -20,8 +20,8 @@ const LOCATIONS = [
 
 describe('EditableLocationCombobox', () => {
   beforeEach(() => {
-    useLocationsMock.mockReturnValue({ locations: LOCATIONS, isLoading: false })
-    createLocationMock.mockReset()
+    useOwnerTableOptionsMock.mockReturnValue({ options: LOCATIONS, isLoading: false })
+    createOwnerTableOptionMock.mockReset()
   })
 
   it("renders the current selection's name as plain text, not yet as a combobox", () => {
@@ -87,7 +87,7 @@ describe('EditableLocationCombobox', () => {
 
   it('creates a new location and commits its id when "Create" is picked', async () => {
     const onCommit = vi.fn()
-    createLocationMock.mockResolvedValue('loc-new')
+    createOwnerTableOptionMock.mockResolvedValue('loc-new')
     render(<EditableLocationCombobox value={null} onCommit={onCommit} />)
 
     const user = userEvent.setup()
@@ -95,7 +95,7 @@ describe('EditableLocationCombobox', () => {
     await user.type(await screen.findByRole('combobox'), 'Fire Hall')
     await user.click(await screen.findByRole('option', { name: /Create "Fire Hall"/ }))
 
-    expect(createLocationMock).toHaveBeenCalledWith('Fire Hall')
+    expect(createOwnerTableOptionMock).toHaveBeenCalledWith('locations', 'Fire Hall')
     expect(onCommit).toHaveBeenCalledWith('loc-new')
   })
 
@@ -121,6 +121,36 @@ describe('EditableLocationCombobox', () => {
     await user.type(await screen.findByRole('combobox'), 'Gr{Enter}')
 
     expect(onCommit).not.toHaveBeenCalled()
+  })
+
+  it('does not create or commit anything on Enter when the typed text matches no location at all, starting from a real value', async () => {
+    const onCommit = vi.fn()
+    render(<EditableLocationCombobox value="loc-1" onCommit={onCommit} />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('Grange Hall'))
+    await user.type(await screen.findByRole('combobox'), 'Fire Hall{Enter}')
+
+    // A bare Enter with nothing explicitly highlighted must never silently
+    // confirm the "Create" entry - only an explicit pick (click, or
+    // arrow-navigate then Enter - see the test below) creates anything.
+    expect(createOwnerTableOptionMock).not.toHaveBeenCalled()
+    expect(onCommit).not.toHaveBeenCalled()
+    expect(screen.getByText('Grange Hall')).toBeInTheDocument()
+  })
+
+  it('still creates and commits via Enter when the "Create" entry was explicitly arrow-key-highlighted first', async () => {
+    const onCommit = vi.fn()
+    createOwnerTableOptionMock.mockResolvedValue('loc-new')
+    render(<EditableLocationCombobox value={null} onCommit={onCommit} />)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByText('—'))
+    await user.type(await screen.findByRole('combobox'), 'Fire Hall')
+    await user.keyboard('{ArrowDown}{Enter}')
+
+    expect(createOwnerTableOptionMock).toHaveBeenCalledWith('locations', 'Fire Hall')
+    expect(onCommit).toHaveBeenCalledWith('loc-new')
   })
 
   it('closes without committing when dismissed via Escape, rather than picking anything', async () => {
