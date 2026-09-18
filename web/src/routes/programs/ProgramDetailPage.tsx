@@ -2,6 +2,7 @@ import { useParams } from 'react-router'
 import { z } from 'zod'
 import { cardRenderDanceList } from './ProgramsPage.columns'
 import { EditableDate } from '@/components/fields/EditableDate'
+import { EditableLocationCombobox } from '@/components/fields/EditableLocationCombobox'
 import { EditableRichText } from '@/components/fields/EditableRichText'
 import { PageSpinner } from '@/components/PageSpinner'
 import { FieldList } from '@/components/fields/FieldList'
@@ -51,10 +52,13 @@ export function ProgramDetailPage() {
               className="font-semibold text-4xl md:text-4xl"
               // Extra md:text-4xl needed for edit mode since Input has default text-sm className.
             />
-            {program.location && (
+            <EditableLocationCombobox
+              value={program.location_id}
+              onCommit={(v) => void commitFieldEdit('programs', program.id, 'location_id', v)}
+              as="p"
               // pl-3.25: lines up with the date field's text + its padding + its invisible border.
-              <p className="mt-1 pl-3.25 text-base text-muted-foreground">{program.location}</p>
-            )}
+              className="mt-1 pl-3.25 text-base text-muted-foreground"
+            />
           </div>
 
           <FieldList fields={programDetailFields} row={program} className="mt-6 space-y-6" />

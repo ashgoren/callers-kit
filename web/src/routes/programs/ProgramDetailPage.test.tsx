@@ -32,13 +32,24 @@ function makeProgramRow(overrides: Record<string, unknown> = {}) {
   return {
     id: '1',
     date: '2026-09-13',
-    location: 'Grange Hall',
+    location_id: null,
     notes: 'Bring extra chairs.',
     created_at: '2026-01-15T12:00:00.000Z',
     updated_at: '2026-03-20T12:00:00.000Z',
     dances: '[{"programDanceId":"pd-1","danceId":"d-1","order":1,"title":"Chorus Jig"}]',
     ...overrides,
   }
+}
+
+const GRANGE_HALL = { id: 'loc-1', name: 'Grange Hall' }
+
+// EditableLocationCombobox issues its own separate useQuery call (via
+// useLocations) alongside useProgram()'s program-row query, both routed
+// through the same mocked useQuery - so, like ProgramsPage.test.tsx's
+// mockPrograms(), this has to branch on the SQL text rather than return one
+// fixed result for every call.
+function mockProgramQuery(result: { data: unknown[]; isLoading: boolean }, locations: { id: string; name: string }[] = []) {
+  useQueryMock.mockImplementation((sql: string) => (sql.includes('FROM locations') ? { data: locations, isLoading: false } : result))
 }
 
 describe('ProgramDetailPage', () => {
@@ -57,7 +68,7 @@ describe('ProgramDetailPage', () => {
   })
 
   it('renders date and location stacked in the page header, and every other field with its correct value', () => {
-    useQueryMock.mockReturnValue({ data: [makeProgramRow()], isLoading: false })
+    mockProgramQuery({ data: [makeProgramRow({ location_id: GRANGE_HALL.id })], isLoading: false }, [GRANGE_HALL])
     renderProgramDetailPage()
 
     expect(screen.getByRole('heading', { name: '9/13/26' })).toBeInTheDocument()
@@ -70,7 +81,7 @@ describe('ProgramDetailPage', () => {
   })
 
   it('commits an edited date through commitFieldEdit, by this program\'s own id', async () => {
-    useQueryMock.mockReturnValue({ data: [makeProgramRow({ id: '42' })], isLoading: false })
+    mockProgramQuery({ data: [makeProgramRow({ id: '42' })], isLoading: false })
     renderProgramDetailPage('42')
 
     const user = userEvent.setup()
@@ -90,7 +101,7 @@ describe('ProgramDetailPage', () => {
     // saving actually reaches commitFieldEdit with this row's real id and
     // the 'notes' column, the same thing the date test above confirms for
     // the header's date field.
-    useQueryMock.mockReturnValue({ data: [makeProgramRow({ id: '42', notes: null })], isLoading: false })
+    mockProgramQuery({ data: [makeProgramRow({ id: '42', notes: null })], isLoading: false })
     renderProgramDetailPage('42')
 
     const user = userEvent.setup()
@@ -106,25 +117,29 @@ describe('ProgramDetailPage', () => {
     ])
   })
 
-  it('shows "No date" in the header when date is missing, and omits the location line entirely when it is missing', () => {
-    useQueryMock.mockReturnValue({ data: [makeProgramRow({ date: null, location: null })], isLoading: false })
+  it('shows "No date" in the header when date is missing, and a muted placeholder on the location line when it is missing', () => {
+    mockProgramQuery({ data: [makeProgramRow({ date: null, location_id: null })], isLoading: false })
     renderProgramDetailPage()
 
     expect(screen.getByRole('heading', { name: 'No date' })).toBeInTheDocument()
     expect(screen.queryByText('Grange Hall')).not.toBeInTheDocument()
+    // The location line is now an always-present editable field (like every
+    // other field in this app), not conditionally omitted - it shows the
+    // same muted "—" placeholder as any other empty field instead.
+    expect(screen.getByText('—')).toBeInTheDocument()
   })
 
-  it('shows placeholders for empty notes and dance lineup', () => {
-    useQueryMock.mockReturnValue({
+  it('shows placeholders for empty location, notes, and dance lineup', () => {
+    mockProgramQuery({
       data: [makeProgramRow({ notes: null, dances: '[]' })],
       isLoading: false,
     })
     renderProgramDetailPage()
 
-    // Dances - the one remaining plain "—" placeholder (date/location moved
-    // to the header, which has its own no-data handling; Notes is now
-    // editable and shows EditableRichText's own descriptive placeholder).
-    expect(screen.getByText('—')).toBeInTheDocument()
+    // Two "—" placeholders now - location (location_id defaults to null in
+    // makeProgramRow) and the empty dance lineup. Notes is editable and
+    // shows EditableRichText's own descriptive placeholder instead.
+    expect(screen.getAllByText('—')).toHaveLength(2)
     expect(screen.getByText('No notes yet')).toBeInTheDocument()
   })
 })
