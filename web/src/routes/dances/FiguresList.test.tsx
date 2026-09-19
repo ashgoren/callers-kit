@@ -367,7 +367,42 @@ describe('FiguresList', () => {
 
       await userEvent.setup().click(toggle)
 
-      expect(onToggleManualPhrasing).toHaveBeenCalledWith(true, expect.anything())
+      // Only checked itself, not whatever second argument the real Switch
+      // primitive also passes - nothing in the app reads it, and the
+      // optimistic-update wrapper this now goes through only forwards checked.
+      expect(onToggleManualPhrasing).toHaveBeenCalledWith(true)
+    })
+
+    it('shows a toggled manual phrasing switch immediately, bridging the gap before the prop catches up with the commit', async () => {
+      // onToggleManualPhrasing here never actually updates `manualPhrasing`
+      // (mirroring the real async gap between a commit and the reactive
+      // query noticing it) - this is what a toggle would look like stuck
+      // mid-flight.
+      const { rerender } = render(
+        <FiguresList onToggleManualPhrasing={vi.fn()} items={[]} skeleton={contraSkeleton} manualPhrasing={false} isEditing onChange={vi.fn()} />,
+      )
+
+      await userEvent.setup().click(screen.getByRole('switch', { name: 'Manual phrasing' }))
+
+      expect(screen.getByRole('switch', { name: 'Manual phrasing' })).toBeChecked()
+
+      // A re-render with the same still-stale prop (the commit still in
+      // flight) keeps showing the optimistic result rather than reverting.
+      rerender(
+        <FiguresList onToggleManualPhrasing={vi.fn()} items={[]} skeleton={contraSkeleton} manualPhrasing={false} isEditing onChange={vi.fn()} />,
+      )
+      expect(screen.getByRole('switch', { name: 'Manual phrasing' })).toBeChecked()
+
+      // Once the real prop actually catches up, the override clears -
+      // proven here by then flipping it the other way and confirming the
+      // render reflects that instead of a stale optimistic true.
+      rerender(
+        <FiguresList onToggleManualPhrasing={vi.fn()} items={[]} skeleton={contraSkeleton} manualPhrasing={true} isEditing onChange={vi.fn()} />,
+      )
+      rerender(
+        <FiguresList onToggleManualPhrasing={vi.fn()} items={[]} skeleton={contraSkeleton} manualPhrasing={false} isEditing onChange={vi.fn()} />,
+      )
+      expect(screen.getByRole('switch', { name: 'Manual phrasing' })).not.toBeChecked()
     })
 
     it('shows a mutation immediately, bridging the gap before the items prop catches up with the commit', async () => {

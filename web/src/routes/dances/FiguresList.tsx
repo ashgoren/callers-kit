@@ -58,12 +58,23 @@ export function FiguresList({ items, skeleton, manualPhrasing, isEditing, onChan
   }
   const displayItems = optimisticItems ?? items
 
+  const [optimisticManualPhrasing, setOptimisticManualPhrasing] = useState<boolean | null>(null)
+  if (optimisticManualPhrasing !== null && manualPhrasing === optimisticManualPhrasing) {
+    setOptimisticManualPhrasing(null)
+  }
+  const displayManualPhrasing = optimisticManualPhrasing ?? manualPhrasing
+
   function handleChange(newItems: FigureItem[]) {
     setOptimisticItems(newItems)
     onChange(newItems)
   }
 
-  const phraseEditable = manualPhrasing || skeleton === null
+  function handleToggleManualPhrasing(checked: boolean) {
+    setOptimisticManualPhrasing(checked)
+    onToggleManualPhrasing(checked)
+  }
+
+  const phraseEditable = displayManualPhrasing || skeleton === null
   const rows = withPhraseHeadings(withComputedPhrases(displayItems, phraseEditable ? null : skeleton))
 
   if (!isEditing) {
@@ -75,10 +86,10 @@ export function FiguresList({ items, skeleton, manualPhrasing, isEditing, onChan
       items={displayItems}
       rows={rows}
       skeleton={skeleton}
-      manualPhrasing={manualPhrasing}
+      manualPhrasing={displayManualPhrasing}
       phraseEditable={phraseEditable}
       onChange={handleChange}
-      onToggleManualPhrasing={onToggleManualPhrasing}
+      onToggleManualPhrasing={handleToggleManualPhrasing}
       onActiveEditorChange={onActiveEditorChange}
     />
   )
