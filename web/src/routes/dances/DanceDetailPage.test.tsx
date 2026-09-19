@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
@@ -296,6 +296,50 @@ describe('DanceDetailPage', () => {
     })
     expect(screen.queryByRole('button', { name: 'Reorder figure' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Edit figures' })).toBeInTheDocument()
+  })
+
+  it('does not also leave figures edit mode when Escape reverts a focused sub-field mid-edit', async () => {
+    // The bug this guards against: a sub-field's own Escape handling
+    // (revert the draft, unfocus/unmount back to display) completes
+    // synchronously within the same event - by the time a plain bubble-
+    // phase listener saw activeElement, the field would already be gone,
+    // wrongly reading as "nothing is focused" and collapsing the whole
+    // editor too. Dispatched on the actual focused input (not on window
+    // directly) so it genuinely bubbles/captures the same way a real
+    // keypress would.
+    useQueryMock.mockReturnValue({
+      data: [
+        makeDanceRow({
+          dance_type: 'Contra',
+          versions: JSON.stringify([
+            {
+              id: 'v1',
+              label: 'Choreography',
+              notes: null,
+              manual_phrasing: 0,
+              figures: [{ id: 'f1', kind: 'figure', phrase: 'A1', beats: 8, description: '<p>Circle left</p>' }],
+            },
+          ]),
+        }),
+      ],
+      isLoading: false,
+    })
+    renderDanceDetailPage()
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Edit figures' }))
+    await user.click(screen.getByText('8'))
+    const input = screen.getByRole('textbox')
+    await user.type(input, '9')
+
+    fireEvent.keyDown(input, { key: 'Escape' })
+
+    // The sub-field itself reverted and closed - the typed edit discarded.
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(screen.getByText('8')).toBeInTheDocument()
+    // But the surrounding figures editor is still in edit mode - this
+    // Escape belonged to the sub-field, not the page-level fallback.
+    expect(screen.getByRole('button', { name: 'Done editing figures' })).toBeInTheDocument()
   })
 
   it('links to the short /dances/:id/walkthrough form when viewing the primary version', async () => {
