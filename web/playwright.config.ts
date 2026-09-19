@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { STORAGE_STATE_PATH } from './e2e/storageState.js'
 
 // Playwright's config/tests run in plain Node, not through Vite — so
 // import.meta.env isn't available here. Loading these directly into
@@ -18,8 +19,16 @@ export default defineConfig({
   },
   projects: [
     {
+      name: 'setup',
+      testMatch: /auth\.setup\.ts/,
+    },
+    {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      // Every spec starts already signed in via the storageState auth.setup.ts
+      // saves - the specs that specifically need to be signed out instead
+      // (auth-redirect.spec.ts) override this with their own test.use().
+      use: { ...devices['Desktop Chrome'], storageState: STORAGE_STATE_PATH },
+      dependencies: ['setup'],
     },
   ],
   webServer: {

@@ -12,7 +12,12 @@ test('adding, reordering, and removing a dance in a program\'s lineup persists t
   const password = process.env.E2E_TEST_PASSWORD!
   const programId = process.env.E2E_TEST_PROGRAM_ID!
   const originalDanceTitle = process.env.E2E_TEST_DANCE_TITLE!
-  const newDanceTitle = 'E2E Test Dance To Add'
+  // Deliberately doesn't start with "E2E Test Dance" - other specs (e.g.
+  // dances-column-state.spec.ts) match dance rows via a plain
+  // `new RegExp(danceTitle)` against the fixture dance's title, and a
+  // shared substring here would make this temporary dance a false match if
+  // both specs' browser contexts happen to be live at the same moment.
+  const newDanceTitle = 'E2E Extra Temp Dance'
 
   const verificationClient = createClient(process.env.VITE_SUPABASE_URL!, process.env.VITE_SUPABASE_PUBLISHABLE_KEY!)
   const { error: signInError } = await verificationClient.auth.signInWithPassword({ email, password })
@@ -32,12 +37,7 @@ test('adding, reordering, and removing a dance in a program\'s lineup persists t
   const newDanceId = newDance!.id as string
 
   try {
-    await page.goto('/signin')
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password').fill(password)
-    await page.getByRole('button', { name: 'Sign in' }).click()
-    await expect(page).toHaveURL('/dances')
-
+    // Already signed in via the shared storageState (see playwright.config.ts).
     await page.goto(`/programs/${programId}`)
     await page.getByRole('button', { name: 'Edit dances' }).click()
 
@@ -50,8 +50,12 @@ test('adding, reordering, and removing a dance in a program\'s lineup persists t
     await expect(page.getByRole('option', { name: newDanceTitle })).toBeVisible({ timeout: 10_000 })
     await page.getByRole('option', { name: newDanceTitle }).click()
 
+    // Edit mode shows no visible order number of its own (see
+    // ProgramDanceLineup.tsx's DanceLineupRow - just a drag handle, the
+    // dance's own title link, and a remove button), so each row is located
+    // by its link's accessible name rather than an "N. Title" string.
     const lineup = page.getByRole('list')
-    await expect(lineup.getByText(`2. ${newDanceTitle}`)).toBeVisible()
+    await expect(lineup.getByRole('link', { name: newDanceTitle, exact: true })).toBeVisible()
 
     await expect
       .poll(
@@ -64,8 +68,8 @@ test('adding, reordering, and removing a dance in a program\'s lineup persists t
       .toBe(1)
 
     // Drag the new dance's row up past the original one.
-    const newRow = page.getByText(`2. ${newDanceTitle}`).locator('xpath=..')
-    const originalRow = page.getByText(new RegExp(`^1\\. ${originalDanceTitle}$`)).locator('xpath=..')
+    const newRow = lineup.getByRole('link', { name: newDanceTitle, exact: true }).locator('xpath=..')
+    const originalRow = lineup.getByRole('link', { name: originalDanceTitle, exact: true }).locator('xpath=..')
     const sourceBox = await newRow.getByRole('button', { name: 'Reorder dance' }).boundingBox()
     const targetBox = await originalRow.getByRole('button', { name: 'Reorder dance' }).boundingBox()
     if (!sourceBox || !targetBox) throw new Error('expected both drag handles to have a bounding box')
@@ -80,14 +84,17 @@ test('adding, reordering, and removing a dance in a program\'s lineup persists t
     // interaction avoids clicking a row still mid-transition.
     await page.waitForTimeout(300)
 
-    await expect(lineup.getByText(`1. ${newDanceTitle}`)).toBeVisible()
-    await expect(lineup.getByText(new RegExp(`^2\\. ${originalDanceTitle}$`))).toBeVisible()
+    // The rows re-render in the new array order (not just a visual
+    // transform), so the new dance's link should now come before the
+    // original one in document order.
+    const linkNames = await lineup.getByRole('link').allTextContents()
+    expect(linkNames.indexOf(newDanceTitle)).toBeLessThan(linkNames.indexOf(originalDanceTitle))
 
     // Remove the newly added dance again, leaving only the original.
-    await page.getByText(`1. ${newDanceTitle}`).locator('xpath=..').getByRole('button', { name: 'Remove dance' }).click()
+    await lineup.getByRole('link', { name: newDanceTitle, exact: true }).locator('xpath=..').getByRole('button', { name: 'Remove dance' }).click()
 
-    await expect(lineup.getByText(new RegExp(`^1\\. ${originalDanceTitle}$`))).toBeVisible()
-    await expect(page.getByText(newDanceTitle)).not.toBeVisible()
+    await expect(lineup.getByRole('link', { name: originalDanceTitle, exact: true })).toBeVisible()
+    await expect(lineup.getByRole('link', { name: newDanceTitle, exact: true })).not.toBeVisible()
 
     await expect
       .poll(

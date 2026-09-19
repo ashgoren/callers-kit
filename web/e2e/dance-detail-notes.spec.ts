@@ -18,12 +18,7 @@ test('editing and saving a dance version\'s notes persists to Supabase', async (
   expect(signInError).toBeNull()
 
   try {
-    await page.goto('/signin')
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password').fill(password)
-    await page.getByRole('button', { name: 'Sign in' }).click()
-    await expect(page).toHaveURL('/dances')
-
+    // Already signed in via the shared storageState (see playwright.config.ts).
     await page.goto(`/dances/${danceId}`)
 
     await page.getByText(startingNotes).click()

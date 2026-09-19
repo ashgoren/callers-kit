@@ -3,14 +3,8 @@ import { expect, test } from '@playwright/test'
 test('the dances table shows a card list on phone width and the real table from tablet width up', async ({
   page,
 }) => {
-  const email = process.env.E2E_TEST_EMAIL!
-  const password = process.env.E2E_TEST_PASSWORD!
-
-  await page.goto('/signin')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page).toHaveURL('/dances')
+  // Already signed in via the shared storageState (see playwright.config.ts).
+  await page.goto('/dances')
 
   // Phone width (well under the sm: 640px breakpoint) - card list, no table.
   // .first(): CardList's own outer <ul> is always the first "list" role in

@@ -11,19 +11,12 @@ import { expect, test } from '@playwright/test'
 test.describe.configure({ mode: 'serial' })
 
 test('the dance detail page renders real figures data', async ({ page }) => {
-  const email = process.env.E2E_TEST_EMAIL!
-  const password = process.env.E2E_TEST_PASSWORD!
   const danceId = process.env.E2E_TEST_DANCE_ID!
   const phrase = process.env.E2E_TEST_DANCE_FIGURE_PHRASE!
   const beats = process.env.E2E_TEST_DANCE_FIGURE_BEATS!
   const description = process.env.E2E_TEST_DANCE_FIGURE_DESCRIPTION!
 
-  await page.goto('/signin')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page).toHaveURL('/dances')
-
+  // Already signed in via the shared storageState (see playwright.config.ts).
   await page.goto(`/dances/${danceId}`)
 
   await expect(page.getByText(phrase)).toBeVisible()
@@ -48,12 +41,7 @@ test('the figure formatting toolbar appears while editing, and Bold actually for
   expect(signInError).toBeNull()
 
   try {
-    await page.goto('/signin')
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password').fill(password)
-    await page.getByRole('button', { name: 'Sign in' }).click()
-    await expect(page).toHaveURL('/dances')
-
+    // Already signed in via the shared storageState (see playwright.config.ts).
     await page.goto(`/dances/${danceId}`)
 
     // Figures are read-only until edit mode is explicitly toggled on.
@@ -139,12 +127,7 @@ test('adding, reordering, editing beats, and removing a figure line persists to 
   expect(signInError).toBeNull()
 
   try {
-    await page.goto('/signin')
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password').fill(password)
-    await page.getByRole('button', { name: 'Sign in' }).click()
-    await expect(page).toHaveURL('/dances')
-
+    // Already signed in via the shared storageState (see playwright.config.ts).
     await page.goto(`/dances/${danceId}`)
     await page.getByRole('button', { name: 'Edit figures' }).click()
 

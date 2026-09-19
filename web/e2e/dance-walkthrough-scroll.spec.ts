@@ -39,12 +39,7 @@ test('a long walkthrough scrolls internally in edit mode, keeping the toolbar an
   try {
     await verificationClient.from('dance_versions').update({ walkthrough: longWalkthrough }).eq('id', versionRow.id)
 
-    await page.goto('/signin')
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password').fill(password)
-    await page.getByRole('button', { name: 'Sign in' }).click()
-    await expect(page).toHaveURL('/dances')
-
+    // Already signed in via the shared storageState (see playwright.config.ts).
     await page.goto(`/dances/${danceId}/walkthrough`)
     await page.getByText('Paragraph 1 of a long e2e test walkthrough.').click()
 

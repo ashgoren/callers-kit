@@ -18,12 +18,7 @@ test('creating and attaching, then removing, a key move tag on the dance detail 
   expect(signInError).toBeNull()
 
   try {
-    await page.goto('/signin')
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password').fill(password)
-    await page.getByRole('button', { name: 'Sign in' }).click()
-    await expect(page).toHaveURL('/dances')
-
+    // Already signed in via the shared storageState (see playwright.config.ts).
     await page.goto(`/dances/${danceId}`)
 
     // Key Moves starts with one existing tag (see e2e/.env's

@@ -1,14 +1,9 @@
 import { expect, test } from '@playwright/test'
 
 test('sign out clears the session and redirects to /signin', async ({ page }) => {
-  const email = process.env.E2E_TEST_EMAIL!
-  const password = process.env.E2E_TEST_PASSWORD!
-
-  await page.goto('/signin')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page).toHaveURL('/dances')
+  // Already signed in via the shared storageState (see playwright.config.ts) -
+  // no need to drive the sign-in form itself just to reach a signed-in state.
+  await page.goto('/dances')
 
   await page.getByRole('button', { name: 'Account menu' }).click()
   await page.getByRole('menuitem', { name: 'Sign out' }).click()

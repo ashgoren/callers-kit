@@ -1,19 +1,11 @@
 import { expect, test } from '@playwright/test'
 
 test('the programs table renders real data, including its ordered dance lineup', async ({ page }) => {
-  const email = process.env.E2E_TEST_EMAIL!
-  const password = process.env.E2E_TEST_PASSWORD!
   const programLocation = process.env.E2E_TEST_PROGRAM_LOCATION!
   const danceTitle = process.env.E2E_TEST_DANCE_TITLE!
 
-  await page.goto('/signin')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-
-  await expect(page).toHaveURL('/dances')
-  await page.getByRole('link', { name: 'Programs' }).click()
-  await expect(page).toHaveURL('/programs')
+  // Already signed in via the shared storageState (see playwright.config.ts).
+  await page.goto('/programs')
 
   const table = page.getByRole('table')
   await expect(table).toBeVisible()
@@ -29,16 +21,10 @@ test('the programs table renders real data, including its ordered dance lineup',
 })
 
 test('hovering a truncated Notes cell reveals its full text via a real tooltip, not the browser\'s native title attribute', async ({ page }) => {
-  const email = process.env.E2E_TEST_EMAIL!
-  const password = process.env.E2E_TEST_PASSWORD!
   const programNotes = process.env.E2E_TEST_PROGRAM_NOTES!
 
-  await page.goto('/signin')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await page.getByRole('link', { name: 'Programs' }).click()
-  await expect(page).toHaveURL('/programs')
+  // Already signed in via the shared storageState (see playwright.config.ts).
+  await page.goto('/programs')
 
   const notesTrigger = page.getByRole('button', { name: programNotes })
   // A real tooltip, not the native title attribute - jsdom can't mount/open
@@ -53,17 +39,11 @@ test('hovering a truncated Notes cell reveals its full text via a real tooltip, 
 })
 
 test('clicking a program row opens its detail page, showing the same real data', async ({ page }) => {
-  const email = process.env.E2E_TEST_EMAIL!
-  const password = process.env.E2E_TEST_PASSWORD!
   const programLocation = process.env.E2E_TEST_PROGRAM_LOCATION!
   const danceTitle = process.env.E2E_TEST_DANCE_TITLE!
 
-  await page.goto('/signin')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await page.getByRole('link', { name: 'Programs' }).click()
-  await expect(page).toHaveURL('/programs')
+  // Already signed in via the shared storageState (see playwright.config.ts).
+  await page.goto('/programs')
 
   await page.getByRole('row', { name: new RegExp(programLocation) }).click()
 
@@ -78,5 +58,11 @@ test('clicking a program row opens its detail page, showing the same real data',
   // Location is its own line below the date heading now, not combined into
   // the heading text itself.
   await expect(page.getByText(programLocation)).toBeVisible()
-  await expect(page.getByText(`1. ${danceTitle}`)).toBeVisible()
+  // The order number is its own span, not combined into the link's own text
+  // (see cardRenderDanceList in ProgramsPage.columns.tsx) - scoping to the
+  // dance's own list item and checking both pieces separately, rather than
+  // a single "N. Title" string that was never actually one text node.
+  const lineupItem = page.getByRole('listitem').filter({ has: page.getByRole('link', { name: danceTitle }) })
+  await expect(lineupItem).toBeVisible()
+  await expect(lineupItem).toContainText('1')
 })

@@ -26,12 +26,7 @@ test('creating and selecting a new location on the program detail page persists 
   const originalLocationId = originalProgram!.location_id as string
 
   try {
-    await page.goto('/signin')
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password').fill(password)
-    await page.getByRole('button', { name: 'Sign in' }).click()
-    await expect(page).toHaveURL('/dances')
-
+    // Already signed in via the shared storageState (see playwright.config.ts).
     await page.goto(`/programs/${programId}`)
 
     await page.getByText(originalLocationName, { exact: true }).click()

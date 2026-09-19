@@ -20,12 +20,7 @@ test('editing a cue cell and the cues notes on the cues page persists across a r
   expect(signInError).toBeNull()
 
   try {
-    await page.goto('/signin')
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password').fill(password)
-    await page.getByRole('button', { name: 'Sign in' }).click()
-    await expect(page).toHaveURL('/dances')
-
+    // Already signed in via the shared storageState (see playwright.config.ts).
     await page.goto(`/dances/${danceId}/cues`)
 
     // Edit the seeded cell (dance_versions.cues.cells["A1:0:0"] - see
