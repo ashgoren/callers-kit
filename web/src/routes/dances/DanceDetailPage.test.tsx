@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
@@ -251,6 +251,51 @@ describe('DanceDetailPage', () => {
 
     expect(screen.queryByRole('button', { name: 'Reorder figure' })).not.toBeInTheDocument()
     expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+  })
+
+  it('leaves figures edit mode on Escape when nothing on the page has focus, but not while something does', async () => {
+    useQueryMock.mockReturnValue({
+      data: [
+        makeDanceRow({
+          dance_type: 'Contra',
+          versions: JSON.stringify([
+            {
+              id: 'v1',
+              label: 'Choreography',
+              notes: null,
+              manual_phrasing: 0,
+              figures: [{ id: 'f1', kind: 'figure', phrase: 'A1', beats: 8, description: '<p>Circle left</p>' }],
+            },
+          ]),
+        }),
+      ],
+      isLoading: false,
+    })
+    renderDanceDetailPage()
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Edit figures' }))
+
+    // A focused plain button (e.g. the toggle itself, right after the click
+    // that entered edit mode) doesn't count as "a field is focused" - only
+    // a genuine text-editing surface does, simulated here with a plain
+    // input rather than depending on some specific real field's own exact
+    // Escape behavior.
+    const input = document.createElement('input')
+    document.body.appendChild(input)
+    input.focus()
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    })
+    expect(screen.getByRole('button', { name: 'Done editing figures' })).toBeInTheDocument()
+    input.remove()
+
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    })
+    expect(screen.queryByRole('button', { name: 'Reorder figure' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit figures' })).toBeInTheDocument()
   })
 
   it('links to the short /dances/:id/walkthrough form when viewing the primary version', async () => {

@@ -5,6 +5,7 @@ import { cn } from 'cn'
 import { ArrowDown, ArrowUp, Pencil } from 'lucide-react'
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { useEscapeWhenUnfocused } from '@/hooks/useEscapeWhenUnfocused'
 import { useSaveCancelFieldEdit } from '@/hooks/useSaveCancelFieldEdit'
 import { sanitizeHtml } from '@/lib/sanitizeHtml'
 import { setRichTextFieldDirty } from '@/lib/unsavedRichText'
@@ -171,6 +172,14 @@ function RichTextEditArea({
   // Focuses the editor as soon as it mounts - entry is always via the
   // button above rather than a click on specific content.
   useFocusEditorOnMount(editor)
+
+  // Escape while this field is open but unfocused closes it, but only if field is !dirty.
+  useEscapeWhenUnfocused(() => {
+    if (!editor) return
+    const current = currentHtml(editor)
+    if (current !== draft) return
+    onCancel(current)
+  })
 
   // Content this long can grow the whole box (toolbar + content +
   // Save/Cancel) taller than what was on screen at the point of the click

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router'
@@ -89,6 +89,39 @@ describe('ProgramDanceLineup', () => {
       // number here would just be one more thing that goes stale mid-drag.
       expect(screen.queryByText('1')).not.toBeInTheDocument()
       expect(screen.queryByText('2')).not.toBeInTheDocument()
+    })
+
+    it('leaves edit mode on Escape when nothing on the page has focus', async () => {
+      renderLineup()
+      await enterEditMode()
+      ;(document.activeElement as HTMLElement | null)?.blur()
+
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+      })
+
+      expect(screen.queryByRole('button', { name: 'Remove dance' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Edit dances' })).toBeInTheDocument()
+    })
+
+    it('stays in edit mode on Escape while an actual editable element has focus, not just any focused button', async () => {
+      // A focused plain button (e.g. the toggle itself, right after the
+      // click that entered edit mode) doesn't count as "a field is
+      // focused" - only a genuine text-editing surface does. Simulated
+      // here with a plain input rather than depending on some specific
+      // real field's own exact Escape behavior.
+      renderLineup()
+      await enterEditMode()
+      const input = document.createElement('input')
+      document.body.appendChild(input)
+      input.focus()
+
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+      })
+
+      expect(screen.getByRole('button', { name: 'Done editing dances' })).toBeInTheDocument()
+      input.remove()
     })
 
     it('toggles back to the plain read-only list', async () => {

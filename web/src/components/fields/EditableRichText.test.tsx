@@ -481,6 +481,42 @@ describe('EditableRichText', () => {
     expect(onCommit).not.toHaveBeenCalled()
   })
 
+  it('closes on Escape even while unfocused (scrolled away, say), as long as the field is clean', async () => {
+    const onCommit = vi.fn()
+    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={onCommit} fieldName={FIELD_NAME} />)
+
+    const user = userEvent.setup()
+    await openEditor(user)
+    await waitFor(() => expect(getEditor()).toBeInTheDocument())
+    ;(getEditor() as HTMLElement).blur()
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    })
+
+    await waitFor(() => expect(getEditor()).not.toBeInTheDocument())
+    expect(onCommit).not.toHaveBeenCalled()
+  })
+
+  it('does nothing on an unfocused Escape while the field is dirty - only Cancel/Discard or a focused Escape can close it then', async () => {
+    const onCommit = vi.fn()
+    render(<EditableRichText value={null} onCommit={onCommit} fieldName={FIELD_NAME} placeholder="No notes yet" />)
+
+    const user = userEvent.setup()
+    await openEditor(user)
+    await waitFor(() => expect(getEditor()).toBeInTheDocument())
+    await user.type(getEditor()!, 'Abandoned edit')
+    ;(getEditor() as HTMLElement).blur()
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    })
+
+    expect(onCommit).not.toHaveBeenCalled()
+    expect(getEditor()).toBeInTheDocument()
+    expect(screen.queryByText('Discard your changes?')).not.toBeInTheDocument()
+  })
+
   it('arms a discard prompt on the first Cancel click, without closing or committing', async () => {
     const onCommit = vi.fn()
     render(<EditableRichText value={null} onCommit={onCommit} fieldName={FIELD_NAME} placeholder="No notes yet" />)

@@ -10,6 +10,7 @@ import { EditableTagCombobox } from '@/components/fields/EditableTagCombobox'
 import { EditableText } from '@/components/fields/EditableText'
 import { PageSpinner } from '@/components/PageSpinner'
 import { FieldList } from '@/components/fields/FieldList'
+import { useEscapeWhenUnfocused } from '@/hooks/useEscapeWhenUnfocused'
 import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
 import { formatDate, mutedPlaceholder, sortAlphabetically } from '@/lib/format'
 import { getDefaultSkeleton } from '@/lib/phraseSkeleton'
@@ -29,6 +30,11 @@ export function DanceDetailPage() {
   const { dance, isLoading } = useDance(id ?? '')
   const [activeFigureEditor, setActiveFigureEditor] = useState<Editor | null>(null)
   const [isEditingFigures, setIsEditingFigures] = useState(false)
+
+  // Escape while nothing on the page has focus leaves figures edit mode.
+  // While a figure's own sub-field is focused, Escape reaches that field's
+  // own handling instead.
+  useEscapeWhenUnfocused(() => setIsEditingFigures(false), isEditingFigures)
 
   if (isLoading) return <PageSpinner />
 

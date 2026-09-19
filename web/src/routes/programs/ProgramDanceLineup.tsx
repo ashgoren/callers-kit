@@ -9,6 +9,7 @@ import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList } from '@/components/ui/combobox'
 import { useDragBodyClass } from '@/hooks/useDragBodyClass'
+import { useEscapeWhenUnfocused } from '@/hooks/useEscapeWhenUnfocused'
 import { mutedPlaceholder } from '@/lib/format'
 import { addProgramDance, removeProgramDance, reorderProgramDances } from '@/lib/powersync/commitProgramDanceReorder'
 import { useDances } from '@/routes/dances/DancesPage.data'
@@ -26,6 +27,11 @@ interface DanceOption {
 // dance" search (and drops the numbers).
 export function ProgramDanceLineup({ programId, dances }: { programId: string; dances: ProgramDance[] }) {
   const [isEditing, setIsEditing] = useState(false)
+
+  // Escape while nothing on the page has focus leaves edit mode - like
+  // clicking the toggle back to Eye, not a discard of anything (every
+  // reorder/add/remove already autosaves), so there's nothing to lose.
+  useEscapeWhenUnfocused(() => setIsEditing(false), isEditing)
 
   const [optimisticDances, setOptimisticDances] = useState<ProgramDance[] | null>(null)
   if (optimisticDances && JSON.stringify(dances) === JSON.stringify(optimisticDances)) {
