@@ -50,6 +50,29 @@ describe('EditableLocationCombobox', () => {
     expect(screen.getByRole('combobox')).toHaveFocus()
   })
 
+  it("shows the current selection's name as the search box's placeholder, not the generic instructional one", async () => {
+    // Real text (not just the generic placeholder) would also feed the
+    // dropdown's own filtering, narrowing the just-opened list down to only
+    // this one match - a placeholder shows it without that side effect,
+    // confirmed below by Town Hall still being a selectable option.
+    render(<EditableLocationCombobox value="loc-1" onCommit={vi.fn()} />)
+
+    await userEvent.setup().click(screen.getByText('Grange Hall'))
+
+    const input = screen.getByRole('combobox')
+    expect(input).toHaveAttribute('placeholder', 'Grange Hall')
+    expect(input).toHaveValue('')
+    expect(screen.getByRole('option', { name: 'Town Hall' })).toBeInTheDocument()
+  })
+
+  it('falls back to the generic instructional placeholder when nothing is selected yet', async () => {
+    render(<EditableLocationCombobox value={null} onCommit={vi.fn()} />)
+
+    await userEvent.setup().click(screen.getByText('—'))
+
+    expect(screen.getByRole('combobox')).toHaveAttribute('placeholder', 'Choose or create a location')
+  })
+
   it('commits an existing location immediately, and returns to plain-text display', async () => {
     const onCommit = vi.fn()
     render(<EditableLocationCombobox value="loc-1" onCommit={onCommit} />)

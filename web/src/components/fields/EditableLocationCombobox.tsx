@@ -55,64 +55,74 @@ export function EditableLocationCombobox({ value, onCommit, as, className }: {
       as={as}
       className={className}
       renderDisplay={(v) => (v === null ? mutedPlaceholder : (optionsByID.get(v) ?? mutedPlaceholder))}
-      renderInput={({ draft, onBlur }) => (
-        <div
-          onKeyDownCapture={(event) => {
-            if (event.key === 'Escape') {
-              event.stopPropagation()
-              onBlur()
-              return
-            }
-            // With something explicitly arrow-key-highlighted, this is a
-            // deliberate confirm gesture (an existing location, or the
-            // "Create ..." entry) - let Base UI's own Enter handling
-            // confirm it, same as a click would.
-            if (event.key === 'Enter' && highlightedId === null) {
-              event.stopPropagation()
-              event.preventDefault()
-              const exactMatch = options.find((option) => option.label.toLowerCase() === query.trim().toLowerCase())
-              if (exactMatch) {
-                void handleValueChange(exactMatch.id)
+      renderInput={({ draft, onBlur }) => {
+        // Shown as the placeholder, not real input text - a real value here
+        // would also feed buildCreatableComboboxItems' filtering (query),
+        // narrowing the just-opened list down to only this one match
+        // instead of the full list (current selection pinned first) it
+        // shows today. The placeholder achieves the same "you can already
+        // see what's picked" result without that side effect, and a first
+        // keystroke naturally clears it the way any placeholder does.
+        const currentLabel = draft === null ? null : (optionsByID.get(draft) ?? null)
+        return (
+          <div
+            onKeyDownCapture={(event) => {
+              if (event.key === 'Escape') {
+                event.stopPropagation()
+                onBlur()
+                return
               }
-              onBlur()
-            }
-          }}
-        >
-          <Combobox
-            items={items.map((item) => item.id)}
-            filter={null}
-            value={draft}
-            onValueChange={(next) => void handleValueChange(next)}
-            inputValue={query}
-            onInputValueChange={setQuery}
-            onItemHighlighted={(highlighted) => setHighlightedId(highlighted ?? null)}
-            itemToStringLabel={(id) => (id === CREATE_OPTION_ID ? query.trim() : (optionsByID.get(id) ?? ''))}
-            defaultOpen
-            onOpenChange={(open) => {
-              if (!open) onBlur()
+              // With something explicitly arrow-key-highlighted, this is a
+              // deliberate confirm gesture (an existing location, or the
+              // "Create ..." entry) - let Base UI's own Enter handling
+              // confirm it, same as a click would.
+              if (event.key === 'Enter' && highlightedId === null) {
+                event.stopPropagation()
+                event.preventDefault()
+                const exactMatch = options.find((option) => option.label.toLowerCase() === query.trim().toLowerCase())
+                if (exactMatch) {
+                  void handleValueChange(exactMatch.id)
+                }
+                onBlur()
+              }
             }}
           >
-            <ComboboxInput autoFocus placeholder="Choose or create a location" showClear className="min-w-60" />
-            <ComboboxContent>
-              <ComboboxEmpty>No locations yet</ComboboxEmpty>
-              <ComboboxList>
-                {(id: string) => (
-                  <ComboboxItem key={id} value={id}>
-                    {id === CREATE_OPTION_ID ? (
-                      <>
-                        <PlusIcon className="size-4" />
-                        {`Create "${query.trim()}"`}
-                      </>
-                    ) : (
-                      optionsByID.get(id)
-                    )}
-                  </ComboboxItem>
-                )}
-              </ComboboxList>
-            </ComboboxContent>
-          </Combobox>
-        </div>
-      )}
+            <Combobox
+              items={items.map((item) => item.id)}
+              filter={null}
+              value={draft}
+              onValueChange={(next) => void handleValueChange(next)}
+              inputValue={query}
+              onInputValueChange={setQuery}
+              onItemHighlighted={(highlighted) => setHighlightedId(highlighted ?? null)}
+              itemToStringLabel={(id) => (id === CREATE_OPTION_ID ? query.trim() : (optionsByID.get(id) ?? ''))}
+              defaultOpen
+              onOpenChange={(open) => {
+                if (!open) onBlur()
+              }}
+            >
+              <ComboboxInput autoFocus placeholder={currentLabel ?? 'Choose or create a location'} showClear className="min-w-60" />
+              <ComboboxContent>
+                <ComboboxEmpty>No locations yet</ComboboxEmpty>
+                <ComboboxList>
+                  {(id: string) => (
+                    <ComboboxItem key={id} value={id}>
+                      {id === CREATE_OPTION_ID ? (
+                        <>
+                          <PlusIcon className="size-4" />
+                          {`Create "${query.trim()}"`}
+                        </>
+                      ) : (
+                        optionsByID.get(id)
+                      )}
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
+          </div>
+        )
+      }}
     />
   )
 }
