@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { hasUnsavedRichText } from '@/lib/unsavedRichText'
+import { getLatestIntersectionObserverCallback } from '@/test-setup'
 import { EditableRichText } from './EditableRichText'
 
 // A plain contenteditable div doesn't get an implicit ARIA textbox role
@@ -12,25 +13,40 @@ function getEditor() {
   return document.querySelector('[contenteditable="true"]')
 }
 
-// Every test renders with this same triggerLabel - its exact wording is a
-// caller concern (see the real "Edit notes"/"Edit walkthrough" labels at
-// each call site), not something these tests need to vary.
-const TRIGGER_LABEL = 'Edit notes'
+// jsdom has no real layout, so there's no genuine on/off-screen state to
+// trigger - this drives the resume-editing pill's IntersectionObserver
+// callback directly, the same way a real observer would report a change.
+// top defaults to above the viewport (matching most of these tests, which
+// don't care which direction it reports) - see the dedicated direction test
+// below for a case that does. Wrapped in act() since, unlike a state update
+// from fireEvent/user-event, calling this callback directly isn't something
+// React Testing Library already knows to flush before the next assertion.
+function simulateIntersection(isIntersecting: boolean, top = -1) {
+  const callback = getLatestIntersectionObserverCallback()
+  act(() => {
+    callback?.([{ isIntersecting, boundingClientRect: { top } } as unknown as IntersectionObserverEntry], {} as IntersectionObserver)
+  })
+}
+
+// Every test renders with this same fieldName - its exact wording is a
+// caller concern (see the real "notes"/"walkthrough" values at each call
+// site), not something these tests need to vary.
+const FIELD_NAME = 'notes'
 
 async function openEditor(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole('button', { name: TRIGGER_LABEL }))
+  await user.click(screen.getByRole('button', { name: `Edit ${FIELD_NAME}` }))
 }
 
 describe('EditableRichText', () => {
   it('renders sanitized HTML in view mode, not yet as an editor', () => {
-    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} triggerLabel={TRIGGER_LABEL} />)
+    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} fieldName={FIELD_NAME} />)
 
     expect(screen.getByText('Bring extra chairs.')).toBeInTheDocument()
     expect(getEditor()).not.toBeInTheDocument()
   })
 
   it('does not enter edit mode when the displayed content itself is clicked - only the edit button does', async () => {
-    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} triggerLabel={TRIGGER_LABEL} />)
+    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} fieldName={FIELD_NAME} />)
 
     const user = userEvent.setup()
     await user.click(screen.getByText('Bring extra chairs.'))
@@ -39,7 +55,7 @@ describe('EditableRichText', () => {
   })
 
   it('uses the compact prose-sm scale by default, in both view and edit mode', async () => {
-    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} triggerLabel={TRIGGER_LABEL} />)
+    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} fieldName={FIELD_NAME} />)
 
     expect(screen.getByText('Bring extra chairs.').parentElement).toHaveClass('prose-sm')
 
@@ -51,7 +67,7 @@ describe('EditableRichText', () => {
 
   it('uses the larger base prose scale when size="base" is passed, in both view and edit mode', async () => {
     render(
-      <EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} triggerLabel={TRIGGER_LABEL} size="base" />,
+      <EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} fieldName={FIELD_NAME} size="base" />,
     )
 
     expect(screen.getByText('Bring extra chairs.').parentElement).not.toHaveClass('prose-sm')
@@ -76,7 +92,7 @@ describe('EditableRichText', () => {
   // fillHeight. Only sm: and up bounds it, either to a fixed max-height
   // (default) or to the page's own remaining height (fillHeight).
   it('bounds edit-mode content with a fixed max-height at sm: and up by default, and no bound at all below that', async () => {
-    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} triggerLabel={TRIGGER_LABEL} />)
+    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} fieldName={FIELD_NAME} />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -87,7 +103,7 @@ describe('EditableRichText', () => {
 
   it('fills and scrolls within its container at sm: and up when fillHeight is passed, with no bound below that', async () => {
     render(
-      <EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} triggerLabel={TRIGGER_LABEL} fillHeight />,
+      <EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} fieldName={FIELD_NAME} fillHeight />,
     )
 
     const user = userEvent.setup()
@@ -109,7 +125,7 @@ describe('EditableRichText', () => {
   })
 
   it('shows a muted placeholder in view mode when the value is null', () => {
-    render(<EditableRichText value={null} onCommit={vi.fn()} triggerLabel={TRIGGER_LABEL} placeholder="No notes yet" />)
+    render(<EditableRichText value={null} onCommit={vi.fn()} fieldName={FIELD_NAME} placeholder="No notes yet" />)
 
     expect(screen.getByText('No notes yet')).toBeInTheDocument()
   })
@@ -120,7 +136,7 @@ describe('EditableRichText', () => {
     // dance without notes has an empty string, not a null one. Without
     // this, the field renders a blank, unclickable-looking area instead of
     // an inviting "click to add notes" placeholder.
-    render(<EditableRichText value="" onCommit={vi.fn()} triggerLabel={TRIGGER_LABEL} placeholder="No notes yet" />)
+    render(<EditableRichText value="" onCommit={vi.fn()} fieldName={FIELD_NAME} placeholder="No notes yet" />)
 
     expect(screen.getByText('No notes yet')).toBeInTheDocument()
   })
@@ -132,7 +148,7 @@ describe('EditableRichText', () => {
     // prop, see a "change," and wrongly arm a discard prompt for a field
     // the user never actually touched.
     const onCommit = vi.fn()
-    render(<EditableRichText value="" onCommit={onCommit} triggerLabel={TRIGGER_LABEL} placeholder="No notes yet" />)
+    render(<EditableRichText value="" onCommit={onCommit} fieldName={FIELD_NAME} placeholder="No notes yet" />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -146,7 +162,7 @@ describe('EditableRichText', () => {
   })
 
   it('becomes an editor with a toolbar and Save/Cancel buttons once its edit button is clicked', async () => {
-    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} triggerLabel={TRIGGER_LABEL} />)
+    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} fieldName={FIELD_NAME} />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -160,7 +176,7 @@ describe('EditableRichText', () => {
 
   it('disables Save until the content actually differs from the last saved value', async () => {
     const onCommit = vi.fn()
-    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={onCommit} triggerLabel={TRIGGER_LABEL} />)
+    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={onCommit} fieldName={FIELD_NAME} />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -180,7 +196,7 @@ describe('EditableRichText', () => {
 
   it('re-disables Save after a Cmd/Ctrl-S checkpoint, until something changes again', async () => {
     const onCommit = vi.fn()
-    render(<EditableRichText value={null} onCommit={onCommit} triggerLabel={TRIGGER_LABEL} placeholder="No notes yet" />)
+    render(<EditableRichText value={null} onCommit={onCommit} fieldName={FIELD_NAME} placeholder="No notes yet" />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -200,7 +216,7 @@ describe('EditableRichText', () => {
     // (covered directly in unsavedRichText.test.ts) or AppShell's behavior
     // (covered in AppShell.test.tsx).
     const onCommit = vi.fn()
-    render(<EditableRichText value={null} onCommit={onCommit} triggerLabel={TRIGGER_LABEL} placeholder="No notes yet" />)
+    render(<EditableRichText value={null} onCommit={onCommit} fieldName={FIELD_NAME} placeholder="No notes yet" />)
     expect(hasUnsavedRichText()).toBe(false)
 
     const user = userEvent.setup()
@@ -217,7 +233,7 @@ describe('EditableRichText', () => {
 
   it('deregisters from the unsaved-content tracker when a dirty field is discarded, not just saved', async () => {
     const onCommit = vi.fn()
-    render(<EditableRichText value={null} onCommit={onCommit} triggerLabel={TRIGGER_LABEL} placeholder="No notes yet" />)
+    render(<EditableRichText value={null} onCommit={onCommit} fieldName={FIELD_NAME} placeholder="No notes yet" />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -237,7 +253,7 @@ describe('EditableRichText', () => {
     // deliberately a no-op: clicking/tapping outside shouldn't silently
     // commit or discard an effortful edit. Only Save, Cancel, or Escape do.
     const onCommit = vi.fn()
-    render(<EditableRichText value={null} onCommit={onCommit} triggerLabel={TRIGGER_LABEL} placeholder="No notes yet" />)
+    render(<EditableRichText value={null} onCommit={onCommit} fieldName={FIELD_NAME} placeholder="No notes yet" />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -252,7 +268,7 @@ describe('EditableRichText', () => {
 
   it('commits typed content on Save, and returns to the read-only display', async () => {
     const onCommit = vi.fn()
-    render(<EditableRichText value={null} onCommit={onCommit} triggerLabel={TRIGGER_LABEL} placeholder="No notes yet" />)
+    render(<EditableRichText value={null} onCommit={onCommit} fieldName={FIELD_NAME} placeholder="No notes yet" />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -266,7 +282,7 @@ describe('EditableRichText', () => {
 
   it('checkpoints on Cmd/Ctrl-S without closing the editor', async () => {
     const onCommit = vi.fn()
-    render(<EditableRichText value={null} onCommit={onCommit} triggerLabel={TRIGGER_LABEL} placeholder="No notes yet" />)
+    render(<EditableRichText value={null} onCommit={onCommit} fieldName={FIELD_NAME} placeholder="No notes yet" />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -281,7 +297,7 @@ describe('EditableRichText', () => {
 
   it('a Cancel after a Cmd/Ctrl-S checkpoint only discards what changed since, closing with no prompt if nothing did', async () => {
     const onCommit = vi.fn()
-    render(<EditableRichText value={null} onCommit={onCommit} triggerLabel={TRIGGER_LABEL} placeholder="No notes yet" />)
+    render(<EditableRichText value={null} onCommit={onCommit} fieldName={FIELD_NAME} placeholder="No notes yet" />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -298,7 +314,7 @@ describe('EditableRichText', () => {
   })
 
   it('does not offer a numbered-list button - only bullet lists are supported', async () => {
-    render(<EditableRichText value={null} onCommit={vi.fn()} triggerLabel={TRIGGER_LABEL} placeholder="No notes yet" />)
+    render(<EditableRichText value={null} onCommit={vi.fn()} fieldName={FIELD_NAME} placeholder="No notes yet" />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -316,7 +332,7 @@ describe('EditableRichText', () => {
     // changes the stored marks for whatever gets typed next, not the
     // document structure itself).
     const onCommit = vi.fn()
-    render(<EditableRichText value={null} onCommit={onCommit} triggerLabel={TRIGGER_LABEL} placeholder="No notes yet" />)
+    render(<EditableRichText value={null} onCommit={onCommit} fieldName={FIELD_NAME} placeholder="No notes yet" />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -339,7 +355,7 @@ describe('EditableRichText', () => {
     // "<p></p>" here would otherwise show as a real, non-placeholder value
     // the next time the field is viewed.
     const onCommit = vi.fn()
-    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={onCommit} triggerLabel={TRIGGER_LABEL} />)
+    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={onCommit} fieldName={FIELD_NAME} />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -353,7 +369,7 @@ describe('EditableRichText', () => {
 
   it('toggles bold from the toolbar, reflected in both the active state and the committed HTML', async () => {
     const onCommit = vi.fn()
-    render(<EditableRichText value={null} onCommit={onCommit} triggerLabel={TRIGGER_LABEL} placeholder="No notes yet" />)
+    render(<EditableRichText value={null} onCommit={onCommit} fieldName={FIELD_NAME} placeholder="No notes yet" />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -373,7 +389,7 @@ describe('EditableRichText', () => {
 
   it('inserts a horizontal rule from the toolbar', async () => {
     const onCommit = vi.fn()
-    render(<EditableRichText value={null} onCommit={onCommit} triggerLabel={TRIGGER_LABEL} placeholder="No notes yet" />)
+    render(<EditableRichText value={null} onCommit={onCommit} fieldName={FIELD_NAME} placeholder="No notes yet" />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -387,7 +403,7 @@ describe('EditableRichText', () => {
   })
 
   it('does not show the selection bubble menu until text is actually selected', async () => {
-    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} triggerLabel={TRIGGER_LABEL} />)
+    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} fieldName={FIELD_NAME} />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -397,7 +413,7 @@ describe('EditableRichText', () => {
   })
 
   it('shows a selection bubble menu with the same mark/heading/list actions once text is selected, but not Horizontal rule', async () => {
-    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} triggerLabel={TRIGGER_LABEL} />)
+    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} fieldName={FIELD_NAME} />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -420,7 +436,7 @@ describe('EditableRichText', () => {
 
   it('toggles bold from the selection bubble menu, reflected in the committed HTML', async () => {
     const onCommit = vi.fn()
-    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={onCommit} triggerLabel={TRIGGER_LABEL} />)
+    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={onCommit} fieldName={FIELD_NAME} />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -438,7 +454,7 @@ describe('EditableRichText', () => {
 
   it('closes immediately on Cancel with no prompt, when nothing was actually changed', async () => {
     const onCommit = vi.fn()
-    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={onCommit} triggerLabel={TRIGGER_LABEL} />)
+    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={onCommit} fieldName={FIELD_NAME} />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -453,7 +469,7 @@ describe('EditableRichText', () => {
 
   it('closes immediately on Escape with no prompt, when nothing was actually changed', async () => {
     const onCommit = vi.fn()
-    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={onCommit} triggerLabel={TRIGGER_LABEL} />)
+    render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={onCommit} fieldName={FIELD_NAME} />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -467,7 +483,7 @@ describe('EditableRichText', () => {
 
   it('arms a discard prompt on the first Cancel click, without closing or committing', async () => {
     const onCommit = vi.fn()
-    render(<EditableRichText value={null} onCommit={onCommit} triggerLabel={TRIGGER_LABEL} placeholder="No notes yet" />)
+    render(<EditableRichText value={null} onCommit={onCommit} fieldName={FIELD_NAME} placeholder="No notes yet" />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -486,7 +502,7 @@ describe('EditableRichText', () => {
 
   it('discards on a second Cancel/Discard click, without committing', async () => {
     const onCommit = vi.fn()
-    render(<EditableRichText value={null} onCommit={onCommit} triggerLabel={TRIGGER_LABEL} placeholder="No notes yet" />)
+    render(<EditableRichText value={null} onCommit={onCommit} fieldName={FIELD_NAME} placeholder="No notes yet" />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -504,7 +520,7 @@ describe('EditableRichText', () => {
 
   it('discards on a second, immediate Escape, without committing', async () => {
     const onCommit = vi.fn()
-    render(<EditableRichText value={null} onCommit={onCommit} triggerLabel={TRIGGER_LABEL} placeholder="No notes yet" />)
+    render(<EditableRichText value={null} onCommit={onCommit} fieldName={FIELD_NAME} placeholder="No notes yet" />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -522,7 +538,7 @@ describe('EditableRichText', () => {
 
   it('clears an armed discard prompt when typing continues, instead of forcing a choice', async () => {
     const onCommit = vi.fn()
-    render(<EditableRichText value={null} onCommit={onCommit} triggerLabel={TRIGGER_LABEL} placeholder="No notes yet" />)
+    render(<EditableRichText value={null} onCommit={onCommit} fieldName={FIELD_NAME} placeholder="No notes yet" />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -545,7 +561,7 @@ describe('EditableRichText', () => {
     // discard prompt is armed - not a special case, but the scenario that
     // used to be a real bug under the old blur-commits design.
     const onCommit = vi.fn()
-    render(<EditableRichText value={null} onCommit={onCommit} triggerLabel={TRIGGER_LABEL} placeholder="No notes yet" />)
+    render(<EditableRichText value={null} onCommit={onCommit} fieldName={FIELD_NAME} placeholder="No notes yet" />)
 
     const user = userEvent.setup()
     await openEditor(user)
@@ -559,5 +575,94 @@ describe('EditableRichText', () => {
     expect(onCommit).not.toHaveBeenCalled()
     expect(getEditor()).toBeInTheDocument()
     expect(screen.getByText('Discard your changes?')).toBeInTheDocument()
+  })
+
+  describe('resume-editing pill', () => {
+    it('does not appear for a field that is still on screen, even while dirty', async () => {
+      render(<EditableRichText value={null} onCommit={vi.fn()} fieldName={FIELD_NAME} placeholder="No notes yet" />)
+
+      const user = userEvent.setup()
+      await openEditor(user)
+      await waitFor(() => expect(getEditor()).toBeInTheDocument())
+      await user.type(getEditor()!, 'Bring extra chairs.')
+
+      expect(screen.queryByRole('button', { name: 'Resume editing notes' })).not.toBeInTheDocument()
+    })
+
+    it('does not appear once scrolled off screen if the field was never actually touched', async () => {
+      render(<EditableRichText value={null} onCommit={vi.fn()} fieldName={FIELD_NAME} placeholder="No notes yet" />)
+
+      const user = userEvent.setup()
+      await openEditor(user)
+      await waitFor(() => expect(getEditor()).toBeInTheDocument())
+
+      // No observer even exists yet - it's only created once there's
+      // something worth watching for.
+      expect(getLatestIntersectionObserverCallback()).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Resume editing notes' })).not.toBeInTheDocument()
+    })
+
+    it('appears once a dirty field scrolls off screen, and disappears again once it scrolls back', async () => {
+      render(<EditableRichText value={null} onCommit={vi.fn()} fieldName={FIELD_NAME} placeholder="No notes yet" />)
+
+      const user = userEvent.setup()
+      await openEditor(user)
+      await waitFor(() => expect(getEditor()).toBeInTheDocument())
+      await user.type(getEditor()!, 'Bring extra chairs.')
+
+      simulateIntersection(false)
+      expect(screen.getByRole('button', { name: 'Resume editing notes' })).toBeInTheDocument()
+
+      simulateIntersection(true)
+      expect(screen.queryByRole('button', { name: 'Resume editing notes' })).not.toBeInTheDocument()
+    })
+
+    it('points up when the field scrolled off above the viewport, and down when it scrolled off below', async () => {
+      render(<EditableRichText value={null} onCommit={vi.fn()} fieldName={FIELD_NAME} placeholder="No notes yet" />)
+
+      const user = userEvent.setup()
+      await openEditor(user)
+      await waitFor(() => expect(getEditor()).toBeInTheDocument())
+      await user.type(getEditor()!, 'Bring extra chairs.')
+
+      simulateIntersection(false, -50)
+      const pill = screen.getByRole('button', { name: 'Resume editing notes' })
+      expect(pill.querySelector('.lucide-arrow-up')).toBeInTheDocument()
+
+      simulateIntersection(false, 900)
+      expect(screen.getByRole('button', { name: 'Resume editing notes' }).querySelector('.lucide-arrow-down')).toBeInTheDocument()
+    })
+
+    it('scrolls the field back into view when clicked', async () => {
+      render(<EditableRichText value={null} onCommit={vi.fn()} fieldName={FIELD_NAME} placeholder="No notes yet" />)
+      const scrollIntoView = vi.spyOn(Element.prototype, 'scrollIntoView')
+
+      const user = userEvent.setup()
+      await openEditor(user)
+      await waitFor(() => expect(getEditor()).toBeInTheDocument())
+      await user.type(getEditor()!, 'Bring extra chairs.')
+      simulateIntersection(false)
+      scrollIntoView.mockClear() // drop the desktop scroll-into-view call from opening the field
+
+      await user.click(screen.getByRole('button', { name: 'Resume editing notes' }))
+
+      expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }))
+    })
+
+    it('disappears once the field is saved, even if it never scrolled back on screen', async () => {
+      const onCommit = vi.fn()
+      render(<EditableRichText value={null} onCommit={onCommit} fieldName={FIELD_NAME} placeholder="No notes yet" />)
+
+      const user = userEvent.setup()
+      await openEditor(user)
+      await waitFor(() => expect(getEditor()).toBeInTheDocument())
+      await user.type(getEditor()!, 'Bring extra chairs.')
+      simulateIntersection(false)
+      expect(screen.getByRole('button', { name: 'Resume editing notes' })).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+
+      expect(screen.queryByRole('button', { name: 'Resume editing notes' })).not.toBeInTheDocument()
+    })
   })
 })

@@ -164,7 +164,7 @@ export function DanceDetailPage() {
                         key={selectedVersion.id}
                         value={selectedVersion.notes}
                         onCommit={(value) => void commitFieldEdit('dance_versions', selectedVersion.id, 'notes', value)}
-                        triggerLabel="Edit notes"
+                        fieldName="notes"
                       />
                     </div>
                   </div>

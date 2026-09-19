@@ -2,8 +2,8 @@ import { EditorContent, useEditor, useEditorState } from '@tiptap/react'
 import Placeholder from '@tiptap/extension-placeholder'
 import StarterKit from '@tiptap/starter-kit'
 import { cn } from 'cn'
-import { Pencil } from 'lucide-react'
-import { useEffect, useId, useLayoutEffect, useRef } from 'react'
+import { ArrowDown, ArrowUp, Pencil } from 'lucide-react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useSaveCancelFieldEdit } from '@/hooks/useSaveCancelFieldEdit'
 import { sanitizeHtml } from '@/lib/sanitizeHtml'
@@ -11,7 +11,7 @@ import { setRichTextFieldDirty } from '@/lib/unsavedRichText'
 import { buildHorizontalRuleItem, useBoldItalicUnderlineItems, useHeadingAndListItems } from './toolbarItems'
 import { currentHtml, Toolbar, ToolbarBubbleMenu, useFocusEditorOnMount } from './tiptapShared'
 import type { Editor } from '@tiptap/react'
-import type { KeyboardEvent } from 'react'
+import type { KeyboardEvent, RefObject } from 'react'
 
 // The "full" toolbar - Bold, Italic, Underline, H1/H2, list, and a divider.
 const EXTENSIONS = [
@@ -50,7 +50,7 @@ function SelectionBubbleMenu({ editor }: { editor: Editor }) {
 export function EditableRichText({
   value,
   onCommit,
-  triggerLabel,
+  fieldName,
   placeholder = 'No notes yet',
   className,
   size = 'sm',
@@ -58,7 +58,7 @@ export function EditableRichText({
 }: {
   value: string | null
   onCommit: (value: string | null) => void
-  triggerLabel: string // for the edit button's aria-label
+  fieldName: string // drives aria-label and resume-editing pill label
   placeholder?: string
   className?: string
   size?: 'sm' | 'base'
@@ -93,6 +93,7 @@ export function EditableRichText({
           className={className}
           size={size}
           fillHeight={fillHeight}
+          resumeLabel={`Resume editing ${fieldName}`}
         />
         {fieldEdit.error !== null && (
           <p id={errorId} className="mt-1 text-xs text-destructive">
@@ -115,7 +116,13 @@ export function EditableRichText({
           />
         )}
       </div>
-      <Button type="button" variant="ghost" size="icon-sm" aria-label={triggerLabel} onClick={fieldEdit.onFocus}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        aria-label={`Edit ${fieldName}`}
+        onClick={fieldEdit.onFocus}
+      >
         <Pencil className="size-4" />
       </Button>
     </div>
@@ -134,6 +141,7 @@ function RichTextEditArea({
   className,
   size,
   fillHeight,
+  resumeLabel,
 }: {
   draft: string | null
   onSave: (value: string | null) => void
@@ -146,6 +154,7 @@ function RichTextEditArea({
   className?: string
   size: 'sm' | 'base'
   fillHeight: boolean
+  resumeLabel: string
 }) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const editor = useEditor({
@@ -223,6 +232,7 @@ function RichTextEditArea({
         placeholder={placeholder}
       />
       <SaveCancelButtons editor={editor} draft={draft} hasError={hasError} onSave={onSave} onCancel={onCancel} />
+      <ResumeEditingPill editor={editor} draft={draft} wrapperRef={wrapperRef} label={resumeLabel} />
     </div>
   )
 }
@@ -274,5 +284,57 @@ function SaveCancelButtons({
         Save
       </Button>
     </div>
+  )
+}
+
+// This watches for scrolling the editor out of view and surfaces a way back,
+// pointing toward whichever direction it actually scrolled off in. Its own
+// useEditorState call, separate from SaveCancelButtons's identical-looking
+// one, is deliberate - same reasoning as that one's own comment: each
+// sibling subscribes to its own slice of editor state rather than lifting
+// isDirty up, since editor is a stable reference React itself never sees
+// change.
+function ResumeEditingPill({
+  editor,
+  draft,
+  wrapperRef,
+  label,
+}: {
+  editor: Editor
+  draft: string | null
+  wrapperRef: RefObject<HTMLDivElement | null>
+  label: string
+}) {
+  const isDirty = useEditorState({ editor, selector: () => currentHtml(editor) !== draft })
+  // null means "on screen, nothing to show" - collapses that state and
+  // which way it's off-screen into one value instead of two.
+  const [direction, setDirection] = useState<'up' | 'down' | null>(null)
+
+  useEffect(() => {
+    if (!isDirty) return
+    const node = wrapperRef.current
+    if (!node) return
+    const observer = new IntersectionObserver(([entry]) => {
+      setDirection(entry.isIntersecting ? null : entry.boundingClientRect.top < 0 ? 'up' : 'down')
+    })
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [isDirty, wrapperRef])
+
+  if (!isDirty || direction === null) return null
+
+  const DirectionIcon = direction === 'up' ? ArrowUp : ArrowDown
+
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      size="sm"
+      className="fixed right-4 bottom-4 z-50 shadow-lg"
+      onClick={() => wrapperRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })}
+    >
+      <DirectionIcon className="size-4" />
+      {label}
+    </Button>
   )
 }

@@ -12,6 +12,7 @@ import '@testing-library/jest-dom/vitest'
 // still be in the DOM when the next test runs.
 afterEach(() => {
   cleanup()
+  resetLatestIntersectionObserverCallback()
 })
 
 // jsdom doesn't implement ResizeObserver at all (used by
@@ -54,3 +55,37 @@ document.elementFromPoint ??= () => null
 // jsdom-based test can assert on real scroll position anyway.
 Element.prototype.scrollIntoView ??= () => {}
 /* eslint-enable @typescript-eslint/unbound-method */
+
+// jsdom doesn't implement IntersectionObserver either (same "no real
+// layout" gap) - EditableRichText's resume-editing pill uses this to notice
+// when an open note has scrolled out of view. Whether something is actually
+// on screen is unknowable without real layout, so unlike the plain no-op
+// stubs above, this one records its callback where a test can reach it and
+// invoke it directly with a fake entry, to simulate the field scrolling on
+// or off screen.
+// Reset in afterEach above - otherwise a test that never dirties a field
+// (so never creates an observer of its own) would see the previous test's
+// leftover callback instead of the null a fresh page actually starts with.
+let latestIntersectionObserverCallback: IntersectionObserverCallback | null = null
+export function getLatestIntersectionObserverCallback(): IntersectionObserverCallback | null {
+  return latestIntersectionObserverCallback
+}
+function resetLatestIntersectionObserverCallback(): void {
+  latestIntersectionObserverCallback = null
+}
+class IntersectionObserverStub implements IntersectionObserver {
+  readonly root = null
+  readonly rootMargin = ''
+  readonly scrollMargin = ''
+  readonly thresholds: number[] = []
+  constructor(callback: IntersectionObserverCallback) {
+    latestIntersectionObserverCallback = callback
+  }
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+  takeRecords(): IntersectionObserverEntry[] {
+    return []
+  }
+}
+globalThis.IntersectionObserver ??= IntersectionObserverStub as unknown as typeof IntersectionObserver

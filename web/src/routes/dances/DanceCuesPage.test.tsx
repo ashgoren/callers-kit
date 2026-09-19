@@ -110,7 +110,7 @@ describe('DanceCuesPage', () => {
     renderDanceCuesPage()
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'Edit cues' }))
+    await user.click(screen.getByRole('button', { name: 'Edit notes' }))
     const notesEditor = document.querySelectorAll('[contenteditable="true"]')[0]
     await waitFor(() => expect(notesEditor).toBeInTheDocument())
     await user.type(notesEditor, ' - watch the timing')
