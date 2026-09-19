@@ -1,6 +1,5 @@
 import { useParams } from 'react-router'
 import { z } from 'zod'
-import { cardRenderDanceList } from './ProgramsPage.columns'
 import { EditableDate } from '@/components/fields/EditableDate'
 import { EditableLocationCombobox } from '@/components/fields/EditableLocationCombobox'
 import { EditableRichText } from '@/components/fields/EditableRichText'
@@ -8,6 +7,7 @@ import { PageSpinner } from '@/components/PageSpinner'
 import { FieldList } from '@/components/fields/FieldList'
 import { makeDetailFieldDefiner } from '@/components/fields/DetailField'
 import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
+import { ProgramDanceLineup } from './ProgramDanceLineup'
 import { useProgram } from './ProgramDetailPage.data'
 import type { DetailField } from '@/components/fields/DetailField'
 import type { ProgramWithJoins } from './ProgramsPage.columns'
@@ -21,7 +21,6 @@ const dateSchema = z
 const defineField = makeDetailFieldDefiner<ProgramWithJoins>()
 
 const programDetailFields: DetailField<ProgramWithJoins>[] = [
-  defineField({ key: 'dances', label: 'Dances', render: cardRenderDanceList }),
   defineField({
     key: 'notes',
     label: 'Notes',
@@ -61,7 +60,10 @@ export function ProgramDetailPage() {
             />
           </div>
 
-          <FieldList fields={programDetailFields} row={program} className="mt-6 space-y-6" />
+          <div className="mt-6 space-y-6">
+            <ProgramDanceLineup programId={program.id} dances={program.dances} />
+            <FieldList fields={programDetailFields} row={program} />
+          </div>
         </>
       )}
     </div>
