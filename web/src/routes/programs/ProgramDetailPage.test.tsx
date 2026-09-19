@@ -106,7 +106,7 @@ describe('ProgramDetailPage', () => {
     renderProgramDetailPage('42')
 
     const user = userEvent.setup()
-    await user.click(screen.getByText('No notes yet'))
+    await user.click(screen.getByRole('button', { name: 'Edit notes' }))
     const editor = document.querySelector('[contenteditable="true"]')
     await waitFor(() => expect(editor).toBeInTheDocument())
     await user.type(editor!, 'Bring extra chairs.')

@@ -157,7 +157,7 @@ describe('DanceWalkthroughPage', () => {
     renderDanceWalkthroughPage()
 
     const user = userEvent.setup()
-    await user.click(screen.getByText('No notes yet'))
+    await user.click(screen.getByRole('button', { name: 'Edit walkthrough' }))
     const editor = document.querySelector('[contenteditable="true"]')
     await waitFor(() => expect(editor).toBeInTheDocument())
     await user.type(editor!, 'Circle left, then swing.')

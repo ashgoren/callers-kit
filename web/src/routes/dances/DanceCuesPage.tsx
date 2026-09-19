@@ -60,6 +60,7 @@ export function DanceCuesPage() {
               value={version.cues?.notes ?? null}
               onCommit={(value) => void commitCueNotesEdit(version.id, version.cues, value)}
               placeholder="No notes yet"
+              triggerLabel="Edit cues"
             />
           </div>
           {/* -mx-4 cancels this page's p-4 below sm */}

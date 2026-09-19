@@ -25,7 +25,11 @@ const programDetailFields: DetailField<ProgramWithJoins>[] = [
     key: 'notes',
     label: 'Notes',
     render: (value, row) => (
-      <EditableRichText value={value} onCommit={(v) => void commitFieldEdit('programs', row.id, 'notes', v)} />
+      <EditableRichText
+        value={value}
+        onCommit={(v) => void commitFieldEdit('programs', row.id, 'notes', v)}
+        triggerLabel="Edit notes"
+      />
     ),
   }),
 ]

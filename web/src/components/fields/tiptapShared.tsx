@@ -150,35 +150,40 @@ function textOffsetToDocPos(doc: Editor['state']['doc'], textOffset: number): nu
   return resolvedPos ?? doc.content.size
 }
 
-// Applies a captured click position once editor actually exists, in the
-// same layout effect timing every Editable* field already used to
-// unconditionally focus('end') - synchronously in the same commit as the
-// click that opened the field, so mobile browsers still treat the
-// resulting focus as a direct result of user interaction and raise the
-// on-screen keyboard. hasFocusedRef guards against React StrictMode's
-// dev-only double-invocation of this effect (confirmed directly once: the
-// first run correctly focused the clicked character, then an immediate
-// second run saw the ref already consumed/nulled by the first and silently
-// reset it back to 'end') - without it, a real click position would be
-// applied and then immediately undone again, but only in development,
-// since StrictMode's double-invocation never happens in a production
-// build. Local to whichever component calls this hook, so it naturally
-// resets to false on each genuinely new mount. Consumes (reads once, then
-// clears) clickPositionRef, so a later keyboard-opened edit of the same
-// field doesn't reuse a stale value from a previous click.
-export function useFocusAtClickPosition(editor: Editor | null, clickPositionRef: RefObject<ClickPosition>): void {
+// Shared core of both focus-on-open hooks below: focuses the editor exactly
+// once, as soon as it exists, in a layout effect timed to run synchronously
+// in the same commit as whatever interaction opened the field - that's what
+// makes mobile browsers still treat the resulting focus as a direct result
+// of user interaction and raise the on-screen keyboard. hasFocusedRef guards
+// against React StrictMode's dev-only double-invocation of this effect.
+function useFocusEditorOnce(editor: Editor | null, resolvePosition: (editor: Editor) => number | 'start' | 'end'): void {
   const hasFocusedRef = useRef(false)
   useLayoutEffect(() => {
     if (!editor || hasFocusedRef.current) return
     hasFocusedRef.current = true
+    editor.commands.focus(resolvePosition(editor))
+  }, [editor, resolvePosition])
+}
+
+// Applies a captured click position once the editor actually exists - see
+// useFocusEditorOnce above for the effect timing this relies on. Consumes
+// (reads once, then clears) clickPositionRef, so a later keyboard-opened
+// edit of the same field doesn't reuse a stale value from a previous click.
+export function useFocusAtClickPosition(editor: Editor | null, clickPositionRef: RefObject<ClickPosition>): void {
+  useFocusEditorOnce(editor, (editor) => {
     const clickPosition = clickPositionRef.current
     clickPositionRef.current = null
-    const pos =
-      typeof clickPosition === 'number'
-        ? Math.min(textOffsetToDocPos(editor.state.doc, clickPosition), editor.state.doc.content.size)
-        : (clickPosition ?? 'end')
-    editor.commands.focus(pos)
-  }, [editor, clickPositionRef])
+    return typeof clickPosition === 'number'
+      ? Math.min(textOffsetToDocPos(editor.state.doc, clickPosition), editor.state.doc.content.size)
+      : (clickPosition ?? 'end')
+  })
+}
+
+// For a field with no click position to restore at all - entry is always
+// via a button rather than a click on specific content, so this always
+// focuses the end of the document.
+export function useFocusEditorOnMount(editor: Editor | null): void {
+  useFocusEditorOnce(editor, () => 'end')
 }
 
 export function ToolbarButton({ editor, active, label, onClick, children }: {

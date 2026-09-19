@@ -2,17 +2,16 @@ import { EditorContent, useEditor, useEditorState } from '@tiptap/react'
 import Placeholder from '@tiptap/extension-placeholder'
 import StarterKit from '@tiptap/starter-kit'
 import { cn } from 'cn'
+import { Pencil } from 'lucide-react'
 import { useEffect, useId, useLayoutEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { useSaveCancelFieldEdit } from '@/hooks/useSaveCancelFieldEdit'
 import { sanitizeHtml } from '@/lib/sanitizeHtml'
 import { setRichTextFieldDirty } from '@/lib/unsavedRichText'
-import { InlineEditableField } from './InlineEditableField'
 import { buildHorizontalRuleItem, useBoldItalicUnderlineItems, useHeadingAndListItems } from './toolbarItems'
-import { currentHtml, Toolbar, ToolbarBubbleMenu, useCapturedClickPosition, useFocusAtClickPosition } from './tiptapShared'
+import { currentHtml, Toolbar, ToolbarBubbleMenu, useFocusEditorOnMount } from './tiptapShared'
 import type { Editor } from '@tiptap/react'
-import type { ElementType, KeyboardEvent, RefObject } from 'react'
-import type { ClickPosition } from './tiptapShared'
+import type { KeyboardEvent } from 'react'
 
 // The "full" toolbar - Bold, Italic, Underline, H1/H2, list, and a divider.
 const EXTENSIONS = [
@@ -44,23 +43,23 @@ function SelectionBubbleMenu({ editor }: { editor: Editor }) {
   )
 }
 
-// A rich-text inline-editable field, for freeform notes-length content -
-// Dance/Program notes and walkthrough. A read-only, sanitized-HTML display
-// until clicked/tapped, then a real Tiptap editor with the toolbar above
-// and an explicit Save/Cancel row below.
+// A rich-text field for freeform notes-length content - Dance/Program notes,
+// walkthrough, and cue notes. Unlike other Editable* fields, this one only enters
+// edit mode via its own dedicated button.  Getting out is likewise always deliberate
+// (Save/Cancel/Escape).
 export function EditableRichText({
   value,
   onCommit,
+  triggerLabel,
   placeholder = 'No notes yet',
-  as = 'div',
   className,
   size = 'sm',
   fillHeight = false,
 }: {
   value: string | null
   onCommit: (value: string | null) => void
+  triggerLabel: string // for the edit button's aria-label
   placeholder?: string
-  as?: ElementType
   className?: string
   size?: 'sm' | 'base'
   // Fills (and scrolls within) whatever height its container provides in
@@ -77,43 +76,49 @@ export function EditableRichText({
 }) {
   const normalizedValue = value === '' ? null : value
   const fieldEdit = useSaveCancelFieldEdit({ value: normalizedValue, onCommit })
-  const { clickPositionRef, handleMouseDown } = useCapturedClickPosition()
+  const errorId = useId()
 
-  return (
-    <InlineEditableField
-      {...fieldEdit}
-      as={as}
-      className={className}
-      editModeClassName={fillHeight ? 'sm:flex sm:h-full sm:flex-col' : undefined}
-      fullWidth
-      onMouseDown={handleMouseDown}
-      renderDisplay={(v) =>
-        v === null ? (
-          <span className="text-muted-foreground">{placeholder}</span>
-        ) : (
-          <div
-            className={cn('prose max-w-none', size === 'sm' && 'prose-sm')}
-            dangerouslySetInnerHTML={{ __html: sanitizeHtml(v) }}
-          />
-        )
-      }
-      renderInput={({ draft, onKeyDown, hasError, errorId }) => (
+  if (fieldEdit.isFocused) {
+    return (
+      <div className={fillHeight ? 'sm:flex sm:h-full sm:flex-col' : undefined}>
         <RichTextEditArea
-          draft={draft}
+          draft={fieldEdit.draft}
           onSave={fieldEdit.onChange}
           onSaveWithoutClosing={fieldEdit.saveWithoutClosing}
           onCancel={fieldEdit.attemptCancel}
-          onKeyDown={onKeyDown}
-          hasError={hasError}
+          onKeyDown={fieldEdit.onKeyDown}
+          hasError={fieldEdit.error !== null}
           errorId={errorId}
           placeholder={placeholder}
           className={className}
           size={size}
           fillHeight={fillHeight}
-          clickPositionRef={clickPositionRef}
         />
-      )}
-    />
+        {fieldEdit.error !== null && (
+          <p id={errorId} className="mt-1 text-xs text-destructive">
+            {fieldEdit.error}
+          </p>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className={cn('flex items-start gap-1', className)}>
+      <div className="min-w-0 flex-1">
+        {fieldEdit.draft === null ? (
+          <span className="text-muted-foreground">{placeholder}</span>
+        ) : (
+          <div
+            className={cn('prose max-w-none', size === 'sm' && 'prose-sm')}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(fieldEdit.draft) }}
+          />
+        )}
+      </div>
+      <Button type="button" variant="ghost" size="icon-sm" aria-label={triggerLabel} onClick={fieldEdit.onFocus}>
+        <Pencil className="size-4" />
+      </Button>
+    </div>
   )
 }
 
@@ -129,7 +134,6 @@ function RichTextEditArea({
   className,
   size,
   fillHeight,
-  clickPositionRef,
 }: {
   draft: string | null
   onSave: (value: string | null) => void
@@ -142,7 +146,6 @@ function RichTextEditArea({
   className?: string
   size: 'sm' | 'base'
   fillHeight: boolean
-  clickPositionRef: RefObject<ClickPosition>
 }) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const editor = useEditor({
@@ -156,11 +159,9 @@ function RichTextEditArea({
     },
   })
 
-  // Focuses at the clicked character (see tiptapShared.tsx's own comment on
-  // useFocusAtClickPosition for why this needs to happen in a layout effect
-  // rather than via Tiptap's own `autofocus` option, which defers the
-  // actual focus() call too late.
-  useFocusAtClickPosition(editor, clickPositionRef)
+  // Focuses the editor as soon as it mounts - entry is always via the
+  // button above rather than a click on specific content.
+  useFocusEditorOnMount(editor)
 
   // Content this long can grow the whole box (toolbar + content +
   // Save/Cancel) taller than what was on screen at the point of the click

@@ -105,7 +105,7 @@ describe('DanceDetailPage', () => {
     renderDanceDetailPage('42')
 
     const user = userEvent.setup()
-    await user.click(screen.getByText('No notes yet'))
+    await user.click(screen.getByRole('button', { name: 'Edit notes' }))
     const editor = document.querySelector('[contenteditable="true"]')
     await waitFor(() => expect(editor).toBeInTheDocument())
     await user.type(editor!, 'Watch the timing.')
@@ -365,7 +365,7 @@ describe('DanceDetailPage', () => {
     renderDanceDetailPage()
 
     const user = userEvent.setup()
-    await user.click(screen.getByText('Standard notes.'))
+    await user.click(screen.getByRole('button', { name: 'Edit notes' }))
     await waitFor(() => expect(document.querySelector('[contenteditable="true"]')).toBeInTheDocument())
 
     await user.click(screen.getByRole('tab', { name: 'Calling' }))

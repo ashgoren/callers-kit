@@ -62,6 +62,7 @@ export function DanceWalkthroughPage() {
             <EditableRichText
               value={version.walkthrough}
               onCommit={(value) => void commitFieldEdit('dance_versions', version.id, 'walkthrough', value)}
+              triggerLabel="Edit walkthrough"
               size="base"
               fillHeight
             />
