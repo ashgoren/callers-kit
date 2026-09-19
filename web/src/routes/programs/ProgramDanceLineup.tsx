@@ -100,7 +100,7 @@ function ReadOnlyDanceLineup({ dances }: { dances: ProgramDance[] }) {
       {dances.map((dance) => (
         <li key={dance.programDanceId} className="flex min-h-7 items-center">
           <span className="mr-4 w-5 shrink-0 text-right tabular-nums text-muted-foreground">{dance.order}</span>
-          <Link to={`/dances/${dance.danceId}`} className="min-w-0 flex-1 truncate hover:underline">
+          <Link to={`/dances/${dance.danceId}`} className="min-w-0 truncate hover:underline">
             {dance.title}
           </Link>
         </li>
@@ -169,7 +169,11 @@ function DanceLineupRow({ dance, onRemove }: { dance: ProgramDance; onRemove: ()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: dance.programDanceId })
 
   return (
-    <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className="flex items-center gap-2">
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className="flex items-center gap-2 rounded-lg hover:bg-muted/50"
+    >
       <button
         type="button"
         aria-label="Reorder dance"
@@ -182,7 +186,7 @@ function DanceLineupRow({ dance, onRemove }: { dance: ProgramDance; onRemove: ()
       >
         <GripVertical className="size-4" />
       </button>
-      <Link to={`/dances/${dance.danceId}`} className="min-w-0 flex-1 truncate hover:underline">
+      <Link to={`/dances/${dance.danceId}`} className="min-w-0 truncate hover:underline">
         {dance.title}
       </Link>
       <Button
@@ -190,7 +194,7 @@ function DanceLineupRow({ dance, onRemove }: { dance: ProgramDance; onRemove: ()
         variant="ghost"
         size="icon-sm"
         aria-label="Remove dance"
-        className="shrink-0 text-muted-foreground"
+        className="ml-auto shrink-0 text-muted-foreground"
         onClick={onRemove}
       >
         <X className="size-4" />

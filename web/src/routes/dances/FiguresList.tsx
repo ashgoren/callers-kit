@@ -149,7 +149,7 @@ function FiguresEditableList({ items, rows, skeleton, manualPhrasing, phraseEdit
     <div>
       {/* Only shown when a skeleton actually exists to toggle away from. */}
       {skeleton !== null && (
-        <label className="mb-3 flex items-center gap-2 text-sm text-muted-foreground">
+        <label className="mb-3 -mx-1.5 -my-1 inline-flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-sm text-muted-foreground hover:bg-muted/50">
           <Switch checked={manualPhrasing} onCheckedChange={onToggleManualPhrasing} />
           Manual phrasing
         </label>
@@ -248,7 +248,7 @@ function FigureRow({ item, phrase, showPhraseHeading, phraseEditable, onChange, 
 
   if (!isFigureEntry(item)) {
     return (
-      <div {...rowRef} className="col-span-full grid grid-cols-subgrid items-start pt-3">
+      <div {...rowRef} className="col-span-full grid grid-cols-subgrid items-start rounded-lg pt-3 hover:bg-muted/50">
         {dragHandle}
         <div />
         <div />
@@ -266,7 +266,7 @@ function FigureRow({ item, phrase, showPhraseHeading, phraseEditable, onChange, 
   }
 
   return (
-    <div {...rowRef} className={cn('col-span-full grid grid-cols-subgrid items-start', showPhraseHeading ? 'pt-3' : 'pt-1')}>
+    <div {...rowRef} className={cn('col-span-full grid grid-cols-subgrid items-start rounded-lg hover:bg-muted/50', showPhraseHeading ? 'pt-3' : 'pt-1')}>
       {dragHandle}
       <div className="overflow-hidden text-muted-foreground">
         {showPhraseHeading &&

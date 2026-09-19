@@ -22,7 +22,7 @@ function TabsTab({ className, ...props }: TabsPrimitive.Tab.Props) {
       // -mb-px so the active tab's own bottom border sits exactly on top of
       // (not next to) TabsList's shared border-b, rather than doubling it.
       className={cn(
-        "-mb-px border-b-2 border-transparent px-3 py-2 text-sm font-medium text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 data-active:border-foreground data-active:text-foreground",
+        "-mb-px cursor-pointer rounded-t-md border-b-2 border-transparent px-3 py-2 text-sm font-medium text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 data-active:border-foreground data-active:text-foreground",
         className
       )}
       {...props}
