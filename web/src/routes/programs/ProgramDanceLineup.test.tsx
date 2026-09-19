@@ -54,8 +54,10 @@ describe('ProgramDanceLineup', () => {
     it('renders each dance as a numbered link, and no edit controls', () => {
       renderLineup()
 
-      expect(screen.getByText('1. Chorus Jig')).toBeInTheDocument()
-      expect(screen.getByText('2. Money Musk')).toBeInTheDocument()
+      expect(screen.getByText('1')).toBeInTheDocument()
+      expect(screen.getByText('Chorus Jig')).toBeInTheDocument()
+      expect(screen.getByText('2')).toBeInTheDocument()
+      expect(screen.getByText('Money Musk')).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Reorder dance' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Remove dance' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Add dance' })).not.toBeInTheDocument()
@@ -75,7 +77,7 @@ describe('ProgramDanceLineup', () => {
       return user
     }
 
-    it('toggles into edit mode, revealing drag handles, remove buttons, and Add dance', async () => {
+    it('toggles into edit mode, revealing drag handles, remove buttons, and Add dance - but no numbers', async () => {
       renderLineup()
       await enterEditMode()
 
@@ -83,6 +85,10 @@ describe('ProgramDanceLineup', () => {
       expect(screen.getAllByRole('button', { name: 'Remove dance' })).toHaveLength(2)
       expect(screen.getByRole('button', { name: 'Add dance' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Done editing dances' })).toBeInTheDocument()
+      // Position in the list already conveys order while dragging - a
+      // number here would just be one more thing that goes stale mid-drag.
+      expect(screen.queryByText('1')).not.toBeInTheDocument()
+      expect(screen.queryByText('2')).not.toBeInTheDocument()
     })
 
     it('toggles back to the plain read-only list', async () => {
@@ -91,7 +97,7 @@ describe('ProgramDanceLineup', () => {
       await user.click(screen.getByRole('button', { name: 'Done editing dances' }))
 
       expect(screen.queryByRole('button', { name: 'Remove dance' })).not.toBeInTheDocument()
-      expect(screen.getByText('1. Chorus Jig')).toBeInTheDocument()
+      expect(screen.getByText('Chorus Jig')).toBeInTheDocument()
     })
 
     it('still shows the placeholder alongside Add dance when the lineup is empty', async () => {
@@ -112,18 +118,27 @@ describe('ProgramDanceLineup', () => {
       ])
     })
 
-    it('shows a removal, and the resulting renumbering, immediately - bridging the gap before the dances prop catches up', async () => {
+    it('removes a dance from the list immediately, bridging the gap before the dances prop catches up', async () => {
       renderLineup()
       const user = await enterEditMode()
       await user.click(screen.getAllByRole('button', { name: 'Remove dance' })[0])
 
       // The dances prop hasn't actually changed yet (removeProgramDance's
       // promise is mocked, not wired to any real state) - the optimistic
-      // override is what makes the row disappear, and Money Musk move up to
-      // "1.", regardless.
+      // override is what makes the row disappear regardless.
       expect(screen.getAllByRole('button', { name: 'Remove dance' })).toHaveLength(1)
-      expect(screen.queryByText('1. Chorus Jig')).not.toBeInTheDocument()
-      expect(screen.getByText('1. Money Musk')).toBeInTheDocument()
+      expect(screen.queryByText('Chorus Jig')).not.toBeInTheDocument()
+      expect(screen.getByText('Money Musk')).toBeInTheDocument()
+    })
+
+    it('renumbers what remains after a removal, visible once back in view mode (edit mode shows no numbers)', async () => {
+      renderLineup()
+      const user = await enterEditMode()
+      await user.click(screen.getAllByRole('button', { name: 'Remove dance' })[0])
+      await user.click(screen.getByRole('button', { name: 'Done editing dances' }))
+
+      expect(screen.getByText('1')).toBeInTheDocument()
+      expect(screen.getByText('Money Musk')).toBeInTheDocument()
     })
 
     it('opens a search listing every dance not already in the lineup', async () => {
@@ -143,9 +158,20 @@ describe('ProgramDanceLineup', () => {
       await user.click(await screen.findByRole('option', { name: 'Petronella' }))
 
       expect(addProgramDanceMock).toHaveBeenCalledWith('program-1', 'd-3', 3)
-      expect(await screen.findByText('3. Petronella')).toBeInTheDocument()
+      expect(await screen.findByText('Petronella')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Add dance' })).toBeInTheDocument()
       expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    })
+
+    it('shows the added dance at its correct order once back in view mode (edit mode shows no numbers)', async () => {
+      renderLineup()
+      const user = await enterEditMode()
+      await user.click(screen.getByRole('button', { name: 'Add dance' }))
+      await user.click(await screen.findByRole('option', { name: 'Petronella' }))
+      await user.click(screen.getByRole('button', { name: 'Done editing dances' }))
+
+      expect(screen.getByText('3')).toBeInTheDocument()
+      expect(screen.getByText('Petronella')).toBeInTheDocument()
     })
 
     it('appends the first dance at order 1 when the lineup starts out empty', async () => {

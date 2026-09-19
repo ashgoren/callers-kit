@@ -229,10 +229,13 @@ describe('ProgramsPage', () => {
 
     // CardList's outer <ul> is the first "list" role in document order - the
     // dance lineup's own <ol> (see cardRenderDanceList) is nested inside it,
-    // further down the tree, so it comes after.
+    // further down the tree, so it comes after. The number and title are
+    // separate elements (a muted number column, not inline "1. Title" text).
     const [cardList] = screen.getAllByRole('list')
-    expect(within(cardList).getByText('1. Chorus Jig')).toBeInTheDocument()
-    expect(within(cardList).getByText('2. Reel of Four')).toBeInTheDocument()
+    expect(within(cardList).getByText('1')).toBeInTheDocument()
+    expect(within(cardList).getByText('Chorus Jig')).toBeInTheDocument()
+    expect(within(cardList).getByText('2')).toBeInTheDocument()
+    expect(within(cardList).getByText('Reel of Four')).toBeInTheDocument()
   })
 
   it('shows "date @ location" combined as the card\'s title line, not as separate rows', () => {

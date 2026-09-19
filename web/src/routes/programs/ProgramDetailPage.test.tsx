@@ -73,7 +73,8 @@ describe('ProgramDetailPage', () => {
 
     expect(screen.getByRole('heading', { name: '9/13/26' })).toBeInTheDocument()
     expect(screen.getByText('Grange Hall')).toBeInTheDocument()
-    expect(screen.getByText('1. Chorus Jig')).toBeInTheDocument()
+    expect(screen.getByText('1')).toBeInTheDocument()
+    expect(screen.getByText('Chorus Jig')).toBeInTheDocument()
     expect(screen.getByText('Bring extra chairs.')).toBeInTheDocument()
     // created_at/updated_at are dropped entirely now - never rendered.
     expect(screen.queryByText('1/15/26')).not.toBeInTheDocument()

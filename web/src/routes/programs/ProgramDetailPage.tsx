@@ -60,7 +60,7 @@ export function ProgramDetailPage() {
             />
           </div>
 
-          <div className="mt-6 space-y-6">
+          <div className="mt-6 space-y-8">
             <ProgramDanceLineup programId={program.id} dances={program.dances} />
             <FieldList fields={programDetailFields} row={program} />
           </div>

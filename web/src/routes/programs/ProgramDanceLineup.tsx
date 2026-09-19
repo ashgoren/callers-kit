@@ -13,7 +13,6 @@ import { mutedPlaceholder } from '@/lib/format'
 import { addProgramDance, removeProgramDance, reorderProgramDances } from '@/lib/powersync/commitProgramDanceReorder'
 import { useDances } from '@/routes/dances/DancesPage.data'
 import { renumberSequentially } from './programDanceOrder'
-import { cardRenderDanceList } from './ProgramsPage.columns'
 import type { DragEndEvent } from '@dnd-kit/core'
 import type { ProgramDance } from './ProgramsPage.columns'
 
@@ -22,9 +21,9 @@ interface DanceOption {
   label: string
 }
 
-// A program's ordered dance lineup - view-mode reuses the same numbered-link
-// list the table's card view renders (cardRenderDanceList); edit mode adds
-// drag-to-reorder, a remove button per row, and an "Add dance" search.
+// A program's ordered dance lineup - a numbered-link list in view mode;
+// edit mode adds drag-to-reorder, a remove button per row, and an "Add
+// dance" search (and drops the numbers).
 export function ProgramDanceLineup({ programId, dances }: { programId: string; dances: ProgramDance[] }) {
   const [isEditing, setIsEditing] = useState(false)
 
@@ -81,10 +80,26 @@ export function ProgramDanceLineup({ programId, dances }: { programId: string; d
             onAdd={(danceId, title) => void handleAdd(danceId, title)}
           />
         ) : (
-          cardRenderDanceList(displayDances)
+          <ReadOnlyDanceLineup dances={displayDances} />
         )}
       </div>
     </div>
+  )
+}
+
+function ReadOnlyDanceLineup({ dances }: { dances: ProgramDance[] }) {
+  if (dances.length === 0) return <div className="py-3">{mutedPlaceholder}</div>
+  return (
+    <ol className="space-y-0.5 py-3">
+      {dances.map((dance) => (
+        <li key={dance.programDanceId} className="flex min-h-7 items-center">
+          <span className="mr-4 w-5 shrink-0 text-right tabular-nums text-muted-foreground">{dance.order}</span>
+          <Link to={`/dances/${dance.danceId}`} className="min-w-0 flex-1 truncate hover:underline">
+            {dance.title}
+          </Link>
+        </li>
+      ))}
+    </ol>
   )
 }
 
@@ -119,7 +134,7 @@ function EditableDanceLineup({
   return (
     <div>
       {dances.length === 0 ? (
-        <div className="pb-2">{mutedPlaceholder}</div>
+        <div className="pt-3 pb-1">{mutedPlaceholder}</div>
       ) : (
         <DndContext
           sensors={sensors}
@@ -131,7 +146,7 @@ function EditableDanceLineup({
           autoScroll={false}
         >
           <SortableContext items={dances.map((dance) => dance.programDanceId)} strategy={verticalListSortingStrategy}>
-            <ol className="space-y-0.5">
+            <ol className="space-y-0.5 pt-3 pb-1">
               {dances.map((dance) => (
                 <DanceLineupRow key={dance.programDanceId} dance={dance} onRemove={() => onRemove(dance.programDanceId)} />
               ))}
@@ -148,7 +163,7 @@ function DanceLineupRow({ dance, onRemove }: { dance: ProgramDance; onRemove: ()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: dance.programDanceId })
 
   return (
-    <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className="flex items-center gap-1">
+    <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className="flex items-center gap-2">
       <button
         type="button"
         aria-label="Reorder dance"
@@ -162,7 +177,7 @@ function DanceLineupRow({ dance, onRemove }: { dance: ProgramDance; onRemove: ()
         <GripVertical className="size-4" />
       </button>
       <Link to={`/dances/${dance.danceId}`} className="min-w-0 flex-1 truncate hover:underline">
-        {dance.order}. {dance.title}
+        {dance.title}
       </Link>
       <Button
         type="button"
@@ -184,7 +199,7 @@ function AddDanceCombobox({ excludeDanceIds, onAdd }: { excludeDanceIds: string[
 
   if (!isAdding) {
     return (
-      <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => setIsAdding(true)}>
+      <Button type="button" variant="outline" size="sm" className="mt-1" onClick={() => setIsAdding(true)}>
         <Plus /> Add dance
       </Button>
     )
@@ -195,7 +210,7 @@ function AddDanceCombobox({ excludeDanceIds, onAdd }: { excludeDanceIds: string[
     .map((dance) => ({ id: dance.id, label: dance.title ?? '' }))
 
   return (
-    <div className="mt-2">
+    <div className="mt-1">
       <Combobox
         items={options}
         itemToStringLabel={(option: DanceOption) => option.label}

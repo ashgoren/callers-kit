@@ -50,15 +50,15 @@ function renderDanceChips(value: ProgramDance[]): ReactNode {
   )
 }
 
-// Card view: full untruncated numbered list, one dance per line
 export function cardRenderDanceList(value: ProgramDance[]): ReactNode {
   if (value.length === 0) return mutedPlaceholder
   return (
     <ol className="space-y-0.5">
       {value.map((dance) => (
-        <li key={dance.programDanceId}>
+        <li key={dance.programDanceId} className="flex">
+          <span className="mr-4 w-5 shrink-0 text-right tabular-nums text-muted-foreground">{dance.order}</span>
           <Link to={`/dances/${dance.danceId}`} className="hover:underline">
-            {dance.order}. {dance.title}
+            {dance.title}
           </Link>
         </li>
       ))}
