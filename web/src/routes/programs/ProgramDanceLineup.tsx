@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList } from '@/components/ui/combobox'
 import { useDragBodyClass } from '@/hooks/useDragBodyClass'
 import { useEscapeWhenUnfocused } from '@/hooks/useEscapeWhenUnfocused'
+import { useOptimisticValue } from '@/hooks/useOptimisticValue'
 import { mutedPlaceholder } from '@/lib/format'
 import { addProgramDance, removeProgramDance, reorderProgramDances } from '@/lib/powersync/commitProgramDanceReorder'
 import { useDances } from '@/routes/dances/DancesPage.data'
@@ -33,11 +34,7 @@ export function ProgramDanceLineup({ programId, dances }: { programId: string; d
   // reorder/add/remove already autosaves), so there's nothing to lose.
   useEscapeWhenUnfocused(() => setIsEditing(false), isEditing)
 
-  const [optimisticDances, setOptimisticDances] = useState<ProgramDance[] | null>(null)
-  if (optimisticDances && JSON.stringify(dances) === JSON.stringify(optimisticDances)) {
-    setOptimisticDances(null)
-  }
-  const displayDances = optimisticDances ?? dances
+  const [displayDances, setOptimisticDances] = useOptimisticValue(dances)
 
   function handleReorder(newDances: ProgramDance[]) {
     // newDances is just arrayMove()'d, so it's renumbered once here -

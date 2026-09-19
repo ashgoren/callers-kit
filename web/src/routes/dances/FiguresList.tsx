@@ -4,13 +4,14 @@ import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } 
 import { CSS } from '@dnd-kit/utilities'
 import { cn } from 'cn'
 import { GripVertical, Plus, X } from 'lucide-react'
-import { Fragment, useState } from 'react'
+import { Fragment } from 'react'
 import { EditableFigureText } from '@/components/fields/EditableFigureText'
 import { EditableNumber } from '@/components/fields/EditableNumber'
 import { EditableText } from '@/components/fields/EditableText'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { useDragBodyClass } from '@/hooks/useDragBodyClass'
+import { useOptimisticValue } from '@/hooks/useOptimisticValue'
 import { appendFigure, appendNote, isFigureEntry, removeFigureItem, updateFigureItem, withComputedPhrases } from '@/lib/figures'
 import { mutedPlaceholder } from '@/lib/format'
 import { sanitizeHtml } from '@/lib/sanitizeHtml'
@@ -52,17 +53,8 @@ export function FiguresList({ items, skeleton, manualPhrasing, isEditing, onChan
   // Every commit here (reorder especially) is a PowerSync write that only
   // reaches this component's own `items` prop once the reactive query
   // round-trips and re-renders - a real gap, even for a local-only write.
-  const [optimisticItems, setOptimisticItems] = useState<FigureItem[] | null>(null)
-  if (optimisticItems && JSON.stringify(items) === JSON.stringify(optimisticItems)) {
-    setOptimisticItems(null)
-  }
-  const displayItems = optimisticItems ?? items
-
-  const [optimisticManualPhrasing, setOptimisticManualPhrasing] = useState<boolean | null>(null)
-  if (optimisticManualPhrasing !== null && manualPhrasing === optimisticManualPhrasing) {
-    setOptimisticManualPhrasing(null)
-  }
-  const displayManualPhrasing = optimisticManualPhrasing ?? manualPhrasing
+  const [displayItems, setOptimisticItems] = useOptimisticValue(items)
+  const [displayManualPhrasing, setOptimisticManualPhrasing] = useOptimisticValue(manualPhrasing)
 
   function handleChange(newItems: FigureItem[]) {
     setOptimisticItems(newItems)
