@@ -1,13 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 import { expect, test } from '@playwright/test'
 
-// Covers composed-bouncing-candy Steps 1-2, which only ever got vitest
-// coverage: opening a dance detail page from the table (already covered by
-// dances-table.spec.ts's own "opens its detail page" test) and editing one
-// of its plain blur-save fields. Only the rich-text-specific
-// dance-detail-notes.spec.ts/dance-detail-figures.spec.ts existed before
-// this - difficulty is a real round-trip through PowerSync + Supabase a
-// jsdom test mocking the db can't prove.
+// Covers editing one of the Dance detail page's plain blur-save fields -
+// difficulty is a real round-trip through PowerSync + Supabase a jsdom test
+// mocking the db can't prove. Opening a dance detail page from the table is
+// already covered by dances-table.spec.ts's own "opens its detail page" test.
 test('editing a plain blur-save field (difficulty) on the dance detail page persists across a reload', async ({ page }) => {
   const email = process.env.E2E_TEST_EMAIL!
   const password = process.env.E2E_TEST_PASSWORD!

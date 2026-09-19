@@ -121,6 +121,23 @@ describe('EditableText', () => {
     expect(screen.getByRole('textbox').parentElement).toHaveAttribute('data-value', 'Untitled')
   })
 
+  it('stays inline-block in edit mode, matching the read-mode display, so a sibling sharing its line does not reflow', async () => {
+    // Regression guard: the edit-mode wrapper used to be unconditionally
+    // block regardless of fullWidth, so entering edit mode on a
+    // content-sized field forced a line break where read mode didn't -
+    // e.g. a dance title and its choreographers line jumping apart the
+    // moment either one was clicked into edit mode.
+    render(<EditableText fullWidth={false} value="Chorus Jig" onCommit={vi.fn()} />)
+
+    expect(screen.getByText('Chorus Jig')).toHaveClass('inline-block')
+
+    await userEvent.setup().click(screen.getByText('Chorus Jig'))
+
+    const editModeWrapper = screen.getByRole('textbox').parentElement?.parentElement
+    expect(editModeWrapper).toHaveClass('inline-block')
+    expect(editModeWrapper).not.toHaveClass('block')
+  })
+
   it('activates edit mode on Enter when focused via keyboard', async () => {
     render(<EditableText fullWidth={false} value="Chorus Jig" onCommit={vi.fn()} />)
 
@@ -156,6 +173,16 @@ describe('EditableText', () => {
 
       expect(onCommit).toHaveBeenCalledWith('Verse')
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    })
+
+    it('stays block in edit mode, matching the read-mode display', async () => {
+      render(<EditableText fullWidth value="A1" onCommit={vi.fn()} />)
+
+      expect(screen.getByText('A1')).toHaveClass('block')
+
+      await userEvent.setup().click(screen.getByText('A1'))
+
+      expect(screen.getByRole('textbox').parentElement).toHaveClass('block')
     })
 
     it('skips the content-sizing ghost wrapper entirely - the input has no sizing-related parent element', async () => {

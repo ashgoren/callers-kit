@@ -46,7 +46,8 @@ export function ProgramDetailPage() {
         <p className="text-sm text-muted-foreground">Program not found.</p>
       ) : (
         <>
-          <div className="border-b pb-4">
+          {/* sm: and up: date & location share a row, date on the left and location to the right */}
+          <div className="border-b pb-4 sm:flex sm:items-baseline sm:justify-between sm:gap-4">
             <EditableDate
               value={program.date}
               onCommit={(value) => void commitFieldEdit('programs', program.id, 'date', value)}
@@ -55,13 +56,14 @@ export function ProgramDetailPage() {
               className="font-semibold text-4xl md:text-4xl"
               // Extra md:text-4xl needed for edit mode since Input has default text-sm className.
             />
-            <EditableLocationCombobox
-              value={program.location_id}
-              onCommit={(v) => void commitFieldEdit('programs', program.id, 'location_id', v)}
-              as="p"
-              // pl-3.25: lines up with the date field's text + its padding + its invisible border.
-              className="mt-1 pl-3.25 text-base text-muted-foreground"
-            />
+            <div className="mt-1 sm:mt-0">
+              <EditableLocationCombobox
+                value={program.location_id}
+                onCommit={(v) => void commitFieldEdit('programs', program.id, 'location_id', v)}
+                as="p"
+                className="text-base text-muted-foreground"
+              />
+            </div>
           </div>
 
           <div className="mt-6 space-y-8">

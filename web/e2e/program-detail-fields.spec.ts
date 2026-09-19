@@ -1,12 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 import { expect, test } from '@playwright/test'
 
-// Covers composed-bouncing-candy Steps 1-2 on the Programs side, which only
-// ever got vitest coverage: opening a program detail page from the table
-// (already covered by programs-table.spec.ts's own "opens its detail page"
-// test) and editing its plain blur-save field - date is the one plain
-// field left once location moved to its own combobox (see
-// program-detail-location.spec.ts).
+// Covers the Program detail page's plain blur-save field editing - date is
+// the one plain field left once location moved to its own combobox (see
+// program-detail-location.spec.ts). Opening a program detail page from the
+// table is already covered by programs-table.spec.ts's own "opens its
+// detail page" test.
 test('editing the date field on the program detail page persists across a reload', async ({ page }) => {
   const email = process.env.E2E_TEST_EMAIL!
   const password = process.env.E2E_TEST_PASSWORD!

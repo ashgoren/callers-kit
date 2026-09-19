@@ -92,7 +92,7 @@ export function EditableLocationCombobox({ value, onCommit, as, className }: {
               if (!open) onBlur()
             }}
           >
-            <ComboboxInput autoFocus placeholder="Choose or create a location" showClear />
+            <ComboboxInput autoFocus placeholder="Choose or create a location" showClear className="min-w-60" />
             <ComboboxContent>
               <ComboboxEmpty>No locations yet</ComboboxEmpty>
               <ComboboxList>

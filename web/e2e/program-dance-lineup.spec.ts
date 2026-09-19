@@ -1,12 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 import { expect, test } from '@playwright/test'
 
-// ProgramDanceLineup's add/remove/reorder (composed-bouncing-candy Step 3)
-// only ever got vitest coverage - dnd-kit's real drag-and-drop (closestCenter
-// collision detection against real getBoundingClientRect values) can only be
-// proven correct in an actual browser, the same reasoning
-// dances-table-reorder.spec.ts gives for the Dances table's own
-// column-header drag.
+// Covers ProgramDanceLineup's add/remove/reorder - dnd-kit's real
+// drag-and-drop (closestCenter collision detection against real
+// getBoundingClientRect values) can only be proven correct in an actual
+// browser, the same reasoning dances-table-reorder.spec.ts gives for the
+// Dances table's own column-header drag.
 test('adding, reordering, and removing a dance in a program\'s lineup persists to Supabase', async ({ page }) => {
   const email = process.env.E2E_TEST_EMAIL!
   const password = process.env.E2E_TEST_PASSWORD!

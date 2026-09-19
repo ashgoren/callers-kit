@@ -104,8 +104,13 @@ export function InlineEditableField<T>({
     )
   }
 
+  // Same block/inline-block choice as the read-mode branch above, and for
+  // the same reason - a content-sized (fullWidth false) field needs to stay
+  // inline-level in edit mode too, or entering/leaving edit mode would flip
+  // it between sharing a line with whatever's next to it and forcing a
+  // block-level line break, reflowing any sibling that was sharing that line.
   return (
-    <div className={editModeClassName}>
+    <div className={cn(fullWidth ? 'block' : 'inline-block', editModeClassName)}>
       {renderInput({ draft, onChange, onBlur, onKeyDown, hasError: error !== null, errorId, ref: inputRef })}
       {error !== null && (
         <p id={errorId} className="mt-1 text-xs text-destructive">
