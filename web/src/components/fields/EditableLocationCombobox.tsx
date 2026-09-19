@@ -33,7 +33,7 @@ export function EditableLocationCombobox({ value, onCommit, as, className }: {
 
   const options: ComboboxOption[] = locationRows.map((location) => ({ id: location.id, label: location.name ?? '' }))
   const optionsByID = new Map(options.map((option) => [option.id, option.label]))
-  const items = buildCreatableComboboxItems(options, query, fieldEdit.draft)
+  const items = buildCreatableComboboxItems(options, query, fieldEdit.draft === null ? [] : [fieldEdit.draft])
 
   async function handleValueChange(next: string | null) {
     if (next !== CREATE_OPTION_ID) {

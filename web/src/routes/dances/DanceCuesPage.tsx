@@ -40,7 +40,8 @@ export function DanceCuesPage() {
                 {version.dance_title}
                 {(version.choreographers.length > 0 || figuresLabel) && (
                   <span className="ml-2 text-base font-normal text-muted-foreground">
-                    {version.choreographers.length > 0 && `by ${sortAlphabetically(version.choreographers).join(', ')} `}
+                    {version.choreographers.length > 0 &&
+                      `by ${sortAlphabetically(version.choreographers.map((choreographer) => choreographer.name ?? '')).join(', ')} `}
                     {figuresLabel && (
                       <>
                         (<span className={figuresLabel === 'Improper' ? undefined : 'font-semibold'}>{figuresLabel}</span>)

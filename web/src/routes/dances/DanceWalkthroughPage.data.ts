@@ -1,5 +1,6 @@
 import { useQuery } from '@powersync/react'
 import { tagListSubquery } from './DancesPage.data'
+import type { TagOption } from './DancesPage.data'
 
 // Shared by both query variants below - joined to dances for its title/
 // choreographers/dance_type/formation/progression. version_count (every
@@ -62,7 +63,7 @@ export interface DanceVersionWalkthrough {
   dance_type: string | null
   formation: string | null
   progression: string | null
-  choreographers: string[]
+  choreographers: TagOption[]
   version_count: number
 }
 
@@ -76,7 +77,7 @@ export function useDanceVersionWalkthrough({ danceId, versionId }: { danceId: st
   const row = rows[0]
 
   return {
-    version: row ? { ...row, choreographers: JSON.parse(row.choreographers) as string[] } : null,
+    version: row ? { ...row, choreographers: JSON.parse(row.choreographers) as TagOption[] } : null,
     isLoading,
   }
 }

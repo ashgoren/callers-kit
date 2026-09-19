@@ -125,7 +125,10 @@ describe('DanceWalkthroughPage', () => {
     useQueryMock.mockReturnValue({
       data: [
         makeVersionRow({
-          choreographers: JSON.stringify(['Bob', 'Alice']),
+          choreographers: JSON.stringify([
+            { id: 'c1', name: 'Bob' },
+            { id: 'c2', name: 'Alice' },
+          ]),
           dance_type: null,
           formation: null,
           progression: null,

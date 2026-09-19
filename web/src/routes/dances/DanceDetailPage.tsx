@@ -6,11 +6,12 @@ import { z } from 'zod'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs'
 import { EditableRichText } from '@/components/fields/EditableRichText'
+import { EditableTagCombobox } from '@/components/fields/EditableTagCombobox'
 import { EditableText } from '@/components/fields/EditableText'
 import { PageSpinner } from '@/components/PageSpinner'
 import { FieldList } from '@/components/fields/FieldList'
 import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
-import { formatDate, sortAlphabetically } from '@/lib/format'
+import { formatDate, mutedPlaceholder, sortAlphabetically } from '@/lib/format'
 import { getDefaultSkeleton } from '@/lib/phraseSkeleton'
 import { makeFiguresLabel } from './DancesPage.columns'
 import { useDance } from './DanceDetailPage.data'
@@ -52,12 +53,22 @@ export function DanceDetailPage() {
               className="font-semibold text-4xl md:text-4xl"
               // Extra md:text-4xl needed for edit mode since Input has default text-sm className.
             />
-            {dance.choreographers.length > 0 && (
+            <EditableTagCombobox
+              danceId={dance.id}
+              junctionTable="dances_choreographers"
+              refIdColumn="choreographer_id"
+              ownerTable="choreographers"
+              value={dance.choreographers}
+              placeholder="Add a choreographer..."
+              as="p"
               // pl-3.25: lines up with the title + its padding + its invisible border.
-              <p className="mt-1 pl-3.25 text-base text-muted-foreground">
-                by {sortAlphabetically(dance.choreographers).join(', ')}
-              </p>
-            )}
+              className="mt-1 pl-3.25 text-base text-muted-foreground"
+              renderDisplay={(attached) =>
+                attached.length === 0
+                  ? mutedPlaceholder
+                  : `by ${sortAlphabetically(attached.map((choreographer) => choreographer.name ?? '')).join(', ')}`
+              }
+            />
           </div>
           <div className="mt-6 grid grid-cols-1 gap-8 sm:grid-cols-[3fr_1fr]">
             <div>

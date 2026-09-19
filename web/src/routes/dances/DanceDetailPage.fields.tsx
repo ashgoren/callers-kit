@@ -3,9 +3,10 @@ import { z } from 'zod'
 import { formatFormation } from './DancesPage.columns'
 import { EditableNumber } from '@/components/fields/EditableNumber'
 import { EditableSelect } from '@/components/fields/EditableSelect'
+import { EditableTagCombobox } from '@/components/fields/EditableTagCombobox'
 import { makeDetailFieldDefiner } from '@/components/fields/DetailField'
 import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
-import { mutedPlaceholder, sortAlphabetically } from '@/lib/format'
+import { mutedPlaceholder } from '@/lib/format'
 import { formatProgramLabel } from '@/routes/programs/ProgramsPage.columns'
 import type { ReactNode } from 'react'
 import type { DetailField } from '@/components/fields/DetailField'
@@ -49,19 +50,6 @@ const FORMATIONS = [
 ]
 const PROGRESSIONS = ['Single', 'Double', 'Triple', 'None', 'Other']
 
-function renderChipList(values: string[]): ReactNode {
-  if (values.length === 0) return mutedPlaceholder
-  return (
-    <div className="flex flex-wrap gap-1">
-      {sortAlphabetically(values).map((value) => (
-        <span key={value} className="rounded-full border bg-muted px-2 py-0.5 text-xs">
-          {value}
-        </span>
-      ))}
-    </div>
-  )
-}
-
 function renderProgramHistory(value: DanceWithJoins['programs']): ReactNode {
   if (value.length === 0) return mutedPlaceholder
   return (
@@ -81,8 +69,34 @@ const defineField = makeDetailFieldDefiner<DanceWithJoins>()
 
 // The narrow column's fields.
 export const danceMetadataFields: DetailField<DanceWithJoins>[] = [
-  defineField({ key: 'key_moves', label: 'Key Moves', render: renderChipList }),
-  defineField({ key: 'vibes', label: 'Vibes', render: renderChipList }),
+  defineField({
+    key: 'key_moves',
+    label: 'Key Moves',
+    render: (value, row) => (
+      <EditableTagCombobox
+        danceId={row.id}
+        junctionTable="dances_key_moves"
+        refIdColumn="key_move_id"
+        ownerTable="key_moves"
+        value={value}
+        placeholder="Add a key move..."
+      />
+    ),
+  }),
+  defineField({
+    key: 'vibes',
+    label: 'Vibes',
+    render: (value, row) => (
+      <EditableTagCombobox
+        danceId={row.id}
+        junctionTable="dances_vibes"
+        refIdColumn="vibe_id"
+        ownerTable="vibes"
+        value={value}
+        placeholder="Add a vibe..."
+      />
+    ),
+  }),
   defineField({
     key: 'difficulty',
     label: 'Difficulty',

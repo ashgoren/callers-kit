@@ -12,14 +12,15 @@ import type { LeafHeader as GenericLeafHeader, TableInstance as GenericTableInst
 import type { Dance } from '@/lib/powersync/schema'
 import type { TableColumnState } from '@/lib/powersync/tablePreferences'
 import type { ProgramSummary } from '@/routes/programs/ProgramsPage.columns'
+import type { TagOption } from './DancesPage.data'
 
 // notes isn't a real column on Dance - danceSelectColumns() extracts
 // the primary version's own notes and aliases it back to "notes".
 export interface DanceWithJoins extends Dance {
   notes: string | null
-  choreographers: string[]
-  key_moves: string[]
-  vibes: string[]
+  choreographers: TagOption[]
+  key_moves: TagOption[]
+  vibes: TagOption[]
   programs: ProgramSummary[]
 }
 
@@ -45,8 +46,9 @@ export function makeFiguresLabel(dance: {
     .join(' · ')
 }
 
-function renderTagList(value: string[]): ReactNode {
-  return value.length > 0 ? sortAlphabetically(value).join(', ') : mutedPlaceholder
+function renderTagList(value: TagOption[]): ReactNode {
+  if (value.length === 0) return mutedPlaceholder
+  return sortAlphabetically(value.map((tag) => tag.name ?? '')).join(', ')
 }
 
 // Table view: compact dates only with full "date @ location" labels via hover.
@@ -92,7 +94,7 @@ export const danceFields: Field<DanceWithJoins>[] = [
     key: 'choreographers',
     label: 'Choreographers',
     render: renderTagList,
-    sortValue: (value) => sortAlphabetically(value)[0] ?? null, // first choreographer alphabetically
+    sortValue: (value) => sortAlphabetically(value.map((tag) => tag.name ?? ''))[0] ?? null, // first choreographer alphabetically
     sortFn: sortFn_alphanumeric,
     size: 150,
   }),
@@ -100,7 +102,7 @@ export const danceFields: Field<DanceWithJoins>[] = [
     key: 'key_moves',
     label: 'Key Moves',
     render: renderTagList,
-    sortValue: (value) => sortAlphabetically(value)[0] ?? null, // first key_move alphabetically
+    sortValue: (value) => sortAlphabetically(value.map((tag) => tag.name ?? ''))[0] ?? null, // first key_move alphabetically
     sortFn: sortFn_alphanumeric,
     size: 105,
   }),
@@ -108,7 +110,7 @@ export const danceFields: Field<DanceWithJoins>[] = [
     key: 'vibes',
     label: 'Vibes',
     render: renderTagList,
-    sortValue: (value) => sortAlphabetically(value)[0] ?? null, // first vibe alphabetically
+    sortValue: (value) => sortAlphabetically(value.map((tag) => tag.name ?? ''))[0] ?? null, // first vibe alphabetically
     sortFn: sortFn_alphanumeric,
     size: 105,
   }),

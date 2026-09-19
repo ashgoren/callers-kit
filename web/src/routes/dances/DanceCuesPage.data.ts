@@ -1,6 +1,7 @@
 import { useQuery } from '@powersync/react'
 import { tagListSubquery } from './DancesPage.data'
 import type { CuesData } from '@/lib/cues'
+import type { TagOption } from './DancesPage.data'
 
 // Shared by both query variants below - same joined metadata as
 // DanceWalkthroughPage.data.ts, swapping walkthrough for cues. cues is a
@@ -65,7 +66,7 @@ export interface DanceVersionCues {
   dance_type: string | null
   formation: string | null
   progression: string | null
-  choreographers: string[]
+  choreographers: TagOption[]
   version_count: number
 }
 
@@ -80,7 +81,7 @@ export function useDanceVersionCues({ danceId, versionId }: { danceId: string; v
 
   return {
     version: row
-      ? { ...row, cues: row.cues ? (JSON.parse(row.cues) as CuesData) : null, choreographers: JSON.parse(row.choreographers) as string[] }
+      ? { ...row, cues: row.cues ? (JSON.parse(row.cues) as CuesData) : null, choreographers: JSON.parse(row.choreographers) as TagOption[] }
       : null,
     isLoading,
   }

@@ -93,6 +93,14 @@ beforeEach(() => {
   navigateMock.mockClear()
 })
 
+// Builds the pre-parse JSON *string* tagListSubquery's real output takes -
+// json_group_array of {id, name} objects, not a plain array of names.
+// Names are turned into throwaway ids (t0, t1, ...) since nothing in these
+// tests reads the id itself, only what's displayed.
+function tagListJson(names: string[]): string {
+  return JSON.stringify(names.map((name, index) => ({ id: `t${index}`, name })))
+}
+
 // The mocked useQuery stands in for DancesPage.data.ts's raw SQL result, so
 // choreographers/key_moves/vibes here are the pre-parse JSON array *strings*
 // (matching json_group_array's real output), not real arrays - all default
@@ -248,7 +256,7 @@ describe('DancesPage', () => {
   it('joins multiple choreographer names with ", ", and shows a placeholder when there are none', () => {
     mockDances({
       data: [
-        makeDance({ id: '1', title: 'Dance A', choreographers: '["Alice","Bob"]' }),
+        makeDance({ id: '1', title: 'Dance A', choreographers: tagListJson(['Alice', 'Bob']) }),
         makeDance({ id: '2', title: 'Dance B', choreographers: '[]' }),
       ],
       isLoading: false,
@@ -269,7 +277,7 @@ describe('DancesPage', () => {
   it('joins multiple key_move and vibe names with ", ", and shows a placeholder when there are none', () => {
     mockDances({
       data: [
-        makeDance({ id: '1', title: 'Dance A', key_moves: '["Allemande","Swing"]', vibes: '["Playful"]' }),
+        makeDance({ id: '1', title: 'Dance A', key_moves: tagListJson(['Allemande', 'Swing']), vibes: tagListJson(['Playful']) }),
         makeDance({ id: '2', title: 'Dance B', key_moves: '[]', vibes: '[]' }),
       ],
       isLoading: false,
@@ -595,8 +603,8 @@ describe('DancesPage', () => {
         data: [
           // Displays "Amy, Zeb" (see the column-visibility describe block
           // above for renderTagList's own alphabetizing) - sorts by "Amy".
-          makeDance({ id: '1', title: 'Amy and Zeb', choreographers: '["Zeb","Amy"]' }),
-          makeDance({ id: '2', title: 'Just Ben', choreographers: '["Ben"]' }),
+          makeDance({ id: '1', title: 'Amy and Zeb', choreographers: tagListJson(['Zeb', 'Amy']) }),
+          makeDance({ id: '2', title: 'Just Ben', choreographers: tagListJson(['Ben']) }),
         ],
         isLoading: false,
       })
@@ -617,8 +625,8 @@ describe('DancesPage', () => {
       // so this doesn't follow automatically from Choreographers' own test.
       mockDances({
         data: [
-          makeDance({ id: '1', title: 'Zeb and Amy', key_moves: '["Zeb","Amy"]' }),
-          makeDance({ id: '2', title: 'Just Ben', key_moves: '["Ben"]' }),
+          makeDance({ id: '1', title: 'Zeb and Amy', key_moves: tagListJson(['Zeb', 'Amy']) }),
+          makeDance({ id: '2', title: 'Just Ben', key_moves: tagListJson(['Ben']) }),
         ],
         isLoading: false,
       })
@@ -634,8 +642,8 @@ describe('DancesPage', () => {
     it('sorts Vibes by its first name alphabetically, matching the alphabetical order it displays in', async () => {
       mockDances({
         data: [
-          makeDance({ id: '1', title: 'Zeb and Amy', vibes: '["Zeb","Amy"]' }),
-          makeDance({ id: '2', title: 'Just Ben', vibes: '["Ben"]' }),
+          makeDance({ id: '1', title: 'Zeb and Amy', vibes: tagListJson(['Zeb', 'Amy']) }),
+          makeDance({ id: '2', title: 'Just Ben', vibes: tagListJson(['Ben']) }),
         ],
         isLoading: false,
       })

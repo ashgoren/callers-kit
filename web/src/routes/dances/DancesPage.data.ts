@@ -3,17 +3,21 @@ import type { Dance } from '@/lib/powersync/schema'
 import type { ProgramSummary } from '@/routes/programs/ProgramsPage.columns'
 import type { DanceWithJoins } from './DancesPage.columns'
 
+export interface TagOption {
+  id: string
+  name: string | null
+}
+
 // Builds correlated subquery for a dance's tag-style join (e.g. choreographers).
-// This is a list of an owning entity's names via its junction table,
-// aggregated with json_group_array rather than GROUP_CONCAT so a name
-// containing ", " can't be misread as two separate names when split back apart.
-// Table/column names are hardcoded, never user input.
+// This is a list of an owning entity's {id, name} pairs via its junction
+// table, aggregated with json_group_array/json_object. Table/column names
+// are hardcoded, never user input.
 export function tagListSubquery(junctionTable: string, ownerTable: string, foreignKeyColumn: string): string {
   return `
     (
-      SELECT json_group_array(name)
+      SELECT json_group_array(json_object('id', id, 'name', name))
       FROM (
-        SELECT ${ownerTable}.name AS name
+        SELECT ${ownerTable}.id AS id, ${ownerTable}.name AS name
         FROM ${junctionTable}
         JOIN ${ownerTable} ON ${ownerTable}.id = ${junctionTable}.${foreignKeyColumn}
         WHERE ${junctionTable}.dance_id = dances.id
@@ -97,9 +101,9 @@ export type DanceQueryRow = Dance & {
 export function parseDanceRow(d: DanceQueryRow): DanceWithJoins {
   return {
     ...d,
-    choreographers: JSON.parse(d.choreographers) as string[],
-    key_moves: JSON.parse(d.key_moves) as string[],
-    vibes: JSON.parse(d.vibes) as string[],
+    choreographers: JSON.parse(d.choreographers) as TagOption[],
+    key_moves: JSON.parse(d.key_moves) as TagOption[],
+    vibes: JSON.parse(d.vibes) as TagOption[],
     programs: JSON.parse(d.programs) as ProgramSummary[],
   }
 }

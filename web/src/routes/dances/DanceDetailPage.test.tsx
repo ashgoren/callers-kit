@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
@@ -47,9 +47,12 @@ function makeDanceRow(overrides: Record<string, unknown> = {}) {
     notes: 'A classic.', // unused by the page now, kept only for row-shape realism
     created_at: '2026-01-15T12:00:00.000Z',
     updated_at: '2026-03-20T12:00:00.000Z',
-    choreographers: '["Alice","Bob"]',
-    key_moves: '["Hey"]',
-    vibes: '["Playful"]',
+    // choreographers/key_moves/vibes are tagListSubquery's real output shape
+    // - {id, name} pairs, not plain names - the ids here are throwaway,
+    // nothing in this page reads them yet.
+    choreographers: '[{"id":"c1","name":"Alice"},{"id":"c2","name":"Bob"}]',
+    key_moves: '[{"id":"k1","name":"Hey"}]',
+    vibes: '[{"id":"v1","name":"Playful"}]',
     programs: '[{"id":"p1","date":"2026-01-01","location":"Grange Hall"}]',
     versions: JSON.stringify([{ id: 'v1', label: 'Choreography', figures: [], notes: 'A classic.' }]),
     ...overrides,
@@ -142,11 +145,16 @@ describe('DanceDetailPage', () => {
     expect(screen.getByText('Edited 3/20/26')).toBeInTheDocument()
   })
 
-  it('omits the "by ..." header line entirely when there are no choreographers, rather than showing a placeholder', () => {
+  it('shows a muted placeholder instead of the "by ..." line when there are no choreographers, since the header is now an always-present editable field', () => {
     useQueryMock.mockReturnValue({ data: [makeDanceRow({ choreographers: '[]' })], isLoading: false })
     renderDanceDetailPage()
 
+    // Scoped to the header block itself - the page can independently show
+    // its own "—" for other empty fields (e.g. empty figures) that this
+    // test isn't about.
+    const header = screen.getByRole('heading', { name: 'Chorus Jig' }).closest('div')!
     expect(screen.queryByText(/^by /)).not.toBeInTheDocument()
+    expect(within(header).getByText('—')).toBeInTheDocument()
   })
 
   it('shows placeholders for empty tag lists, figures, notes, and program history', () => {
@@ -164,11 +172,10 @@ describe('DanceDetailPage', () => {
     })
     renderDanceDetailPage()
 
-    // Figures, Key Moves, Vibes, Programs - four "—" placeholders
-    // (choreographers moved to the header, which shows nothing at all when
-    // empty). Notes is now editable and shows EditableRichText's own
+    // Choreographers (header), Key Moves, Vibes, Figures, Programs - five
+    // "—" placeholders. Notes is editable and shows EditableRichText's own
     // descriptive placeholder instead of the generic "—".
-    expect(screen.getAllByText('—')).toHaveLength(4)
+    expect(screen.getAllByText('—')).toHaveLength(5)
     expect(screen.getByText('No notes yet')).toBeInTheDocument()
   })
 
