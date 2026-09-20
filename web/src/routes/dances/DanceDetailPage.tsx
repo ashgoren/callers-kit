@@ -1,10 +1,11 @@
 import { cn } from 'cn'
-import { Eye, Pencil } from 'lucide-react'
+import { Eye, Footprints, MicVocal, Pencil } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { z } from 'zod'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { EditableRichText } from '@/components/fields/EditableRichText'
 import { EditableTagCombobox } from '@/components/fields/EditableTagCombobox'
 import { EditableText } from '@/components/fields/EditableText'
@@ -41,6 +42,12 @@ export function DanceDetailPage() {
   const figuresLabel = dance ? makeFiguresLabel(dance) : ''
   const selectedVersion = dance?.versions.find((version) => version.id === versionId) ?? dance?.versions[0]
   const skeleton = getDefaultSkeleton(dance?.dance_type ?? null)
+  // The primary version's walkthrough/cues live at the plain /dances/:id/... routes;
+  // every other version needs its own id in the path to disambiguate.
+  const isPrimaryVersion = selectedVersion?.id === dance?.versions[0]?.id
+  const versionPathSegment = selectedVersion && dance ? (isPrimaryVersion ? '' : `/versions/${selectedVersion.id}`) : ''
+  const walkthroughHref = dance ? `/dances/${dance.id}${versionPathSegment}/walkthrough` : ''
+  const cuesHref = dance ? `/dances/${dance.id}${versionPathSegment}/cues` : ''
 
   return (
     <div className="mx-auto max-w-6xl p-4">
@@ -112,16 +119,56 @@ export function DanceDetailPage() {
                         {activeFigureEditor && <FigureToolbar editor={activeFigureEditor} />}
                       </div>
                     )}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      className="order-2 ml-auto sm:order-3"
-                      aria-label={isEditingFigures ? 'Done editing figures' : 'Edit figures'}
-                      onClick={() => setIsEditingFigures((current) => !current)}
-                    >
-                      {isEditingFigures ? <Eye className="size-4" /> : <Pencil className="size-4" />}
-                    </Button>
+                    <div className="order-2 ml-auto flex items-center gap-1 sm:order-3">
+                      {selectedVersion && (
+                        <>
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <Link
+                                  to={walkthroughHref}
+                                  aria-label="Walkthrough"
+                                  className={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}
+                                />
+                              }
+                            >
+                              <Footprints className="size-4" />
+                            </TooltipTrigger>
+                            <TooltipContent>Walkthrough</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <Link
+                                  to={cuesHref}
+                                  aria-label="Cues"
+                                  className={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}
+                                />
+                              }
+                            >
+                              <MicVocal className="size-4" />
+                            </TooltipTrigger>
+                            <TooltipContent>Cues</TooltipContent>
+                          </Tooltip>
+                        </>
+                      )}
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={isEditingFigures ? 'Done editing figures' : 'Edit figures'}
+                              onClick={() => setIsEditingFigures((current) => !current)}
+                            />
+                          }
+                        >
+                          {isEditingFigures ? <Eye className="size-4" /> : <Pencil className="size-4" />}
+                        </TooltipTrigger>
+                        <TooltipContent>{isEditingFigures ? 'Done editing' : 'Edit figures'}</TooltipContent>
+                      </Tooltip>
+                    </div>
                   </div>
                   <FiguresList
                     items={selectedVersion?.figures ?? []}
@@ -137,30 +184,6 @@ export function DanceDetailPage() {
                     onActiveEditorChange={setActiveFigureEditor}
                   />
                 </div>
-                {selectedVersion && (
-                  <div className="mt-8 flex flex-wrap gap-2 border-t pt-8">
-                    <Link
-                      to={
-                        selectedVersion.id === dance.versions[0]?.id
-                          ? `/dances/${dance.id}/walkthrough`
-                          : `/dances/${dance.id}/versions/${selectedVersion.id}/walkthrough`
-                      }
-                      className={buttonVariants({ variant: 'outline' })}
-                    >
-                      Walkthrough
-                    </Link>
-                    <Link
-                      to={
-                        selectedVersion.id === dance.versions[0]?.id
-                          ? `/dances/${dance.id}/cues`
-                          : `/dances/${dance.id}/versions/${selectedVersion.id}/cues`
-                      }
-                      className={buttonVariants({ variant: 'outline' })}
-                    >
-                      Cues
-                    </Link>
-                  </div>
-                )}
                 {selectedVersion && (
                   <div className="mt-8 border-t pt-8">
                     <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Notes</p>
