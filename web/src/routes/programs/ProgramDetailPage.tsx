@@ -6,9 +6,11 @@ import { EditableRichText } from '@/components/fields/EditableRichText'
 import { PageSpinner } from '@/components/PageSpinner'
 import { FieldList } from '@/components/fields/FieldList'
 import { makeDetailFieldDefiner } from '@/components/fields/DetailField'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
 import { ProgramDanceLineup } from './ProgramDanceLineup'
 import { useProgram } from './ProgramDetailPage.data'
+import { formatProgramLabel } from './ProgramsPage.columns'
 import type { DetailField } from '@/components/fields/DetailField'
 import type { ProgramWithJoins } from './ProgramsPage.columns'
 
@@ -37,6 +39,7 @@ const programDetailFields: DetailField<ProgramWithJoins>[] = [
 export function ProgramDetailPage() {
   const { id } = useParams()
   const { program, isLoading } = useProgram(id ?? '')
+  useDocumentTitle(program ? formatProgramLabel(program) : 'Program')
 
   if (isLoading) return <PageSpinner />
 

@@ -137,6 +137,13 @@ describe('DanceDetailPage', () => {
     // created_at/updated_at ("Added"/"Edited") are covered by the dedicated test below.
   })
 
+  it('sets the browser tab title to the dance\'s own title', () => {
+    useQueryMock.mockReturnValue({ data: [makeDanceRow()], isLoading: false })
+    renderDanceDetailPage()
+
+    expect(document.title).toBe("Chorus Jig - Caller's Kit")
+  })
+
   it('renders Added and Edited as compact "Label: value" lines, not through the standard field list', () => {
     useQueryMock.mockReturnValue({ data: [makeDanceRow()], isLoading: false })
     renderDanceDetailPage()

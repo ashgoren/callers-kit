@@ -3,12 +3,14 @@ import { Fragment, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { PageSpinner } from '@/components/PageSpinner'
 import { Slider } from '@/components/ui/slider'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { buildChoreographyRows } from '@/lib/choreographyPhrases'
 import { formatDate, mutedPlaceholder, sortAlphabetically } from '@/lib/format'
 import { sanitizeHtml } from '@/lib/sanitizeHtml'
 import { makeFiguresLabel } from '@/routes/dances/DancesPage.columns'
 import { useProgramChoreographyDances } from './ProgramChoreographyPage.data'
 import { useProgram } from './ProgramDetailPage.data'
+import { formatProgramLabel } from './ProgramsPage.columns'
 
 const MIN_COLUMN_MIN_WIDTH = 100
 const MAX_COLUMN_MIN_WIDTH = 300
@@ -19,6 +21,7 @@ export function ProgramChoreographyPage() {
   const { program, isLoading: isProgramLoading } = useProgram(id ?? '')
   const { dances, isLoading: isDancesLoading } = useProgramChoreographyDances(id ?? '')
   const [columnMinWidth, setColumnMinWidth] = useState(DEFAULT_COLUMN_MIN_WIDTH)
+  useDocumentTitle(program ? `${formatProgramLabel(program)} Choreography` : 'Choreography')
 
   if (isProgramLoading || isDancesLoading) return <PageSpinner />
   if (!program) return <p className="p-4 text-sm text-muted-foreground">Program not found.</p>

@@ -202,6 +202,13 @@ describe('DancesPage', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
 
+  it('sets the browser tab title to "Dances"', () => {
+    mockDances({ data: [], isLoading: false })
+    renderDancesPage()
+
+    expect(document.title).toBe("Dances - Caller's Kit")
+  })
+
   it('renders a dance row with all columns correctly formatted', () => {
     mockDances({ data: [makeDance()], isLoading: false })
     renderDancesPage()

@@ -2,6 +2,7 @@ import { ArrowLeft } from 'lucide-react'
 import { Link, useParams } from 'react-router'
 import { EditableRichText } from '@/components/fields/EditableRichText'
 import { PageSpinner } from '@/components/PageSpinner'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
 import { sortAlphabetically } from '@/lib/format'
 import { makeFiguresLabel } from './DancesPage.columns'
@@ -10,6 +11,7 @@ import { useDanceVersionWalkthrough } from './DanceWalkthroughPage.data'
 export function DanceWalkthroughPage() {
   const { id, versionId } = useParams()
   const { version, isLoading } = useDanceVersionWalkthrough({ danceId: id ?? '', versionId })
+  useDocumentTitle(version ? `${version.dance_title || 'Untitled'} Walkthrough` : 'Walkthrough')
 
   if (isLoading) return <PageSpinner />
 

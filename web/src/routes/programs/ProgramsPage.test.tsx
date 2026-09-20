@@ -132,6 +132,13 @@ describe('ProgramsPage', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
 
+  it('sets the browser tab title to "Programs"', () => {
+    mockPrograms({ data: [], isLoading: false })
+    renderProgramsPage()
+
+    expect(document.title).toBe("Programs - Caller's Kit")
+  })
+
   it('renders a program row with date/location/notes formatted, and numbered dance chips in lineup order', () => {
     mockPrograms({
       data: [

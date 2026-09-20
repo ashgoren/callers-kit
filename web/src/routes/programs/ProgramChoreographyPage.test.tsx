@@ -85,6 +85,13 @@ describe('ProgramChoreographyPage', () => {
     expect(screen.getByText('This program has no dances yet.')).toBeInTheDocument()
   })
 
+  it('sets the browser tab title to the program\'s date/location plus "Choreography"', () => {
+    mockQueries([makeProgramRow()], [])
+    renderProgramChoreographyPage()
+
+    expect(document.title).toBe("9/13/26 @ Grange Hall Choreography - Caller's Kit")
+  })
+
   it('shows a no-figures message when the lineup has dances but none of them have figures', () => {
     mockQueries([makeProgramRow()], [makeDanceRow({ figures: null })])
     renderProgramChoreographyPage()

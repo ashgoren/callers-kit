@@ -2,6 +2,7 @@ import { ArrowLeft } from 'lucide-react'
 import { Link, useParams } from 'react-router'
 import { EditableRichText } from '@/components/fields/EditableRichText'
 import { PageSpinner } from '@/components/PageSpinner'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { sortAlphabetically } from '@/lib/format'
 import { commitCueCellEdit, commitCueNotesEdit, commitCueSeparatorToggle } from './commitCueEdit'
 import { CuesGrid } from './CuesGrid'
@@ -11,6 +12,7 @@ import { makeFiguresLabel } from './DancesPage.columns'
 export function DanceCuesPage() {
   const { id, versionId } = useParams()
   const { version, isLoading } = useDanceVersionCues({ danceId: id ?? '', versionId })
+  useDocumentTitle(version ? `${version.dance_title || 'Untitled'} Cues` : 'Cues')
 
   if (isLoading) return <PageSpinner />
 

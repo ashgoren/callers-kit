@@ -4,12 +4,14 @@ import { CardList } from '@/components/table/CardList'
 import { ColumnSizingSync } from '@/components/table/ColumnSizingSync'
 import { TableView } from '@/components/table/TableView'
 import { useDataTable } from '@/components/table/useDataTable'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useDances } from './DancesPage.data'
 import { columns, DEFAULT_COLUMN_STATE } from './DancesPage.columns'
 import { DanceCard } from './DancesPage.DanceCard'
 import type { DanceWithJoins } from './DancesPage.columns'
 
 export function DancesPage() {
+  useDocumentTitle('Dances')
   const navigate = useNavigate()
   const { dances, isLoading: dancesLoading } = useDances()
   const { table, isLoading: preferencesLoading, resetColumns, columnSizing, setColumnSizing } = useDataTable({

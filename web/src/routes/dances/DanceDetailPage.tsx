@@ -11,6 +11,7 @@ import { EditableTagCombobox } from '@/components/fields/EditableTagCombobox'
 import { EditableText } from '@/components/fields/EditableText'
 import { PageSpinner } from '@/components/PageSpinner'
 import { FieldList } from '@/components/fields/FieldList'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useEscapeWhenUnfocused } from '@/hooks/useEscapeWhenUnfocused'
 import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
 import { formatDate, mutedPlaceholder, sortAlphabetically } from '@/lib/format'
@@ -36,6 +37,7 @@ export function DanceDetailPage() {
   // While a figure's own sub-field is focused, Escape reaches that field's
   // own handling instead.
   useEscapeWhenUnfocused(() => setIsEditingFigures(false), isEditingFigures)
+  useDocumentTitle(dance ? dance.title || 'Untitled' : null)
 
   if (isLoading) return <PageSpinner />
 

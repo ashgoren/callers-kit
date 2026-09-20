@@ -1,3 +1,5 @@
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+
 interface AuthShellProps {
   title: string
   subtitle?: string
@@ -5,6 +7,8 @@ interface AuthShellProps {
 }
 
 export function AuthShell({ title, subtitle, children }: AuthShellProps) {
+  useDocumentTitle(title)
+
   return (
     <div className="flex min-h-svh items-center justify-center p-4">
       <div className="w-full max-w-sm space-y-6">

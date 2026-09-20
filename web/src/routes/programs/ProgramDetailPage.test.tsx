@@ -81,6 +81,19 @@ describe('ProgramDetailPage', () => {
     expect(screen.queryByText('3/20/26')).not.toBeInTheDocument()
   })
 
+  it('sets the browser tab title to the program\'s date and location', () => {
+    // location (the joined name, distinct from location_id) is what
+    // formatProgramLabel actually reads - EditableLocationCombobox resolves
+    // location_id to a name itself, independently, for on-screen display.
+    mockProgramQuery(
+      { data: [makeProgramRow({ location_id: GRANGE_HALL.id, location: GRANGE_HALL.name })], isLoading: false },
+      [GRANGE_HALL],
+    )
+    renderProgramDetailPage()
+
+    expect(document.title).toBe("9/13/26 @ Grange Hall - Caller's Kit")
+  })
+
   it('commits an edited date through commitFieldEdit, by this program\'s own id', async () => {
     mockProgramQuery({ data: [makeProgramRow({ id: '42' })], isLoading: false })
     renderProgramDetailPage('42')

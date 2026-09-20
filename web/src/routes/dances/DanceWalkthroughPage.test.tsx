@@ -80,6 +80,13 @@ describe('DanceWalkthroughPage', () => {
     expect(await screen.findByText('Dance detail page')).toBeInTheDocument()
   })
 
+  it('sets the browser tab title to the dance\'s title plus "Walkthrough"', () => {
+    useQueryMock.mockReturnValue({ data: [makeVersionRow()], isLoading: false })
+    renderDanceWalkthroughPage()
+
+    expect(document.title).toBe("Chorus Jig Walkthrough - Caller's Kit")
+  })
+
   it('links back to the short /dances/:id form for the primary version', () => {
     useQueryMock.mockReturnValue({ data: [makeVersionRow({ order: 0 })], isLoading: false })
     renderDanceWalkthroughPage()
