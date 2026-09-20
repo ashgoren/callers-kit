@@ -11,8 +11,10 @@ import { EditableRichText } from '@/components/fields/EditableRichText'
 import { EditableSelect } from '@/components/fields/EditableSelect'
 import { EditableTagCombobox } from '@/components/fields/EditableTagCombobox'
 import { EditableText } from '@/components/fields/EditableText'
+import { Input } from '@/components/ui/input'
 import { PageSpinner } from '@/components/PageSpinner'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { useDraftFieldEdit } from '@/hooks/useDraftFieldEdit'
 import { useEscapeWhenUnfocused } from '@/hooks/useEscapeWhenUnfocused'
 import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
 import { formatDate, mutedPlaceholder, sortAlphabetically } from '@/lib/format'
@@ -36,6 +38,67 @@ function FieldLine({ label, children }: { label: string; children: ReactNode }) 
       <span className="shrink-0 text-muted-foreground">{label}</span>
       <div className="min-w-0">{children}</div>
     </div>
+  )
+}
+
+function EditableUrlValue({ value, onCommit }: { value: string | null; onCommit: (value: string | null) => void }) {
+  const fieldEdit = useDraftFieldEdit({ value: value ?? '', onCommit: (next) => onCommit(next || null), schema: urlSchema })
+
+  if (fieldEdit.isFocused) {
+    return (
+      <span className="min-w-0 flex-1">
+        <Input
+          autoFocus
+          value={fieldEdit.draft}
+          onChange={(e) => fieldEdit.onChange(e.target.value)}
+          onBlur={fieldEdit.onBlur}
+          onKeyDown={fieldEdit.onKeyDown}
+          placeholder="https://…"
+          aria-invalid={fieldEdit.error !== null}
+          className="h-[calc(1lh+0.5rem+2px)] w-full text-foreground"
+        />
+        {fieldEdit.error !== null && <span className="block text-xs text-destructive">{fieldEdit.error}</span>}
+      </span>
+    )
+  }
+
+  if (!fieldEdit.draft) {
+    return (
+      <span
+        tabIndex={0}
+        onClick={fieldEdit.onFocus}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            fieldEdit.onFocus()
+          }
+        }}
+        className="inline-block cursor-pointer rounded-lg border border-transparent px-2.5 py-1 hover:bg-muted/50"
+      >
+        {mutedPlaceholder}
+      </span>
+    )
+  }
+
+  return (
+    <>
+      <a
+        href={fieldEdit.draft}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="min-w-0 flex-1 truncate rounded-lg px-2.5 py-1 text-foreground hover:underline"
+      >
+        {formatUrl(fieldEdit.draft)}
+      </a>
+      <Tooltip>
+        <TooltipTrigger
+          render={<Button type="button" variant="ghost" size="icon-xs" aria-label="Edit URL" onClick={fieldEdit.onFocus} />}
+        >
+          <Pencil className="text-muted-foreground" />
+        </TooltipTrigger>
+        <TooltipContent>Edit URL</TooltipContent>
+      </Tooltip>
+    </>
   )
 }
 
@@ -230,7 +293,8 @@ export function DanceDetailPage() {
                 )}
               </div>
             </div>
-            <div className="space-y-6">
+            {/* min-w-0 so column can't grow automatically. */}
+            <div className="min-w-0 space-y-6">
               <div className="space-y-1">
                 <FieldLine label="Key Moves">
                   <EditableTagCombobox
@@ -299,16 +363,9 @@ export function DanceDetailPage() {
                 <div className="mt-1 text-sm">{renderProgramHistory(dance.programs)}</div>
               </div>
               <div className="space-y-1 border-t pt-4 text-sm text-muted-foreground">
-                <p>
-                  URL{' '}
-                  <EditableText
-                    value={dance.url ?? ''}
-                    onCommit={(value) => void commitFieldEdit('dances', dance.id, 'url', value || null)}
-                    schema={urlSchema}
-                    placeholder="Add a URL..."
-                    renderDisplay={formatUrl}
-                    fullWidth={false}
-                  />
+                <p className="flex items-baseline gap-1">
+                  <span className="shrink-0">URL</span>
+                  <EditableUrlValue value={dance.url} onCommit={(value) => void commitFieldEdit('dances', dance.id, 'url', value)} />
                 </p>
                 <p>Added {formatDate(dance.created_at)}</p>
                 <p>Edited {formatDate(dance.updated_at)}</p>

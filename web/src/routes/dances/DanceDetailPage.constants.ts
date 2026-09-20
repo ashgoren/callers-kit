@@ -43,9 +43,12 @@ export const FORMATIONS = [
 ]
 export const PROGRESSIONS = ['Single', 'Double', 'Triple', 'None', 'Other']
 
-// Show shortened version of url for caller's box
+// Show a shortened version of the url for Caller's Box and ContraDB.
 export function formatUrl(url: string): ReactNode {
   if (!url) return mutedPlaceholder
   const ibiblioId = /ibiblio\.org\/contradance\/thecallersbox\/dance\.php\?id=(\d+)/.exec(url)?.[1]
-  return ibiblioId ? `Caller's Box ${ibiblioId}` : url
+  if (ibiblioId) return `Caller's Box ${ibiblioId}`
+  const contraDbId = /contradb\.com\/dances\/(\d+)/.exec(url)?.[1]
+  if (contraDbId) return `ContraDB ${contraDbId}`
+  return url
 }

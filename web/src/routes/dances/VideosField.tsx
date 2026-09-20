@@ -68,7 +68,7 @@ export function VideosField({ value, onCommit }: { value: Video[]; onCommit: (va
         </Tooltip>
       </div>
       <div className="mt-1 text-sm">
-        <VideosReadOnlyList videos={value} />
+        <VideosReadOnlyList videos={fieldEdit.draft} />
       </div>
       <Dialog open={fieldEdit.isFocused} onOpenChange={(open) => !open && handleCancel()}>
         <DialogContent size="lg">

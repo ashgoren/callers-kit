@@ -137,6 +137,17 @@ describe('DanceDetailPage', () => {
     // created_at/updated_at ("Added"/"Edited") are covered by the dedicated test below.
   })
 
+  it('keeps the sidebar column from growing past its grid share, regardless of any field\'s own content', () => {
+    // jsdom has no real layout engine, so this only guards the CSS rule
+    // itself (min-w-0 overriding the grid item's default min-width:auto,
+    // which is what let a long unbreakable url stretch the column wider
+    // than its 1fr share) staying in place, not the actual rendered width.
+    useQueryMock.mockReturnValue({ data: [makeDanceRow()], isLoading: false })
+    const { container } = renderDanceDetailPage()
+
+    expect(container.querySelector('.min-w-0.space-y-6')).toBeInTheDocument()
+  })
+
   describe('url field', () => {
     it('shows the raw url as-is when it is not an ibiblio Caller\'s Box link', () => {
       useQueryMock.mockReturnValue({ data: [makeDanceRow({ url: 'https://example.com/some-dance' })], isLoading: false })
@@ -156,6 +167,14 @@ describe('DanceDetailPage', () => {
       expect(screen.queryByText('https://www.ibiblio.org/contradance/thecallersbox/dance.php?id=10320')).not.toBeInTheDocument()
     })
 
+    it('shows a shortened "ContraDB <id>" label for a contradb.com url', () => {
+      useQueryMock.mockReturnValue({ data: [makeDanceRow({ url: 'https://contradb.com/dances/1591' })], isLoading: false })
+      renderDanceDetailPage()
+
+      expect(screen.getByText('ContraDB 1591')).toBeInTheDocument()
+      expect(screen.queryByText('https://contradb.com/dances/1591')).not.toBeInTheDocument()
+    })
+
     it('shows the standard muted dash placeholder when there is no url, not a custom hint', () => {
       useQueryMock.mockReturnValue({ data: [makeDanceRow({ url: null })], isLoading: false })
       renderDanceDetailPage()
@@ -164,6 +183,98 @@ describe('DanceDetailPage', () => {
       // already empty by default in this fixture regardless of this test's own override.
       expect(screen.getAllByText('—')).toHaveLength(3)
       expect(screen.queryByText('Add a URL...')).not.toBeInTheDocument()
+    })
+
+    it('does not show an edit pencil when there is no url yet - there is nothing to navigate to', () => {
+      useQueryMock.mockReturnValue({ data: [makeDanceRow({ url: null })], isLoading: false })
+      renderDanceDetailPage()
+
+      expect(screen.queryByRole('button', { name: 'Edit URL' })).not.toBeInTheDocument()
+    })
+
+    it('enters edit mode by clicking the placeholder dash itself when there is no url yet', async () => {
+      useQueryMock.mockReturnValue({ data: [makeDanceRow({ id: '42', url: null })], isLoading: false })
+      renderDanceDetailPage('42')
+
+      // Scoped to the URL row specifically - figures/videos are also
+      // empty-by-default in this fixture, so an unscoped "—" query would be ambiguous.
+      const urlRow = screen.getByText('URL').closest('p')!
+      const user = userEvent.setup()
+      await user.click(within(urlRow).getByText('—'))
+      const input = screen.getByRole('textbox')
+      await user.type(input, 'https://example.com/new')
+      await user.tab()
+
+      expect(db.execute).toHaveBeenCalledWith('UPDATE dances SET url = ? WHERE id = ?', ['https://example.com/new', '42'])
+    })
+
+    it('renders the value as a real link that opens the url in a new tab', () => {
+      useQueryMock.mockReturnValue({ data: [makeDanceRow({ url: 'https://example.com/some-dance' })], isLoading: false })
+      renderDanceDetailPage()
+
+      const link = screen.getByRole('link', { name: 'https://example.com/some-dance' })
+      expect(link).toHaveAttribute('href', 'https://example.com/some-dance')
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    })
+
+    it("truncates the link so a long url can't grow the sidebar column indefinitely", () => {
+      useQueryMock.mockReturnValue({ data: [makeDanceRow({ url: 'https://example.com/some-dance' })], isLoading: false })
+      renderDanceDetailPage()
+
+      const link = screen.getByRole('link', { name: 'https://example.com/some-dance' })
+      expect(link).toHaveClass('truncate', 'min-w-0', 'flex-1')
+    })
+
+    it('renders the value in normal (non-muted) text, with the same padding-driven spacing every other field value gets from the label', () => {
+      useQueryMock.mockReturnValue({ data: [makeDanceRow({ url: 'https://example.com/some-dance' })], isLoading: false })
+      renderDanceDetailPage()
+
+      const link = screen.getByRole('link', { name: 'https://example.com/some-dance' })
+      expect(link).toHaveClass('text-foreground', 'px-2.5', 'py-1')
+      expect(link).not.toHaveClass('text-muted-foreground')
+    })
+
+    it('does not enter edit mode when the link itself is clicked - only the pencil does', async () => {
+      useQueryMock.mockReturnValue({ data: [makeDanceRow({ url: 'https://example.com/some-dance' })], isLoading: false })
+      renderDanceDetailPage()
+
+      // jsdom doesn't navigate on a real link click, so this only needs to
+      // confirm no editor appeared - the link's own href is covered above.
+      await userEvent.setup().click(screen.getByRole('link', { name: 'https://example.com/some-dance' }))
+
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    })
+
+    it('commits an edited url through commitFieldEdit, opened via its own pencil button', async () => {
+      useQueryMock.mockReturnValue({ data: [makeDanceRow({ id: '42', url: 'https://example.com/old' })], isLoading: false })
+      renderDanceDetailPage('42')
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Edit URL' }))
+      const input = screen.getByRole('textbox')
+      await user.clear(input)
+      await user.type(input, 'https://example.com/new')
+      await user.tab()
+
+      expect(db.execute).toHaveBeenCalledWith('UPDATE dances SET url = ? WHERE id = ?', ['https://example.com/new', '42'])
+    })
+
+    it('shows an edited url immediately after committing, bridging the gap before the query catches up', async () => {
+      useQueryMock.mockReturnValue({ data: [makeDanceRow({ id: '42', url: 'https://example.com/old' })], isLoading: false })
+      renderDanceDetailPage('42')
+
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Edit URL' }))
+      const input = screen.getByRole('textbox')
+      await user.clear(input)
+      await user.type(input, 'https://example.com/new')
+      await user.tab()
+
+      // The mocked query never actually updates dance.url after commit - if
+      // this still shows the new link, the field is reading its own
+      // optimistic draft rather than the (still-stale) value prop.
+      expect(screen.getByRole('link', { name: 'https://example.com/new' })).toBeInTheDocument()
     })
   })
 
