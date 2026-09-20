@@ -130,6 +130,20 @@ describe('ProgramDetailPage', () => {
     expect(screen.getByText('—')).toBeInTheDocument()
   })
 
+  it('links to the choreography view when the program has dances, and hides the link when it has none', () => {
+    mockProgramQuery({ data: [makeProgramRow()], isLoading: false })
+    renderProgramDetailPage('1')
+
+    expect(screen.getByRole('link', { name: 'Choreography' })).toHaveAttribute('href', '/programs/1/choreography')
+  })
+
+  it('hides the choreography link when the program has no dances', () => {
+    mockProgramQuery({ data: [makeProgramRow({ dances: '[]' })], isLoading: false })
+    renderProgramDetailPage()
+
+    expect(screen.queryByRole('link', { name: 'Choreography' })).not.toBeInTheDocument()
+  })
+
   it('shows placeholders for empty location, notes, and dance lineup', () => {
     mockProgramQuery({
       data: [makeProgramRow({ notes: null, dances: '[]' })],

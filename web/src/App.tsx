@@ -9,6 +9,7 @@ import { DanceCuesPage } from '@/routes/dances/DanceCuesPage'
 import { DanceDetailPage } from '@/routes/dances/DanceDetailPage'
 import { DanceWalkthroughPage } from '@/routes/dances/DanceWalkthroughPage'
 import { DancesPage } from '@/routes/dances/DancesPage'
+import { ProgramChoreographyPage } from '@/routes/programs/ProgramChoreographyPage'
 import { ProgramDetailPage } from '@/routes/programs/ProgramDetailPage'
 import { ProgramsPage } from '@/routes/programs/ProgramsPage'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
@@ -34,6 +35,7 @@ const router = createBrowserRouter([
           { path: 'dances/:id/versions/:versionId/cues', element: <DanceCuesPage /> },
           { path: 'programs', element: <ProgramsPage /> },
           { path: 'programs/:id', element: <ProgramDetailPage /> },
+          { path: 'programs/:id/choreography', element: <ProgramChoreographyPage /> },
         ],
       },
     ],
