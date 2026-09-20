@@ -3,10 +3,10 @@ import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifi
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { cn } from 'cn'
-import { Eye, GripVertical, Pencil, Plus, X } from 'lucide-react'
+import { Columns3, Eye, GripVertical, Pencil, Plus, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList } from '@/components/ui/combobox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useDragBodyClass } from '@/hooks/useDragBodyClass'
@@ -64,23 +64,40 @@ export function ProgramDanceLineup({ programId, dances }: { programId: string; d
     <div>
       <div className="flex items-center gap-2">
         <p className="text-[0.7rem] font-medium tracking-wide text-muted-foreground uppercase">Dances</p>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className="ml-auto"
-                aria-label={isEditing ? 'Done editing dances' : 'Edit dances'}
-                onClick={() => setIsEditing((current) => !current)}
-              />
-            }
-          >
-            {isEditing ? <Eye className="size-4" /> : <Pencil className="size-4" />}
-          </TooltipTrigger>
-          <TooltipContent>{isEditing ? 'Done editing' : 'Edit dances'}</TooltipContent>
-        </Tooltip>
+        <div className="ml-auto flex items-center gap-1">
+          {dances.length > 0 && (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Link
+                    to={`/programs/${programId}/choreography`}
+                    aria-label="Choreography"
+                    className={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}
+                  />
+                }
+              >
+                <Columns3 className="size-4" />
+              </TooltipTrigger>
+              <TooltipContent>Compare figures</TooltipContent>
+            </Tooltip>
+          )}
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={isEditing ? 'Done editing dances' : 'Edit dances'}
+                  onClick={() => setIsEditing((current) => !current)}
+                />
+              }
+            >
+              {isEditing ? <Eye className="size-4" /> : <Pencil className="size-4" />}
+            </TooltipTrigger>
+            <TooltipContent>{isEditing ? 'Done editing' : 'Edit dances'}</TooltipContent>
+          </Tooltip>
+        </div>
       </div>
       <div className="mt-1">
         {isEditing ? (

@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router'
+import { useParams } from 'react-router'
 import { z } from 'zod'
 import { EditableDate } from '@/components/fields/EditableDate'
 import { EditableLocationCombobox } from '@/components/fields/EditableLocationCombobox'
@@ -6,8 +6,6 @@ import { EditableRichText } from '@/components/fields/EditableRichText'
 import { PageSpinner } from '@/components/PageSpinner'
 import { FieldList } from '@/components/fields/FieldList'
 import { makeDetailFieldDefiner } from '@/components/fields/DetailField'
-import { buttonVariants } from '@/components/ui/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
 import { ProgramDanceLineup } from './ProgramDanceLineup'
 import { useProgram } from './ProgramDetailPage.data'
@@ -69,18 +67,6 @@ export function ProgramDetailPage() {
           </div>
 
           <div className="mt-6 space-y-8">
-            {program.dances.length > 0 && (
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Link to={`/programs/${program.id}/choreography`} className={buttonVariants({ variant: 'outline' })} />
-                  }
-                >
-                  Choreography
-                </TooltipTrigger>
-                <TooltipContent>Compare figures</TooltipContent>
-              </Tooltip>
-            )}
             <ProgramDanceLineup programId={program.id} dances={program.dances} />
             <FieldList fields={programDetailFields} row={program} />
           </div>
