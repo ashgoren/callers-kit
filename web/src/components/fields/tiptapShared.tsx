@@ -3,6 +3,7 @@ import { BubbleMenu } from '@tiptap/react/menus'
 import { cn } from 'cn'
 import { Fragment, useLayoutEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { sanitizeHtml } from '@/lib/sanitizeHtml'
 import type { Editor } from '@tiptap/react'
 import type { MouseEvent, ReactNode, RefObject } from 'react'
@@ -194,24 +195,31 @@ export function ToolbarButton({ editor, active, label, onClick, children }: {
   children: ReactNode
 }) {
   return (
-    <Button
-      type="button"
-      variant={active ? 'secondary' : 'ghost'}
-      size="icon-sm"
-      className="pointer-coarse:size-12"
-      aria-label={label}
-      aria-pressed={active}
-      // A click on this button would otherwise blur the editor before its
-      // own click handler fires, since the browser moves focus away from
-      // the contentEditable the instant the pointer goes down elsewhere.
-      onMouseDown={(e) => {
-        e.preventDefault()
-        editor.chain().focus()
-      }}
-      onClick={onClick}
-    >
-      {children}
-    </Button>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            type="button"
+            variant={active ? 'secondary' : 'ghost'}
+            size="icon-sm"
+            className="pointer-coarse:size-12"
+            aria-label={label}
+            aria-pressed={active}
+            // A click on this button would otherwise blur the editor before its
+            // own click handler fires, since the browser moves focus away from
+            // the contentEditable the instant the pointer goes down elsewhere.
+            onMouseDown={(e) => {
+              e.preventDefault()
+              editor.chain().focus()
+            }}
+            onClick={onClick}
+          />
+        }
+      >
+        {children}
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   )
 }
 

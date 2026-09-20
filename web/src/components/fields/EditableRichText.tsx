@@ -5,6 +5,7 @@ import { cn } from 'cn'
 import { ArrowDown, ArrowUp, Pencil } from 'lucide-react'
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useEscapeWhenUnfocused } from '@/hooks/useEscapeWhenUnfocused'
 import { useSaveCancelFieldEdit } from '@/hooks/useSaveCancelFieldEdit'
 import { sanitizeHtml } from '@/lib/sanitizeHtml'
@@ -117,15 +118,22 @@ export function EditableRichText({
           />
         )}
       </div>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        aria-label={`Edit ${fieldName}`}
-        onClick={fieldEdit.onFocus}
-      >
-        <Pencil className="size-4" />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`Edit ${fieldName}`}
+              onClick={fieldEdit.onFocus}
+            />
+          }
+        >
+          <Pencil className="size-4" />
+        </TooltipTrigger>
+        <TooltipContent>Edit {fieldName}</TooltipContent>
+      </Tooltip>
     </div>
   )
 }

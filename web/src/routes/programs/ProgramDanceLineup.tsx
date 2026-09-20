@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList } from '@/components/ui/combobox'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useDragBodyClass } from '@/hooks/useDragBodyClass'
 import { useEscapeWhenUnfocused } from '@/hooks/useEscapeWhenUnfocused'
 import { useOptimisticValue } from '@/hooks/useOptimisticValue'
@@ -63,16 +64,23 @@ export function ProgramDanceLineup({ programId, dances }: { programId: string; d
     <div>
       <div className="flex items-center gap-2">
         <p className="text-[0.7rem] font-medium tracking-wide text-muted-foreground uppercase">Dances</p>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className="ml-auto"
-          aria-label={isEditing ? 'Done editing dances' : 'Edit dances'}
-          onClick={() => setIsEditing((current) => !current)}
-        >
-          {isEditing ? <Eye className="size-4" /> : <Pencil className="size-4" />}
-        </Button>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="ml-auto"
+                aria-label={isEditing ? 'Done editing dances' : 'Edit dances'}
+                onClick={() => setIsEditing((current) => !current)}
+              />
+            }
+          >
+            {isEditing ? <Eye className="size-4" /> : <Pencil className="size-4" />}
+          </TooltipTrigger>
+          <TooltipContent>{isEditing ? 'Done editing' : 'Edit dances'}</TooltipContent>
+        </Tooltip>
       </div>
       <div className="mt-1">
         {isEditing ? (
@@ -171,31 +179,45 @@ function DanceLineupRow({ dance, onRemove }: { dance: ProgramDance; onRemove: ()
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className="flex items-center gap-2 rounded-lg hover:bg-muted/50"
     >
-      <button
-        type="button"
-        aria-label="Reorder dance"
-        className={cn(
-          'inline-flex size-7 shrink-0 touch-none items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-          isDragging ? 'cursor-grabbing' : 'cursor-grab',
-        )}
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical className="size-4" />
-      </button>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <button
+              type="button"
+              aria-label="Reorder dance"
+              className={cn(
+                'inline-flex size-7 shrink-0 touch-none items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                isDragging ? 'cursor-grabbing' : 'cursor-grab',
+              )}
+              {...attributes}
+              {...listeners}
+            />
+          }
+        >
+          <GripVertical className="size-4" />
+        </TooltipTrigger>
+        <TooltipContent>Reorder dance</TooltipContent>
+      </Tooltip>
       <Link to={`/dances/${dance.danceId}`} className="min-w-0 truncate hover:underline">
         {dance.title}
       </Link>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        aria-label="Remove dance"
-        className="ml-auto shrink-0 text-muted-foreground"
-        onClick={onRemove}
-      >
-        <X className="size-4" />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Remove dance"
+              className="ml-auto shrink-0 text-muted-foreground"
+              onClick={onRemove}
+            />
+          }
+        >
+          <X className="size-4" />
+        </TooltipTrigger>
+        <TooltipContent>Remove dance</TooltipContent>
+      </Tooltip>
     </li>
   )
 }

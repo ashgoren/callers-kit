@@ -10,6 +10,7 @@ import { EditableNumber } from '@/components/fields/EditableNumber'
 import { EditableText } from '@/components/fields/EditableText'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useDragBodyClass } from '@/hooks/useDragBodyClass'
 import { useOptimisticValue } from '@/hooks/useOptimisticValue'
 import { appendFigure, appendNote, isFigureEntry, removeFigureItem, updateFigureItem, withComputedPhrases } from '@/lib/figures'
@@ -215,32 +216,46 @@ function FigureRow({ item, phrase, showPhraseHeading, phraseEditable, onChange, 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
 
   const dragHandle = (
-    <button
-      type="button"
-      aria-label={isFigureEntry(item) ? 'Reorder figure' : 'Reorder note'}
-      className={cn(
-        // h-[calc(1lh+0.5rem+2px)]: the same height formula editable fields use.
-        'inline-flex h-[calc(1lh+0.5rem+2px)] touch-none items-center justify-center rounded p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-        isDragging ? 'cursor-grabbing' : 'cursor-grab',
-      )}
-      {...attributes}
-      {...listeners}
-    >
-      <GripVertical className="size-4" />
-    </button>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <button
+            type="button"
+            aria-label={isFigureEntry(item) ? 'Reorder figure' : 'Reorder note'}
+            className={cn(
+              // h-[calc(1lh+0.5rem+2px)]: the same height formula editable fields use.
+              'inline-flex h-[calc(1lh+0.5rem+2px)] touch-none items-center justify-center rounded p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+              isDragging ? 'cursor-grabbing' : 'cursor-grab',
+            )}
+            {...attributes}
+            {...listeners}
+          />
+        }
+      >
+        <GripVertical className="size-4" />
+      </TooltipTrigger>
+      <TooltipContent>{isFigureEntry(item) ? 'Reorder figure' : 'Reorder note'}</TooltipContent>
+    </Tooltip>
   )
 
   const removeButton = (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon-sm"
-      aria-label={isFigureEntry(item) ? 'Remove figure' : 'Remove note'}
-      className="text-muted-foreground"
-      onClick={onRemove}
-    >
-      <X className="size-4" />
-    </Button>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={isFigureEntry(item) ? 'Remove figure' : 'Remove note'}
+            className="text-muted-foreground"
+            onClick={onRemove}
+          />
+        }
+      >
+        <X className="size-4" />
+      </TooltipTrigger>
+      <TooltipContent>{isFigureEntry(item) ? 'Remove figure' : 'Remove note'}</TooltipContent>
+    </Tooltip>
   )
 
   // col-span-full + grid-cols-subgrid: this row is one real element (needed

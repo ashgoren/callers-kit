@@ -54,9 +54,9 @@ export function useBoldItalicUnderlineItems(editor: Editor): ToolbarItem[] {
   ]
 }
 
-// Headings and Bullet list - full-variant only. Shown in both
+// Headings and list - full-variant only. Shown in both
 // EditableRichText's fixed toolbar and its selection bubble menu,
-// unlike Horizontal rule below, which only makes sense in the fixed toolbar.
+// unlike Divider below, which only makes sense in the fixed toolbar.
 export function useHeadingAndListItems(editor: Editor): ToolbarItem[] {
   const state = useEditorState({
     editor,
@@ -84,7 +84,7 @@ export function useHeadingAndListItems(editor: Editor): ToolbarItem[] {
     },
     {
       key: 'bulletList',
-      label: 'Bullet list',
+      label: 'List',
       icon: <ListIcon />,
       active: state.bulletList,
       onClick: () => editor.chain().focus().toggleBulletList().run(),
@@ -92,7 +92,7 @@ export function useHeadingAndListItems(editor: Editor): ToolbarItem[] {
   ]
 }
 
-// Horizontal rule - full-variant, fixed-toolbar-only (it inserts a new
+// Divider (a Tiptap "horizontal rule" node) - full-variant, fixed-toolbar-only (it inserts a new
 // node rather than acting on existing content, so it's excluded from the
 // selection bubble menu). A plain function rather than a hook: it inserts
 // a node instead of toggling a mark/block, so it has no "active" state to
@@ -100,7 +100,7 @@ export function useHeadingAndListItems(editor: Editor): ToolbarItem[] {
 export function buildHorizontalRuleItem(editor: Editor): ToolbarItem {
   return {
     key: 'horizontalRule',
-    label: 'Horizontal rule',
+    label: 'Divider',
     icon: <MinusIcon />,
     active: false,
     onClick: () => editor.chain().focus().setHorizontalRule().run(),

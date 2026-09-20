@@ -339,7 +339,7 @@ describe('EditableRichText', () => {
     await waitFor(() => expect(getEditor()).toBeInTheDocument())
 
     await user.type(getEditor()!, 'First item')
-    await user.click(screen.getByRole('button', { name: 'Bullet list' }))
+    await user.click(screen.getByRole('button', { name: 'List' }))
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     // Tiptap always appends an empty paragraph after a document whose last
@@ -396,7 +396,7 @@ describe('EditableRichText', () => {
     await waitFor(() => expect(getEditor()).toBeInTheDocument())
 
     await user.type(getEditor()!, 'Before')
-    await user.click(screen.getByRole('button', { name: 'Horizontal rule' }))
+    await user.click(screen.getByRole('button', { name: 'Divider' }))
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(onCommit).toHaveBeenCalledWith('<p>Before</p><hr><p></p>')
@@ -412,7 +412,7 @@ describe('EditableRichText', () => {
     expect(screen.queryByRole('toolbar', { name: 'Selection formatting' })).not.toBeInTheDocument()
   })
 
-  it('shows a selection bubble menu with the same mark/heading/list actions once text is selected, but not Horizontal rule', async () => {
+  it('shows a selection bubble menu with the same mark/heading/list actions once text is selected, but not Divider', async () => {
     render(<EditableRichText value="<p>Bring extra chairs.</p>" onCommit={vi.fn()} fieldName={FIELD_NAME} />)
 
     const user = userEvent.setup()
@@ -428,10 +428,10 @@ describe('EditableRichText', () => {
     expect(within(bubble).getByRole('button', { name: 'Underline' })).toBeInTheDocument()
     expect(within(bubble).getByRole('button', { name: 'Heading 1' })).toBeInTheDocument()
     expect(within(bubble).getByRole('button', { name: 'Heading 2' })).toBeInTheDocument()
-    expect(within(bubble).getByRole('button', { name: 'Bullet list' })).toBeInTheDocument()
+    expect(within(bubble).getByRole('button', { name: 'List' })).toBeInTheDocument()
     // Inserts a new node rather than acting on a selection, so it doesn't
     // belong in a menu that only ever appears because text is selected.
-    expect(within(bubble).queryByRole('button', { name: 'Horizontal rule' })).not.toBeInTheDocument()
+    expect(within(bubble).queryByRole('button', { name: 'Divider' })).not.toBeInTheDocument()
   })
 
   it('toggles bold from the selection bubble menu, reflected in the committed HTML', async () => {
