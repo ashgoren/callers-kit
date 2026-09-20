@@ -5,7 +5,7 @@ import { PageSpinner } from '@/components/PageSpinner'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
 import { sortAlphabetically } from '@/lib/format'
-import { makeFiguresLabel } from './DancesPage.columns'
+import { makeFiguresLabel } from './dance'
 import { useDanceVersionWalkthrough } from './DanceWalkthroughPage.data'
 
 export function DanceWalkthroughPage() {

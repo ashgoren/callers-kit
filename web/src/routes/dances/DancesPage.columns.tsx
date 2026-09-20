@@ -6,48 +6,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { formatDate, mutedPlaceholder, sortAlphabetically } from '@/lib/format'
 import { htmlToPlainText } from '@/lib/sanitizeHtml'
 import { formatProgramLabel } from '@/routes/programs/ProgramsPage.columns'
+import { formatFormation } from './dance'
 import type { ReactNode } from 'react'
 import type { Field } from '@/components/table/fieldColumns'
 import type { LeafHeader as GenericLeafHeader, TableInstance as GenericTableInstance } from '@/components/table/tableInstance'
-import type { Dance } from '@/lib/powersync/schema'
 import type { TableColumnState } from '@/lib/powersync/tablePreferences'
-import type { Video } from '@/lib/videos'
 import type { ProgramSummary } from '@/routes/programs/ProgramsPage.columns'
+import type { DanceWithJoins } from './dance'
 import type { TagOption } from './DancesPage.data'
-
-// notes isn't a real column on Dance - danceSelectColumns() extracts
-// the primary version's own notes and aliases it back to "notes".
-// videos overrides Dance's own raw JSON-text column with the parsed array.
-export interface DanceWithJoins extends Omit<Dance, 'videos'> {
-  notes: string | null
-  choreographers: TagOption[]
-  key_moves: TagOption[]
-  vibes: TagOption[]
-  programs: ProgramSummary[]
-  videos: Video[]
-}
-
-export function formatFormation(value: string | null): string {
-  return value ? value.replace(/^Duple Minor - /, '') : '—'
-}
-
-// The short, combined "what kind of dance is this" label - dance_type and
-// progression are only worth mentioning when they're something other than
-// the overwhelmingly common case (Contra, Single progression), so most
-// dances show just their formation (e.g. "Improper", "Becket").
-export function makeFiguresLabel(dance: {
-  dance_type: string | null
-  formation: string | null
-  progression: string | null
-}): string {
-  return [
-    dance.dance_type && dance.dance_type.toLowerCase() !== 'contra' ? dance.dance_type : null,
-    dance.formation ? formatFormation(dance.formation) : null,
-    dance.progression && dance.progression.toLowerCase() !== 'single' ? `${dance.progression} progression` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ')
-}
 
 function renderTagList(value: TagOption[]): ReactNode {
   if (value.length === 0) return mutedPlaceholder

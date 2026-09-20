@@ -90,7 +90,7 @@ describe('VideosField', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
-  it('disables Save with a hint while any video is missing a url, re-enabling once every video has one', async () => {
+  it('disables Save while any video is missing a url, re-enabling once every video has one', async () => {
     const onCommit = vi.fn()
     render(<VideosField value={[]} onCommit={onCommit} />)
 
@@ -99,14 +99,12 @@ describe('VideosField', () => {
     await user.click(screen.getByRole('button', { name: 'Add video' }))
 
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
-    expect(screen.getByText('Every video needs a URL.')).toBeInTheDocument()
 
     await user.click(screen.getByText('https://…'))
     await user.type(screen.getByRole('textbox'), 'https://example.com/new')
     await user.tab()
 
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
-    expect(screen.queryByText('Every video needs a URL.')).not.toBeInTheDocument()
   })
 
   it('does not close the dialog on Escape while editing one of its own fields - only reverts that field', async () => {

@@ -1,6 +1,6 @@
 import { Fragment } from 'react'
 import { danceFields } from './DancesPage.columns'
-import type { DanceWithJoins } from './DancesPage.columns'
+import type { DanceWithJoins } from './dance'
 
 // Used by DanceCard below to look up a field's label/render given its key.
 function getDanceField(key: string) {

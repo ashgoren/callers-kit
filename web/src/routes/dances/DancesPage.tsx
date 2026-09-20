@@ -8,7 +8,7 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useDances } from './DancesPage.data'
 import { columns, DEFAULT_COLUMN_STATE } from './DancesPage.columns'
 import { DanceCard } from './DancesPage.DanceCard'
-import type { DanceWithJoins } from './DancesPage.columns'
+import type { DanceWithJoins } from './dance'
 
 export function DancesPage() {
   useDocumentTitle('Dances')

@@ -6,26 +6,53 @@ import { z } from 'zod'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { EditableNumber } from '@/components/fields/EditableNumber'
 import { EditableRichText } from '@/components/fields/EditableRichText'
+import { EditableSelect } from '@/components/fields/EditableSelect'
 import { EditableTagCombobox } from '@/components/fields/EditableTagCombobox'
 import { EditableText } from '@/components/fields/EditableText'
 import { PageSpinner } from '@/components/PageSpinner'
-import { FieldList } from '@/components/fields/FieldList'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useEscapeWhenUnfocused } from '@/hooks/useEscapeWhenUnfocused'
 import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
 import { formatDate, mutedPlaceholder, sortAlphabetically } from '@/lib/format'
 import { getDefaultSkeleton } from '@/lib/phraseSkeleton'
-import { makeFiguresLabel } from './DancesPage.columns'
+import { formatProgramLabel } from '@/routes/programs/ProgramsPage.columns'
+import { formatFormation, makeFiguresLabel } from './dance'
+import { DANCE_TYPES, difficultySchema, formatUrl, FORMATIONS, PROGRESSIONS, urlSchema } from './DanceDetailPage.constants'
 import { useDance } from './DanceDetailPage.data'
-import { danceMetadataFields, danceProgramsFields, formatUrl, urlSchema } from './DanceDetailPage.fields'
 import { FigureToolbar } from './FigureToolbar'
 import { FiguresList } from './FiguresList'
 import { VideosField } from './VideosField'
+import type { ReactNode } from 'react'
 import type { Editor } from '@tiptap/react'
-import type { DanceWithJoins } from './DancesPage.columns'
+import type { DanceWithJoins } from './dance'
 
 const titleSchema = z.string().min(1, 'Title is required')
+
+function FieldLine({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex items-baseline gap-1 text-sm">
+      <span className="shrink-0 text-muted-foreground">{label}</span>
+      <div className="min-w-0">{children}</div>
+    </div>
+  )
+}
+
+function renderProgramHistory(value: DanceWithJoins['programs']): ReactNode {
+  if (value.length === 0) return mutedPlaceholder
+  return (
+    <ul className="space-y-0.5">
+      {value.map((program) => (
+        <li key={program.id}>
+          <Link to={`/programs/${program.id}`} className="hover:underline">
+            {formatProgramLabel(program)}
+          </Link>
+        </li>
+      ))}
+    </ul>
+  )
+}
 
 export function DanceDetailPage() {
   const { id, versionId } = useParams()
@@ -204,23 +231,85 @@ export function DanceDetailPage() {
               </div>
             </div>
             <div className="space-y-6">
-              <FieldList<DanceWithJoins> fields={danceMetadataFields} row={dance} className="space-y-6" />
+              <div className="space-y-1">
+                <FieldLine label="Key Moves">
+                  <EditableTagCombobox
+                    danceId={dance.id}
+                    junctionTable="dances_key_moves"
+                    refIdColumn="key_move_id"
+                    ownerTable="key_moves"
+                    value={dance.key_moves}
+                    placeholder="Add a key move..."
+                    renderDisplay={(attached) =>
+                      attached.length === 0
+                        ? mutedPlaceholder
+                        : sortAlphabetically(attached.map((tag) => tag.name ?? '')).join(', ')
+                    }
+                  />
+                </FieldLine>
+                <FieldLine label="Vibes">
+                  <EditableTagCombobox
+                    danceId={dance.id}
+                    junctionTable="dances_vibes"
+                    refIdColumn="vibe_id"
+                    ownerTable="vibes"
+                    value={dance.vibes}
+                    placeholder="Add a vibe..."
+                    renderDisplay={(attached) =>
+                      attached.length === 0
+                        ? mutedPlaceholder
+                        : sortAlphabetically(attached.map((tag) => tag.name ?? '')).join(', ')
+                    }
+                  />
+                </FieldLine>
+                <FieldLine label="Difficulty">
+                  <EditableNumber
+                    value={dance.difficulty}
+                    onCommit={(v) => void commitFieldEdit('dances', dance.id, 'difficulty', v)}
+                    schema={difficultySchema}
+                    min={0}
+                  />
+                </FieldLine>
+                <FieldLine label="Dance Type">
+                  <EditableSelect
+                    value={dance.dance_type}
+                    onCommit={(v) => void commitFieldEdit('dances', dance.id, 'dance_type', v)}
+                    options={DANCE_TYPES}
+                  />
+                </FieldLine>
+                <FieldLine label="Formation">
+                  <EditableSelect
+                    value={dance.formation}
+                    onCommit={(v) => void commitFieldEdit('dances', dance.id, 'formation', v)}
+                    options={FORMATIONS}
+                    formatLabel={formatFormation}
+                  />
+                </FieldLine>
+                <FieldLine label="Progression">
+                  <EditableSelect
+                    value={dance.progression}
+                    onCommit={(v) => void commitFieldEdit('dances', dance.id, 'progression', v)}
+                    options={PROGRESSIONS}
+                  />
+                </FieldLine>
+              </div>
               <VideosField value={dance.videos} onCommit={(v) => void commitFieldEdit('dances', dance.id, 'videos', JSON.stringify(v))} />
-              <FieldList<DanceWithJoins> fields={danceProgramsFields} row={dance} className="space-y-6" />
-              <div className="border-t pt-4">
-                <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">URL</p>
-                <div className="mt-1">
+              <div>
+                <p className="text-[0.7rem] font-medium tracking-wide text-muted-foreground uppercase">Programs</p>
+                <div className="mt-1 text-sm">{renderProgramHistory(dance.programs)}</div>
+              </div>
+              <div className="space-y-1 border-t pt-4 text-sm text-muted-foreground">
+                <p>
+                  URL{' '}
                   <EditableText
                     value={dance.url ?? ''}
                     onCommit={(value) => void commitFieldEdit('dances', dance.id, 'url', value || null)}
                     schema={urlSchema}
                     placeholder="Add a URL..."
                     renderDisplay={formatUrl}
-                    fullWidth
+                    fullWidth={false}
                   />
-                </div>
-              </div>
-              <div className="space-y-1 border-t pt-4 text-sm text-muted-foreground">
+                </p>
                 <p>Added {formatDate(dance.created_at)}</p>
                 <p>Edited {formatDate(dance.updated_at)}</p>
               </div>

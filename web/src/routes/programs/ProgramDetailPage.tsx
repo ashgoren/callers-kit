@@ -4,37 +4,17 @@ import { EditableDate } from '@/components/fields/EditableDate'
 import { EditableLocationCombobox } from '@/components/fields/EditableLocationCombobox'
 import { EditableRichText } from '@/components/fields/EditableRichText'
 import { PageSpinner } from '@/components/PageSpinner'
-import { FieldList } from '@/components/fields/FieldList'
-import { makeDetailFieldDefiner } from '@/components/fields/DetailField'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { commitFieldEdit } from '@/lib/powersync/commitFieldEdit'
 import { ProgramDanceLineup } from './ProgramDanceLineup'
 import { useProgram } from './ProgramDetailPage.data'
 import { formatProgramLabel } from './ProgramsPage.columns'
-import type { DetailField } from '@/components/fields/DetailField'
-import type { ProgramWithJoins } from './ProgramsPage.columns'
 
 const dateSchema = z
   .string()
   .min(1, 'Date is required')
   .nullable()
   .refine((value) => value !== null, { message: 'Date is required' })
-
-const defineField = makeDetailFieldDefiner<ProgramWithJoins>()
-
-const programDetailFields: DetailField<ProgramWithJoins>[] = [
-  defineField({
-    key: 'notes',
-    label: 'Notes',
-    render: (value, row) => (
-      <EditableRichText
-        value={value}
-        onCommit={(v) => void commitFieldEdit('programs', row.id, 'notes', v)}
-        fieldName="notes"
-      />
-    ),
-  }),
-]
 
 export function ProgramDetailPage() {
   const { id } = useParams()
@@ -71,7 +51,16 @@ export function ProgramDetailPage() {
 
           <div className="mt-6 space-y-8">
             <ProgramDanceLineup programId={program.id} dances={program.dances} />
-            <FieldList fields={programDetailFields} row={program} />
+            <div>
+              <p className="text-[0.7rem] font-medium tracking-wide text-muted-foreground uppercase">Notes</p>
+              <div className="mt-1 text-sm">
+                <EditableRichText
+                  value={program.notes}
+                  onCommit={(value) => void commitFieldEdit('programs', program.id, 'notes', value)}
+                  fieldName="notes"
+                />
+              </div>
+            </div>
           </div>
         </>
       )}

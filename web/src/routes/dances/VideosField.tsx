@@ -30,8 +30,7 @@ function VideosReadOnlyList({ videos }: { videos: Video[] }) {
 }
 
 // The dance-detail "Videos" field: a read-only list of links, with a pencil
-// beside its own label that opens a modal editor. Renders its own label + pencil
-// row rather than going through FieldList's generic dt/dd.
+// beside its own label that opens a modal editor.
 //
 // The dialog holds its own local draft (`draftItems`), seeded from
 // fieldEdit.draft when it opens - like EditableRichText's Tiptap instance,

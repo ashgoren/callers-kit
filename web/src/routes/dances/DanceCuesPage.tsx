@@ -7,7 +7,7 @@ import { sortAlphabetically } from '@/lib/format'
 import { commitCueCellEdit, commitCueNotesEdit, commitCueSeparatorToggle } from './commitCueEdit'
 import { CuesGrid } from './CuesGrid'
 import { useDanceVersionCues } from './DanceCuesPage.data'
-import { makeFiguresLabel } from './DancesPage.columns'
+import { makeFiguresLabel } from './dance'
 
 export function DanceCuesPage() {
   const { id, versionId } = useParams()

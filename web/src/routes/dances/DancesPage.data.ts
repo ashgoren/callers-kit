@@ -2,7 +2,7 @@ import { useQuery } from '@powersync/react'
 import type { Dance } from '@/lib/powersync/schema'
 import type { Video } from '@/lib/videos'
 import type { ProgramSummary } from '@/routes/programs/ProgramsPage.columns'
-import type { DanceWithJoins } from './DancesPage.columns'
+import type { DanceWithJoins } from './dance'
 
 export interface TagOption {
   id: string

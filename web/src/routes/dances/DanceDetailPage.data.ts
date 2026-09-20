@@ -2,7 +2,7 @@ import { useQuery } from '@powersync/react'
 import { danceSelectColumns, parseDanceRow } from './DancesPage.data'
 import type { DanceVersion } from '@/lib/figures'
 import type { DanceQueryRow } from './DancesPage.data'
-import type { DanceWithJoins } from './DancesPage.columns'
+import type { DanceWithJoins } from './dance'
 
 // Aggregates a dance's own dance_versions rows into one ordered JSON array,
 // primary version first - the table/card list only ever needs the primary
