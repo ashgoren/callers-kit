@@ -15,6 +15,9 @@ import type { DanceWithJoins } from './DancesPage.columns'
 // Non-negative integer so difficulty stays sortable; null (unset) is also allowed.
 const difficultySchema = z.number().int().min(0).nullable()
 
+// Empty string means "not set yet".
+export const urlSchema = z.url().or(z.literal(''))
+
 // Fixed, admin-managed vocabularies - mirrors the public.dance_type/
 // formation/progression enums in the Supabase schema exactly.
 const DANCE_TYPES = ['Contra', 'Square', 'ECD', 'Mixer', 'Other']
@@ -49,6 +52,13 @@ const FORMATIONS = [
   'other',
 ]
 const PROGRESSIONS = ['Single', 'Double', 'Triple', 'None', 'Other']
+
+// Show shortened version of url for caller's box
+export function formatUrl(url: string): ReactNode {
+  if (!url) return mutedPlaceholder
+  const ibiblioId = /ibiblio\.org\/contradance\/thecallersbox\/dance\.php\?id=(\d+)/.exec(url)?.[1]
+  return ibiblioId ? `Caller's Box ${ibiblioId}` : url
+}
 
 function renderProgramHistory(value: DanceWithJoins['programs']): ReactNode {
   if (value.length === 0) return mutedPlaceholder
@@ -143,5 +153,12 @@ export const danceMetadataFields: DetailField<DanceWithJoins>[] = [
       />
     ),
   }),
+]
+
+// Videos renders its own label (with an edit pencil beside it, unlike every
+// other field here) rather than going through FieldList's generic dt/dd -
+// see VideosField.tsx. Programs stays a normal FieldList entry, just kept
+// in its own array so it can be positioned right after Videos in the page.
+export const danceProgramsFields: DetailField<DanceWithJoins>[] = [
   defineField({ key: 'programs', label: 'Programs', render: renderProgramHistory }),
 ]

@@ -11,17 +11,20 @@ import type { Field } from '@/components/table/fieldColumns'
 import type { LeafHeader as GenericLeafHeader, TableInstance as GenericTableInstance } from '@/components/table/tableInstance'
 import type { Dance } from '@/lib/powersync/schema'
 import type { TableColumnState } from '@/lib/powersync/tablePreferences'
+import type { Video } from '@/lib/videos'
 import type { ProgramSummary } from '@/routes/programs/ProgramsPage.columns'
 import type { TagOption } from './DancesPage.data'
 
 // notes isn't a real column on Dance - danceSelectColumns() extracts
 // the primary version's own notes and aliases it back to "notes".
-export interface DanceWithJoins extends Dance {
+// videos overrides Dance's own raw JSON-text column with the parsed array.
+export interface DanceWithJoins extends Omit<Dance, 'videos'> {
   notes: string | null
   choreographers: TagOption[]
   key_moves: TagOption[]
   vibes: TagOption[]
   programs: ProgramSummary[]
+  videos: Video[]
 }
 
 export function formatFormation(value: string | null): string {

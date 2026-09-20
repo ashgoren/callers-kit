@@ -107,6 +107,7 @@ export function useDraftFieldEdit<T>({ value, onCommit, schema }: {
       commit()
     } else if (e.key === 'Escape') {
       e.preventDefault()
+      e.stopPropagation()
       revert()
     }
   }

@@ -24,6 +24,8 @@ const dances = new Table({
   dance_type: column.text, // enum (e.g. 'Contra')
   formation: column.text, // enum (e.g. 'Duple Minor - Improper)
   progression: column.text, // enum (e.g. 'Single')
+  url: column.text,
+  videos: jsonColumn('dances', 'videos'), // JSON-encoded {id, url, description}[]
 })
 
 const dance_versions = new Table({

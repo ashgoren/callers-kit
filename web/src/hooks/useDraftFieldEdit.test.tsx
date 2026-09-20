@@ -11,8 +11,9 @@ import type { FieldEditState } from '@/components/fields/InlineEditableField'
 // test can assert on it without triggering @typescript-eslint/unbound-method.
 function makeKeyEvent(key: string) {
   const preventDefault = vi.fn()
-  const event = { key, preventDefault } as unknown as KeyboardEvent
-  return { event, preventDefault }
+  const stopPropagation = vi.fn()
+  const event = { key, preventDefault, stopPropagation } as unknown as KeyboardEvent
+  return { event, preventDefault, stopPropagation }
 }
 
 describe('useDraftFieldEdit', () => {
@@ -133,17 +134,23 @@ describe('useDraftFieldEdit', () => {
     expect(preventDefault).toHaveBeenCalled()
   })
 
-  it('reverts to the last-committed value on Escape, without committing', () => {
+  it('reverts to the last-committed value on Escape, without committing, and stops it there', () => {
+    // stopPropagation matters once this field is nested inside something
+    // with its own Escape handling (e.g. a modal dialog) - see VideosField,
+    // which sits an EditableText inside a Dialog that would otherwise treat
+    // a bubbled Escape as "close the whole dialog" instead of just this field.
     const onCommit = vi.fn()
     const { result } = renderHook(() => useDraftFieldEdit({ value: 'Chorus Jig', onCommit }))
 
     act(() => result.current.onFocus())
     act(() => result.current.onChange('Abandoned edit'))
-    act(() => result.current.onKeyDown(makeKeyEvent('Escape').event))
+    const { event, stopPropagation } = makeKeyEvent('Escape')
+    act(() => result.current.onKeyDown(event))
 
     expect(onCommit).not.toHaveBeenCalled()
     expect(result.current.draft).toBe('Chorus Jig')
     expect(result.current.isFocused).toBe(false)
+    expect(stopPropagation).toHaveBeenCalled()
   })
 
   it('commits when the draft passes the given schema', () => {

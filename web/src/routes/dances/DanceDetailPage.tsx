@@ -18,9 +18,10 @@ import { formatDate, mutedPlaceholder, sortAlphabetically } from '@/lib/format'
 import { getDefaultSkeleton } from '@/lib/phraseSkeleton'
 import { makeFiguresLabel } from './DancesPage.columns'
 import { useDance } from './DanceDetailPage.data'
-import { danceMetadataFields } from './DanceDetailPage.fields'
+import { danceMetadataFields, danceProgramsFields, formatUrl, urlSchema } from './DanceDetailPage.fields'
 import { FigureToolbar } from './FigureToolbar'
 import { FiguresList } from './FiguresList'
+import { VideosField } from './VideosField'
 import type { Editor } from '@tiptap/react'
 import type { DanceWithJoins } from './DancesPage.columns'
 
@@ -204,6 +205,21 @@ export function DanceDetailPage() {
             </div>
             <div className="space-y-6">
               <FieldList<DanceWithJoins> fields={danceMetadataFields} row={dance} className="space-y-6" />
+              <VideosField value={dance.videos} onCommit={(v) => void commitFieldEdit('dances', dance.id, 'videos', JSON.stringify(v))} />
+              <FieldList<DanceWithJoins> fields={danceProgramsFields} row={dance} className="space-y-6" />
+              <div className="border-t pt-4">
+                <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">URL</p>
+                <div className="mt-1">
+                  <EditableText
+                    value={dance.url ?? ''}
+                    onCommit={(value) => void commitFieldEdit('dances', dance.id, 'url', value || null)}
+                    schema={urlSchema}
+                    placeholder="Add a URL..."
+                    renderDisplay={formatUrl}
+                    fullWidth
+                  />
+                </div>
+              </div>
               <div className="space-y-1 border-t pt-4 text-sm text-muted-foreground">
                 <p>Added {formatDate(dance.created_at)}</p>
                 <p>Edited {formatDate(dance.updated_at)}</p>

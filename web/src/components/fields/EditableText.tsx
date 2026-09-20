@@ -2,7 +2,7 @@ import { cn } from 'cn'
 import { Input } from '@/components/ui/input'
 import { useDraftFieldEdit } from '@/hooks/useDraftFieldEdit'
 import { InlineEditableField } from './InlineEditableField'
-import type { ElementType, RefObject } from 'react'
+import type { ElementType, ReactNode, RefObject } from 'react'
 import type { z } from 'zod'
 
 // A plain text inline-editable field - a read-only display until
@@ -27,7 +27,7 @@ import type { z } from 'zod'
 // Both modes use h-[calc(1lh+...)] for the input's height rather than
 // h-auto: a native input's own "auto" height doesn't precisely track an
 // arbitrary font-size, leaving a little real internal scroll room.
-export function EditableText({ value, onCommit, schema, placeholder, as, className, fullWidth }: {
+export function EditableText({ value, onCommit, schema, placeholder, as, className, fullWidth, renderDisplay }: {
   value: string
   onCommit: (value: string) => void
   schema?: z.ZodType<string>
@@ -35,6 +35,7 @@ export function EditableText({ value, onCommit, schema, placeholder, as, classNa
   as?: ElementType
   className?: string
   fullWidth: boolean
+  renderDisplay?: (value: string) => ReactNode  // optional override for how the value is shown in view mode
 }) {
   const fieldEdit = useDraftFieldEdit({ value, onCommit, schema })
 
@@ -44,7 +45,9 @@ export function EditableText({ value, onCommit, schema, placeholder, as, classNa
       as={as}
       className={className}
       fullWidth={fullWidth}
-      renderDisplay={(v) => v || (placeholder && <span className="text-muted-foreground">{placeholder}</span>)}
+      renderDisplay={(v) =>
+        (renderDisplay ? renderDisplay(v) : v) || (placeholder && <span className="text-muted-foreground">{placeholder}</span>)
+      }
       renderInput={({ draft, onChange, onBlur, onKeyDown, hasError, errorId, ref }) =>
         fullWidth ? (
           <Input

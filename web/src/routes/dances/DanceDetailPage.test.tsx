@@ -137,6 +137,36 @@ describe('DanceDetailPage', () => {
     // created_at/updated_at ("Added"/"Edited") are covered by the dedicated test below.
   })
 
+  describe('url field', () => {
+    it('shows the raw url as-is when it is not an ibiblio Caller\'s Box link', () => {
+      useQueryMock.mockReturnValue({ data: [makeDanceRow({ url: 'https://example.com/some-dance' })], isLoading: false })
+      renderDanceDetailPage()
+
+      expect(screen.getByText('https://example.com/some-dance')).toBeInTheDocument()
+    })
+
+    it('shows a shortened "Caller\'s Box <id>" label for an ibiblio Caller\'s Box url', () => {
+      useQueryMock.mockReturnValue({
+        data: [makeDanceRow({ url: 'https://www.ibiblio.org/contradance/thecallersbox/dance.php?id=10320' })],
+        isLoading: false,
+      })
+      renderDanceDetailPage()
+
+      expect(screen.getByText("Caller's Box 10320")).toBeInTheDocument()
+      expect(screen.queryByText('https://www.ibiblio.org/contradance/thecallersbox/dance.php?id=10320')).not.toBeInTheDocument()
+    })
+
+    it('shows the standard muted dash placeholder when there is no url, not a custom hint', () => {
+      useQueryMock.mockReturnValue({ data: [makeDanceRow({ url: null })], isLoading: false })
+      renderDanceDetailPage()
+
+      // Three dashes: the empty url field, plus figures and videos, both
+      // already empty by default in this fixture regardless of this test's own override.
+      expect(screen.getAllByText('—')).toHaveLength(3)
+      expect(screen.queryByText('Add a URL...')).not.toBeInTheDocument()
+    })
+  })
+
   it('sets the browser tab title to the dance\'s own title', () => {
     useQueryMock.mockReturnValue({ data: [makeDanceRow()], isLoading: false })
     renderDanceDetailPage()
@@ -179,10 +209,10 @@ describe('DanceDetailPage', () => {
     })
     renderDanceDetailPage()
 
-    // Choreographers (header), Key Moves, Vibes, Figures, Programs - five
-    // "—" placeholders. Notes is editable and shows EditableRichText's own
-    // descriptive placeholder instead of the generic "—".
-    expect(screen.getAllByText('—')).toHaveLength(5)
+    // Choreographers (header), Key Moves, Vibes, Figures, Programs, Videos,
+    // URL - seven "—" placeholders. Notes is editable and shows
+    // EditableRichText's own descriptive placeholder instead of the generic "—".
+    expect(screen.getAllByText('—')).toHaveLength(7)
     expect(screen.getByText('No notes yet')).toBeInTheDocument()
   })
 

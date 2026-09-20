@@ -1,5 +1,6 @@
 import { useQuery } from '@powersync/react'
 import type { Dance } from '@/lib/powersync/schema'
+import type { Video } from '@/lib/videos'
 import type { ProgramSummary } from '@/routes/programs/ProgramsPage.columns'
 import type { DanceWithJoins } from './DancesPage.columns'
 
@@ -70,7 +71,7 @@ function primaryVersionNotesSubquery(): string {
 export function danceSelectColumns(): string {
   return `
     dances.id, dances.title, dances.difficulty, dances.dance_type, dances.formation, dances.progression,
-    dances.created_at, dances.updated_at,
+    dances.created_at, dances.updated_at, dances.url, dances.videos,
     ${primaryVersionNotesSubquery()} AS notes,
     ${tagListSubquery('dances_choreographers', 'choreographers', 'choreographer_id')} AS choreographers,
     ${tagListSubquery('dances_key_moves', 'key_moves', 'key_move_id')} AS key_moves,
@@ -105,7 +106,14 @@ export function parseDanceRow(d: DanceQueryRow): DanceWithJoins {
     key_moves: JSON.parse(d.key_moves) as TagOption[],
     vibes: JSON.parse(d.vibes) as TagOption[],
     programs: JSON.parse(d.programs) as ProgramSummary[],
+    videos: parseVideos(d.videos),
   }
+}
+
+function parseVideos(raw: string | null): Video[] {
+  if (!raw) return []
+  const parsed = JSON.parse(raw) as { id: string; url: string; description: string | null }[]
+  return parsed.map((video) => ({ ...video, description: video.description ?? '' }))
 }
 
 export function useDances(): { dances: DanceWithJoins[]; isLoading: boolean } {
