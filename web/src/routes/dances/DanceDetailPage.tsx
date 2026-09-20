@@ -1,5 +1,5 @@
 import { cn } from 'cn'
-import { Eye, Footprints, MicVocal, Pencil } from 'lucide-react'
+import { Eye, Footprints, Grid3x3, Pencil } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { z } from 'zod'
@@ -120,7 +120,7 @@ export function DanceDetailPage() {
                       </div>
                     )}
                     <div className="order-2 ml-auto flex items-center gap-1 sm:order-3">
-                      {selectedVersion && (
+                      {selectedVersion && !isEditingFigures && (
                         <>
                           <Tooltip>
                             <TooltipTrigger
@@ -146,7 +146,7 @@ export function DanceDetailPage() {
                                 />
                               }
                             >
-                              <MicVocal className="size-4" />
+                              <Grid3x3 className="size-4" />
                             </TooltipTrigger>
                             <TooltipContent>Cues</TooltipContent>
                           </Tooltip>

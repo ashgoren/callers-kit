@@ -57,7 +57,9 @@ function renderProgramList(value: ProgramSummary[]): ReactNode {
   const tooltip = value.map(formatProgramLabel).join('\n')
   return (
     <Tooltip>
-      <TooltipTrigger>{value.map((program) => formatDate(program.date)).join(', ')}</TooltipTrigger>
+      <TooltipTrigger className="rounded-sm text-left">
+        {value.map((program) => formatDate(program.date)).join(', ')}
+      </TooltipTrigger>
       <TooltipContent>{tooltip}</TooltipContent>
     </Tooltip>
   )

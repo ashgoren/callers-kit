@@ -13,11 +13,8 @@ function TooltipTrigger({ className, ...props }: TooltipPrimitive.Trigger.Props)
   return (
     <TooltipPrimitive.Trigger
       data-slot="tooltip-trigger"
-      // Resets the underlying <button> back to plain inline text - a
-      // tooltip trigger is informational, not an action, so it shouldn't
-      // look interactive the way Button's own variants do.
       className={cn(
-        "cursor-default rounded-sm text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+        "cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
         className,
       )}
       {...props}

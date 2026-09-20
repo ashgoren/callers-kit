@@ -25,7 +25,7 @@ export function TruncatedTooltipText({ children, content }: { children: string; 
 
   return (
     <Tooltip>
-      <TooltipTrigger disabled={!isTruncated} className="block w-full">
+      <TooltipTrigger disabled={!isTruncated} className="block w-full rounded-sm text-left">
         <span ref={ref} className="block truncate">
           {children}
         </span>
