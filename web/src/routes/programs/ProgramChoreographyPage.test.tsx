@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
@@ -137,6 +137,23 @@ describe('ProgramChoreographyPage', () => {
     // Each key move its own chip, alphabetically sorted - not one joined string.
     expect(screen.getByText('Hey')).toBeInTheDocument()
     expect(screen.getByText('Allemande')).toBeInTheDocument()
+  })
+
+  it('defaults the density slider to the midpoint of its range, and widens dance columns when dragged toward Spacious', () => {
+    mockQueries([makeProgramRow()], [makeDanceRow()])
+    const { container } = renderProgramChoreographyPage()
+
+    const slider = screen.getByRole('slider', { name: 'Column density' })
+    // Midpoint of the 100-300 range this page defines - see
+    // DEFAULT_COLUMN_MIN_WIDTH in ProgramChoreographyPage.tsx.
+    expect(slider).toHaveAttribute('aria-valuenow', '200')
+
+    const grid = container.querySelector('.grid') as HTMLElement
+    expect(grid.style.gridTemplateColumns).toContain('minmax(200px, 1fr)')
+
+    fireEvent.change(slider, { target: { value: '300' } })
+
+    expect(grid.style.gridTemplateColumns).toContain('minmax(300px, 1fr)')
   })
 
   it('shows a muted placeholder for a dance with nothing in a phrase another dance does have', () => {
