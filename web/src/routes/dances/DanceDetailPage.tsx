@@ -334,6 +334,8 @@ export function DanceDetailPage() {
                     value={dance.dance_type}
                     onCommit={(v) => void commitFieldEdit('dances', dance.id, 'dance_type', v)}
                     options={DANCE_TYPES}
+                    fullWidth
+                    className="max-w-64"
                   />
                 </FieldLine>
                 <FieldLine label="Formation">
@@ -342,6 +344,8 @@ export function DanceDetailPage() {
                     onCommit={(v) => void commitFieldEdit('dances', dance.id, 'formation', v)}
                     options={FORMATIONS}
                     formatLabel={formatFormation}
+                    fullWidth
+                    className="max-w-64"
                   />
                 </FieldLine>
                 <FieldLine label="Progression">
@@ -349,6 +353,8 @@ export function DanceDetailPage() {
                     value={dance.progression}
                     onCommit={(v) => void commitFieldEdit('dances', dance.id, 'progression', v)}
                     options={PROGRESSIONS}
+                    fullWidth
+                    className="max-w-64"
                   />
                 </FieldLine>
               </div>

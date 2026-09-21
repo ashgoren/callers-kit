@@ -13,13 +13,14 @@ import type { ElementType } from 'react'
 // vocabularies (formation, notably) store a longer canonical string than
 // what's shown - e.g. "Duple Minor - Becket" is stored, but only "Becket"
 // is displayed, in both the closed display and every option in the list.
-export function EditableSelect({ value, onCommit, options, formatLabel, as, className }: {
+export function EditableSelect({ value, onCommit, options, formatLabel, as, className, fullWidth = false }: {
   value: string | null
   onCommit: (value: string | null) => void
   options: string[]
   formatLabel?: (value: string) => string
   as?: ElementType
   className?: string
+  fullWidth?: boolean
 }) {
   const fieldEdit = useSelectFieldEdit({ value, onCommit })
   const format = formatLabel ?? ((v: string) => v)
@@ -29,6 +30,7 @@ export function EditableSelect({ value, onCommit, options, formatLabel, as, clas
       {...fieldEdit}
       as={as}
       className={className}
+      fullWidth={fullWidth}
       renderDisplay={(v) => (v === null ? mutedPlaceholder : format(v))}
       renderInput={({ draft, onChange, onBlur }) => (
         <Select
