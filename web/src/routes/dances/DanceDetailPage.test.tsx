@@ -198,7 +198,7 @@ describe('DanceDetailPage', () => {
 
       // Scoped to the URL row specifically - figures/videos are also
       // empty-by-default in this fixture, so an unscoped "—" query would be ambiguous.
-      const urlRow = screen.getByText('URL').closest('p')!
+      const urlRow = screen.getByText('URL').closest('div')!
       const user = userEvent.setup()
       await user.click(within(urlRow).getByText('—'))
       const input = screen.getByRole('textbox')

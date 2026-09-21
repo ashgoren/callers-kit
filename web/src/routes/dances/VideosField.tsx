@@ -2,7 +2,6 @@ import { Pencil } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useSaveCancelFieldEdit } from '@/hooks/useSaveCancelFieldEdit'
 import { mutedPlaceholder } from '@/lib/format'
 import { videoUrlSchema } from '@/lib/videos'
@@ -30,7 +29,8 @@ function VideosReadOnlyList({ videos }: { videos: Video[] }) {
 }
 
 // The dance-detail "Videos" field: a read-only list of links, with a pencil
-// beside its own label that opens a modal editor.
+// beside the content (the caller renders the "Videos" label itself, same
+// as it does for Programs) that opens a modal editor.
 //
 // The dialog holds its own local draft (`draftItems`), seeded from
 // fieldEdit.draft when it opens - like EditableRichText's Tiptap instance,
@@ -55,21 +55,13 @@ export function VideosField({ value, onCommit }: { value: Video[]; onCommit: (va
   const hasIncompleteVideo = draftItems.some((video) => !videoUrlSchema.safeParse(video.url).success)
 
   return (
-    <div>
-      <div className="flex items-center gap-1">
-        <p className="text-[0.7rem] font-medium tracking-wide text-muted-foreground uppercase">Videos</p>
-        <Tooltip>
-          <TooltipTrigger
-            render={<Button type="button" variant="ghost" size="icon-xs" aria-label="Edit videos" onClick={handleOpen} />}
-          >
-            <Pencil className="text-muted-foreground" />
-          </TooltipTrigger>
-          <TooltipContent>Edit videos</TooltipContent>
-        </Tooltip>
-      </div>
-      <div className="mt-1 text-sm">
+    <div className="flex items-start gap-1">
+      <div className="min-w-0 flex-1">
         <VideosReadOnlyList videos={fieldEdit.draft} />
       </div>
+      <Button type="button" variant="ghost" size="icon-xs" aria-label="Edit videos" onClick={handleOpen}>
+        <Pencil className="text-muted-foreground" />
+      </Button>
       <Dialog open={fieldEdit.isFocused} onOpenChange={(open) => !open && handleCancel()}>
         <DialogContent size="lg">
           <DialogHeader>

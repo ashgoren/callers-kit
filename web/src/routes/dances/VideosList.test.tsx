@@ -19,6 +19,17 @@ describe('VideosList', () => {
     expect(screen.getByRole('button', { name: 'Remove video' })).toBeInTheDocument()
   })
 
+  it('keeps the drag handle out of the tab order - only mouse/touch dragging is supported, not keyboard', () => {
+    // Also matters for VideosField's dialog specifically: as the first
+    // tabbable element in the list, this was what Base UI's default
+    // initialFocus put focus on when the dialog opened, which could eat
+    // the first Escape press instead of closing the dialog.
+    const items: Video[] = [{ id: 'v1', url: 'https://example.com', description: 'Official teach' }]
+    render(<VideosList items={items} onChange={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: 'Reorder video' })).toHaveAttribute('tabindex', '-1')
+  })
+
   it('truncates both description and url to a single line, so a row never grows past one line', () => {
     const items: Video[] = [
       {

@@ -98,6 +98,7 @@ function VideoRow({ item, onChange, onRemove }: {
               )}
               {...attributes}
               {...listeners}
+              tabIndex={-1} // Overriding dnd-kit's own default tabIndex={0} keeps it out of the tab order.
             />
           }
         >

@@ -36,7 +36,7 @@ function FieldLine({ label, children }: { label: string; children: ReactNode }) 
   return (
     <div className="flex items-baseline gap-1 text-sm">
       <span className="shrink-0 text-muted-foreground">{label}</span>
-      <div className="min-w-0">{children}</div>
+      <div className="min-w-0 flex-1">{children}</div>
     </div>
   )
 }
@@ -46,7 +46,7 @@ function EditableUrlValue({ value, onCommit }: { value: string | null; onCommit:
 
   if (fieldEdit.isFocused) {
     return (
-      <span className="min-w-0 flex-1">
+      <span className="block min-w-0">
         <Input
           autoFocus
           value={fieldEdit.draft}
@@ -81,7 +81,7 @@ function EditableUrlValue({ value, onCommit }: { value: string | null; onCommit:
   }
 
   return (
-    <>
+    <span className="flex min-w-0 items-center gap-1">
       <a
         href={fieldEdit.draft}
         target="_blank"
@@ -90,15 +90,10 @@ function EditableUrlValue({ value, onCommit }: { value: string | null; onCommit:
       >
         {formatUrl(fieldEdit.draft)}
       </a>
-      <Tooltip>
-        <TooltipTrigger
-          render={<Button type="button" variant="ghost" size="icon-xs" aria-label="Edit URL" onClick={fieldEdit.onFocus} />}
-        >
-          <Pencil className="text-muted-foreground" />
-        </TooltipTrigger>
-        <TooltipContent>Edit URL</TooltipContent>
-      </Tooltip>
-    </>
+      <Button type="button" variant="ghost" size="icon-xs" aria-label="Edit URL" onClick={fieldEdit.onFocus}>
+        <Pencil className="text-muted-foreground" />
+      </Button>
+    </span>
   )
 }
 
@@ -357,18 +352,27 @@ export function DanceDetailPage() {
                   />
                 </FieldLine>
               </div>
-              <VideosField value={dance.videos} onCommit={(v) => void commitFieldEdit('dances', dance.id, 'videos', JSON.stringify(v))} />
-              <div>
-                <p className="text-[0.7rem] font-medium tracking-wide text-muted-foreground uppercase">Programs</p>
-                <div className="mt-1 text-sm">{renderProgramHistory(dance.programs)}</div>
+              <div className="space-y-4 border-t pt-4">
+                <FieldLine label="URL">
+                  <EditableUrlValue value={dance.url} onCommit={(value) => void commitFieldEdit('dances', dance.id, 'url', value)} />
+                </FieldLine>
+                <div>
+                  <p className="text-[0.7rem] font-medium tracking-wide text-muted-foreground uppercase">Videos</p>
+                  <div className="mt-1 text-sm">
+                    <VideosField
+                      value={dance.videos}
+                      onCommit={(v) => void commitFieldEdit('dances', dance.id, 'videos', JSON.stringify(v))}
+                    />
+                  </div>
+                </div>
               </div>
               <div className="space-y-1 border-t pt-4 text-sm text-muted-foreground">
-                <p className="flex items-baseline gap-1">
-                  <span className="shrink-0">URL</span>
-                  <EditableUrlValue value={dance.url} onCommit={(value) => void commitFieldEdit('dances', dance.id, 'url', value)} />
-                </p>
                 <p>Added {formatDate(dance.created_at)}</p>
                 <p>Edited {formatDate(dance.updated_at)}</p>
+              </div>
+              <div className="border-t pt-4">
+                <p className="text-[0.7rem] font-medium tracking-wide text-muted-foreground uppercase">Programs</p>
+                <div className="mt-1 text-sm">{renderProgramHistory(dance.programs)}</div>
               </div>
             </div>
           </div>
