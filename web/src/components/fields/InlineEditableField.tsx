@@ -1,6 +1,23 @@
 import { cn } from 'cn'
-import { useId, useLayoutEffect, useRef } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef } from 'react'
 import type { ElementType, KeyboardEvent, MouseEvent, ReactNode, RefObject } from 'react'
+
+// Shared across every InlineEditableField instance on the page - a single module-level flag is enough to
+// coordinate them without a Context/provider. Set/read by pointerdown-capture effect below.
+let suppressNextOpen = false
+
+// Temporary on-screen debug overlay for tracking down a mobile-only bug - remove once diagnosed.
+function debugLog(msg: string) {
+  let el = document.getElementById('__ief_debug')
+  if (!el) {
+    el = document.createElement('pre')
+    el.id = '__ief_debug'
+    el.style.cssText =
+      'position:fixed;bottom:0;left:0;right:0;max-height:40vh;overflow:auto;background:black;color:lime;font-size:10px;z-index:99999;margin:0;padding:4px;white-space:pre-wrap;'
+    document.body.appendChild(el)
+  }
+  el.textContent = `${msg}\n${el.textContent}`.slice(0, 4000)
+}
 
 // What this shell needs to drive the view/edit toggle - deliberately not
 // specific to any one commit model. useDraftFieldEdit (a local draft,
@@ -63,6 +80,7 @@ export function InlineEditableField<T>({
 }) {
   const errorId = useId()
   const inputRef = useRef<HTMLElement>(null)
+  const wrapperRef = useRef<HTMLElement>(null)
 
   // A blur-triggered commit that fails validation stays in edit mode
   // (isFocused never flips back to false) so the error can show - but the
@@ -75,11 +93,58 @@ export function InlineEditableField<T>({
     }
   }, [isFocused, error])
 
+  // Without this, a press outside this field does double duty: it closes
+  // this field and, if it lands on a different field's clickable span,
+  // immediately opens that field too. Mirrored into a ref (rather than read
+  // directly in the effect below) because the listener itself is attached
+  // once, for this field's whole mounted lifetime, not re-attached each time
+  // isFocused flips.
+  const isFocusedRef = useRef(isFocused)
+  useLayoutEffect(() => {
+    isFocusedRef.current = isFocused
+  }, [isFocused])
+
+  useEffect(() => {
+    function handlePointerDownCapture(e: PointerEvent) {
+      debugLog(`pointerdown type=${e.pointerType} isFocusedRef=${isFocusedRef.current} target=${(e.target as Element)?.tagName}.${(e.target as Element)?.className}`.slice(0, 200))
+      if (!isFocusedRef.current) return
+      const isOutside = wrapperRef.current !== null && !wrapperRef.current.contains(e.target as Node)
+      suppressNextOpen = isOutside
+      debugLog(`  -> isOutside=${isOutside} suppressNextOpen=${suppressNextOpen}`)
+      // clearAfterClick below already handles a real click correctly no
+      // matter how delayed it is, so this fallback only exists for a press
+      // that produces no click at all - e.g. Select's own outside-press handling.
+      if (isOutside) setTimeout(() => { debugLog('  timeout fired, clearing'); suppressNextOpen = false }, 150)
+    }
+    // Runs after every more deeply-nested click handler - React's own
+    // delegated ones included, since document sits above all of them in the
+    // bubble phase - so it only clears the flag once whatever field's
+    // onClick was going to read it already has.
+    function clearAfterClick() {
+      debugLog(`click (document bubble) suppressNextOpen was ${suppressNextOpen}`)
+      suppressNextOpen = false
+    }
+    document.addEventListener('pointerdown', handlePointerDownCapture, true)
+    document.addEventListener('click', clearAfterClick)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDownCapture, true)
+      document.removeEventListener('click', clearAfterClick)
+    }
+  }, [])
+
   if (!isFocused) {
     return (
       <As
+        ref={wrapperRef}
         tabIndex={0}
-        onClick={onFocus}
+        onClick={() => {
+          debugLog(`onClick own-field suppressNextOpen=${suppressNextOpen}`)
+          if (suppressNextOpen) {
+            suppressNextOpen = false
+            return
+          }
+          onFocus()
+        }}
         onMouseDown={onMouseDown}
         onKeyDown={(e: KeyboardEvent) => {
           if (e.key === 'Enter' || e.key === ' ') {
@@ -110,7 +175,7 @@ export function InlineEditableField<T>({
   // it between sharing a line with whatever's next to it and forcing a
   // block-level line break, reflowing any sibling that was sharing that line.
   return (
-    <div className={cn(fullWidth ? 'block' : 'inline-block', editModeClassName)}>
+    <div ref={wrapperRef as RefObject<HTMLDivElement | null>} className={cn(fullWidth ? 'block' : 'inline-block', editModeClassName)}>
       {renderInput({ draft, onChange, onBlur, onKeyDown, hasError: error !== null, errorId, ref: inputRef })}
       {error !== null && (
         <p id={errorId} className="mt-1 text-xs text-destructive">

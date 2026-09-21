@@ -158,7 +158,7 @@ describe('DanceDetailPage', () => {
     renderDanceDetailPage()
 
     const contentWrapper = screen.getByText('Dance Type').nextElementSibling
-    expect(contentWrapper).toHaveClass('[&>*]:w-full')
+    expect(contentWrapper).toHaveClass('*:w-full')
   })
 
   describe('url field', () => {
