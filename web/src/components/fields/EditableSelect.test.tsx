@@ -54,24 +54,16 @@ describe('EditableSelect', () => {
     expect(screen.getByText('Contra')).toBeInTheDocument()
   })
 
-  it('fills the available row width, capped by className, once fullWidth is set', async () => {
-    // Without fullWidth, the edit-mode wrapper is inline-block (content-
-    // sized), leaving SelectTrigger's own w-full nothing definite to fill -
-    // it collapses to the current value's own text width instead, which the
-    // dropdown popup width then inherits too.
-    render(
-      <EditableSelect value="Contra" onCommit={vi.fn()} options={['Contra', 'Square']} fullWidth className="max-w-64" />,
-    )
+  it('passes className through to the open select trigger, e.g. to cap its width', async () => {
+    render(<EditableSelect value="Contra" onCommit={vi.fn()} options={['Contra', 'Square']} className="max-w-64" />)
 
     const user = userEvent.setup()
     await user.click(screen.getByText('Contra'))
 
-    const trigger = screen.getByRole('combobox')
-    expect(trigger).toHaveClass('max-w-64')
-    expect(trigger.closest('.block')).not.toBeNull()
+    expect(screen.getByRole('combobox')).toHaveClass('max-w-64')
   })
 
-  it('formats both the closed display and each option through formatLabel, while committing the raw underlying value', async () => {
+it('formats both the closed display and each option through formatLabel, while committing the raw underlying value', async () => {
     const onCommit = vi.fn()
     const formatLabel = (value: string) => value.replace(/^Duple Minor - /, '')
     render(

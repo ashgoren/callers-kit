@@ -148,6 +148,19 @@ describe('DanceDetailPage', () => {
     expect(container.querySelector('.min-w-0.space-y-6')).toBeInTheDocument()
   })
 
+  it("fills FieldLine's content wrapper with the value's own width regardless of the value's own display mode", () => {
+    // jsdom has no real layout engine, so this only guards the CSS rule
+    // itself - a field like EditableSelect is inline-block by default and
+    // otherwise has nothing but its own content to size against, which is
+    // what left Formation's dropdown collapsed to its current value's own
+    // width instead of using the room this row actually has.
+    useQueryMock.mockReturnValue({ data: [makeDanceRow()], isLoading: false })
+    renderDanceDetailPage()
+
+    const contentWrapper = screen.getByText('Dance Type').nextElementSibling
+    expect(contentWrapper).toHaveClass('[&>*]:w-full')
+  })
+
   describe('url field', () => {
     it('shows the raw url as-is when it is not an ibiblio Caller\'s Box link', () => {
       useQueryMock.mockReturnValue({ data: [makeDanceRow({ url: 'https://example.com/some-dance' })], isLoading: false })
